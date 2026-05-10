@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patients Monitoring — Ficha de Paciente</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;display:flex;height:100vh;overflow:hidden}
+.icon{width:18px;height:18px;display:inline-block;vertical-align:middle}
+.sidebar{width:256px;background:#0f172a;color:#fff;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:24px 20px;border-bottom:1px solid #1e293b}
+.sidebar-logo h1{font-size:18px;font-weight:700}.sidebar-logo span{color:#38bdf8}
+.sidebar-nav{flex:1;padding:16px 0}
+.sidebar-nav a{display:flex;align-items:center;gap:12px;padding:10px 20px;color:#94a3b8;text-decoration:none;font-size:14px}
+.sidebar-nav a:hover{color:#fff;background:#1e293b}
+.sidebar-user{padding:16px 20px;border-top:1px solid #1e293b;font-size:13px;color:#94a3b8}
+.sidebar-user .name{color:#fff;font-weight:500}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.patient-header{background:#fff;padding:16px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.patient-header .back-link{color:#64748b;text-decoration:none;font-size:14px;display:flex;align-items:center;gap:4px}
+.patient-header .back-link:hover{color:#0f172a}
+.patient-header .info{flex:1}
+.patient-header .pname{font-size:18px;font-weight:700}
+.patient-header .meta{font-size:13px;color:#64748b}
+.content-scroll{flex:1;overflow-y:auto;padding-bottom:80px}
+.summary-cards{display:flex;gap:12px;padding:16px 24px;overflow-x:auto}
+.s-card{background:#fff;border-radius:10px;padding:12px 16px;min-width:120px;box-shadow:0 1px 2px rgba(0,0,0,.05);position:relative;transition:border-color .2s}
+.s-card .label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.s-card .value{font-size:20px;font-weight:700}
+.s-card .unit{font-size:12px;color:#94a3b8;font-weight:400}
+.s-card.v-high{border-left:3px solid #dc2626}.s-card.v-high .value{color:#dc2626}
+.s-card.v-low{border-left:3px solid #f59e0b}.s-card.v-low .value{color:#f59e0b}
+.s-card.v-baseline{border-left:3px solid #3b82f6}.s-card.v-baseline .value{color:#3b82f6}
+.s-card .hint{font-size:10px;margin-top:2px;line-height:1.3}
+.s-card .hint.red{color:#dc2626}.s-card .hint.amber{color:#d97706}.s-card .hint.blue{color:#3b82f6}
+.table-wrap{padding:0 24px 16px}
+.vitals-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.vitals-table th,.vitals-table td{padding:10px 14px;font-size:13px;text-align:center;white-space:nowrap}
+.vitals-table thead th{background:#f8fafc;font-weight:600;color:#64748b;position:sticky;top:0;z-index:2}
+.vitals-table tbody th{text-align:left;font-weight:600;color:#1e293b;background:#fff;position:sticky;left:0;z-index:1;min-width:160px;border-right:1px solid #f1f5f9}
+.vitals-table td{border-top:1px solid #f1f5f9}
+.vitals-table thead th:first-child{position:sticky;left:0;z-index:3;background:#f8fafc}
+td.v-high{background:#fef2f2;color:#dc2626;font-weight:600}
+td.v-low{background:#fffbeb;color:#d97706;font-weight:600}
+td.v-baseline{background:#eff6ff;color:#3b82f6;font-weight:500}
+.insights-panel{margin:0 24px 16px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.insights-toggle{display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;user-select:none;background:#f8fafc;border:none;width:100%;text-align:left;font-family:inherit}
+.insights-toggle h3{font-size:14px;font-weight:600;flex:1}
+.insights-toggle .badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;color:#fff;margin-left:4px}
+.bg-red{background:#dc2626}.bg-amber{background:#f59e0b}.bg-blue{background:#3b82f6}
+.insights-toggle .chevron{transition:transform .2s;font-size:14px;color:#94a3b8}
+.insights-toggle.collapsed .chevron{transform:rotate(-90deg)}
+.insights-body{border-top:1px solid #f1f5f9}
+.insights-body.hidden{display:none}
+.insight-item{padding:12px 18px;border-bottom:1px solid #f8fafc;display:flex;gap:12px;align-items:flex-start;font-size:13px;line-height:1.5}
+.insight-item:last-child{border-bottom:none}
+.insight-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.dot-red{background:#dc2626}.dot-amber{background:#f59e0b}.dot-blue{background:#3b82f6}
+.insight-item .title{font-weight:600;margin-bottom:2px}
+.insight-item .detail{color:#64748b;font-size:12px}
+.insight-item .reasoning{color:#94a3b8;font-size:11px;margin-top:3px;font-style:italic}
+.action-bar{position:fixed;bottom:0;left:256px;right:0;background:#fff;border-top:1px solid #e2e8f0;padding:12px 24px;display:flex;align-items:center;gap:20px;z-index:100}
+.action-bar .patient-name{font-size:14px;color:#64748b}.action-bar .patient-name strong{color:#1e293b}
+.action-btn{background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;text-decoration:none;transition:opacity .15s}
+.action-btn .icon{width:22px;height:22px}
+.action-btn.registros{color:#dc2626}.action-btn.antecedentes{color:#d97706}.action-btn.medicacion{color:#0d9488}
+.action-btn:hover{opacity:.7}.action-btn.active-tab{opacity:1}.action-btn.active-tab .icon{stroke-width:2.5}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-backdrop.show{display:flex}
+.modal{background:#fff;border-radius:16px;width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);padding:24px}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:4px}
+.modal .modal-sub{font-size:13px;color:#64748b;margin-bottom:20px}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#64748b}
+.modal-header{display:flex;justify-content:space-between;align-items:start;margin-bottom:16px}
+.m-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.m-row.triple{grid-template-columns:1fr 1fr 1fr}
+.m-group{display:flex;flex-direction:column;gap:4px}
+.m-group label{font-size:12px;font-weight:500;color:#475569}
+.m-group label .req{color:#dc2626}
+.m-group input,.m-group select{padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit;outline:none}
+.m-group input:focus,.m-group select:focus{border-color:#3b82f6}
+.m-section{font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;padding-top:12px;border-top:1px solid #f1f5f9}
+.m-check{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px}
+.m-check input[type=checkbox]{width:16px;height:16px}
+.resp-fields{display:none;padding:12px;background:#f8fafc;border-radius:8px;margin-bottom:12px}
+.resp-fields.show{display:block}
+.m-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid #f1f5f9}
+.btn{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;font-family:inherit}
+.btn-cancel{background:#f1f5f9;color:#475569}.btn-cancel:hover{background:#e2e8f0}
+.btn-primary{background:#0ea5e9;color:#fff}.btn-primary:hover{background:#0284c7}
+.btn-add{background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-add:hover{background:#0284c7}
+</style>
+</head>
+<body>
+<aside class="sidebar"><div class="sidebar-logo"><h1><span>P</span>atients <span>M</span>onitoring</h1></div><nav class="sidebar-nav"><a href="02-lista-pacientes.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Pacientes</a></nav><div class="sidebar-user"><div class="name">Javi Herrada Álvarez</div><div>Enfermería</div></div></aside>
+
+<div class="main">
+<div class="patient-header">
+<a href="02-lista-pacientes.html" class="back-link"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg> Lista</a>
+<div class="info"><div><div class="pname">Martínez Ruiz, Pedro</div><div class="meta">58 años · NHC-002345 · Disnea aguda · Cama B2</div></div></div>
+<button class="btn-add" onclick="openModal()"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Nuevo registro</button>
+</div>
+
+<div class="content-scroll">
+<!-- Summary cards (rendered by JS) -->
+<div class="summary-cards" id="summaryCards"></div>
+
+<!-- Insights panel (rendered by JS) -->
+<div id="insightsContainer"></div>
+
+<!-- Vitals table (rendered by JS) -->
+<div class="table-wrap"><table class="vitals-table" id="vitalsTable"></table></div>
+</div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+<a class="action-btn registros active-tab" href="#" title="Registros"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg></a>
+<a class="action-btn antecedentes" href="08-antecedentes.html" title="Antecedentes"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10.01h.01"/><path d="M10 14.01h.01"/><path d="M14 10.01h.01"/><path d="M14 14.01h.01"/><path d="M18 6v11.5"/><path d="M6 6v12"/><rect x="2" y="6" width="20" height="12" rx="2"/></svg></a>
+<a class="action-btn medicacion" href="09-medicacion.html" title="Medicación"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg></a>
+<div class="patient-name"><strong>Martínez Ruiz, Pedro</strong> · NHC-002345</div>
+</div>
+
+<!-- MODAL: Nuevo registro -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+<div class="modal-header"><div><h3>Nuevo registro de constantes</h3><div class="modal-sub">Martínez Ruiz, Pedro · 58 años</div></div><button class="modal-close" onclick="closeModal()">✕</button></div>
+<div class="m-row"><div class="m-group"><label>Fecha</label><input type="date" value="2026-05-10"></div><div class="m-group"><label>Hora</label><input type="time" value="09:30"></div></div>
+<div class="m-section">Constantes vitales</div>
+<div class="m-row"><div class="m-group"><label>TAS (mmHg) <span class="req">*</span></label><input type="number" placeholder="120"></div><div class="m-group"><label>TAD (mmHg) <span class="req">*</span></label><input type="number" placeholder="80"></div></div>
+<div class="m-row triple"><div class="m-group"><label>FC (bpm) <span class="req">*</span></label><input type="number" placeholder="80"></div><div class="m-group"><label>SpO2 (%) <span class="req">*</span></label><input type="number" placeholder="98"></div><div class="m-group"><label>FR (rpm)</label><input type="number" placeholder="16"></div></div>
+<div class="m-row"><div class="m-group"><label>Temperatura (°C)</label><input type="number" step="0.1" placeholder="36.5"></div><div class="m-group"><label>Glucemia (mg/dL)</label><input type="number" placeholder="100"></div></div>
+<div class="m-section">Soporte respiratorio</div>
+<div class="m-check"><input type="checkbox" id="respCheck" onchange="toggleResp()"><label for="respCheck">El paciente tiene soporte respiratorio</label></div>
+<div class="resp-fields" id="respFields"><div class="m-group" style="margin-bottom:12px"><label>Dispositivo</label><select id="respDevice" onchange="updateRespFields()"><option value="">Seleccionar...</option><option value="gafas">Gafas nasales</option><option value="ventimax">Ventimax</option><option value="reservorio">Mascarilla con reservorio</option><option value="cpap">CPAP</option><option value="bipap">BiPAP</option><option value="oaf">Cánula de alto flujo (OAF)</option><option value="vm">Ventilación mecánica</option></select></div><div id="respDynamic"></div></div>
+<div class="m-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="closeModal()">Guardar registro</button></div>
+</div>
+</div>
+
+<!-- PART 3: JavaScript -->
+<script>
+// ===== MODAL FUNCTIONS =====
+function openModal(){document.getElementById('modalBackdrop').classList.add('show')}
+function closeModal(){document.getElementById('modalBackdrop').classList.remove('show')}
+function toggleResp(){document.getElementById('respFields').classList.toggle('show',document.getElementById('respCheck').checked)}
+const rc={gafas:'<div class="m-group"><label>Flujo (L/min) <span class="req">*</span></label><input type="number" placeholder="2"></div>',ventimax:'<div class="m-row"><div class="m-group"><label>Flujo (L/min) <span class="req">*</span></label><input type="number" placeholder="8"></div><div class="m-group"><label>FiO2 (%) <span class="req">*</span></label><input type="number" placeholder="35"></div></div>',reservorio:'<div class="m-group"><label>Flujo (L/min) <span class="req">*</span></label><input type="number" placeholder="10"></div>',cpap:'<div class="m-group"><label>Presión CPAP (cmH₂O) <span class="req">*</span></label><input type="number" placeholder="8"></div>',bipap:'<div class="m-row"><div class="m-group"><label>IPAP (cmH₂O) <span class="req">*</span></label><input type="number" placeholder="14"></div><div class="m-group"><label>EPAP (cmH₂O) <span class="req">*</span></label><input type="number" placeholder="6"></div></div>',oaf:'<div class="m-group"><label>Flujo (L/min) <span class="req">*</span></label><input type="number" placeholder="40"></div>',vm:'<div class="m-row"><div class="m-group"><label>FiO2 (%) <span class="req">*</span></label><input type="number" placeholder="40"></div><div class="m-group"><label>PEEP (cmH₂O) <span class="req">*</span></label><input type="number" placeholder="5"></div></div><div class="m-row"><div class="m-group"><label>Vt (mL) <span class="req">*</span></label><input type="number" placeholder="450"></div><div class="m-group"><label>FR prog. (rpm) <span class="req">*</span></label><input type="number" placeholder="14"></div></div>'};
+function updateRespFields(){document.getElementById('respDynamic').innerHTML=rc[document.getElementById('respDevice').value]||''}
+
+// ===== PATIENT DATA =====
+const patient = {
+  name: 'Martínez Ruiz, Pedro',
+  age: 58,
+  nhc: 'NHC-002345',
+  reason: 'Disnea aguda',
+  bed: 'Cama B2',
+  antecedentes: ['EPOC','HTA','IRC estadio 3','Ex-fumador'],
+  alergias: [
+    {substance:'Amoxicilina',type:'drug',severity:'severe',reaction:'Anafilaxia'},
+    {substance:'Metamizol',type:'drug',severity:'moderate',reaction:'Urticaria generalizada'}
+  ],
+  // Medicación habitual
+  medHabitual: [
+    {name:'Salbutamol inh.',dose:'200mcg',freq:'c/8h',since:'2019',class:'broncodilatador'},
+    {name:'Tiotropio inh.',dose:'18mcg',freq:'c/24h',since:'2020',class:'broncodilatador'},
+    {name:'Enalapril',dose:'20mg',freq:'c/24h',since:'2025-01',new:true,class:'ieca'},
+    {name:'Bisoprolol',dose:'5mg',freq:'c/24h',since:'2023',class:'betabloqueante'}
+  ],
+  // Medicación activa del ingreso
+  medIngreso: [
+    {name:'Paracetamol',dose:'1g',route:'EV',freq:'c/8h',category:'conditional',condition:'Si Tª>38°C',class:'antipiretico'},
+    {name:'Metilprednisolona',dose:'40mg',route:'EV',freq:'c/12h',category:'fixed',class:'corticoide'},
+    {name:'Salbutamol neb.',dose:'2.5mg',route:'INH',freq:'c/6h',category:'fixed',class:'broncodilatador'},
+    {name:'Insulina Actrapid',dose:'según escala',route:'SC',freq:'c/6h',category:'insulin',class:'insulina'},
+    {name:'Metamizol',dose:'2g',route:'EV',freq:'c/8h',category:'conditional',condition:'Si dolor>4',class:'analgesico'},
+    {name:'Gentamicina',dose:'240mg',route:'EV',freq:'c/24h',category:'fixed',class:'aminoglucosido'}
+  ]
+};
+
+// ===== HISTORICAL ADMISSIONS (baselines) =====
+const prevAdmissions = [
+  { // Ingreso 1 - hace 2 años (antes de Enalapril)
+    date:'2024-03',reason:'Reagudización EPOC',
+    vitals:{tas:[148,152,150,145,148,150],tad:[92,95,90,88,90,92],
+            fc:[88,90,85,82,84,86],spo2:[93,92,93,94,93,93],
+            fr:[22,24,22,20,20,18],temp:[37.0,37.2,37.0,36.8,36.9,37.0],
+            gluc:[130,125,128,122,120,118]}
+  },
+  { // Ingreso 2 - hace 1 año (antes de Enalapril)
+    date:'2025-01',reason:'Neumonía',
+    vitals:{tas:[155,150,148,145,142,140],tad:[94,90,88,85,84,82],
+            fc:[92,90,88,85,82,80],spo2:[91,92,93,93,94,95],
+            fr:[24,22,22,20,18,18],temp:[38.5,38.2,37.8,37.2,37.0,36.8],
+            gluc:[135,140,132,128,125,120]}
+  },
+  { // Ingreso 3 - hace 3 meses (YA con Enalapril)
+    date:'2025-08',reason:'Broncoespasmo',
+    vitals:{tas:[130,128,125,122,120,118],tad:[82,80,78,76,75,74],
+            fc:[85,82,80,78,76,75],spo2:[94,94,95,95,96,96],
+            fr:[20,20,18,18,16,16],temp:[36.8,36.9,36.8,36.7,36.8,36.7],
+            gluc:[125,120,118,115,112,110]}
+  }
+];
+
+// ===== CURRENT ADMISSION VITALS =====
+const timestamps = ['08/05 14:30','08/05 18:00','08/05 22:00','09/05 02:00','09/05 06:00','09/05 10:00','09/05 14:00','09/05 18:00','09/05 22:00','10/05 02:00','10/05 06:00','10/05 08:30'];
+const currentVitals = {
+  tas: [160,155,148,142,140,145,150,148,142,138,140,145],
+  tad: [95,92,90,88,85,88,90,88,85,82,85,88],
+  fc:  [58,56,55,54,56,58,60,58,55,54,56,58],
+  temp:[37.8,37.5,37.2,37.0,36.8,37.0,38.2,37.1,36.9,36.8,38.0,37.2],
+  spo2:[91,92,93,93,94,93,94,94,95,95,93,91],
+  fr:  [26,24,22,22,20,22,22,20,20,18,20,22],
+  gluc:[140,null,132,null,128,null,145,null,160,null,175,185],
+  dolor:[6,5,6,4,3,5,6,5,6,4,5,6]
+};
+const respSupport = [
+  {start:0,end:2,label:'Ventimax 8L FiO2 35%',bg:'#fff7ed',color:'#ea580c'},
+  {start:3,end:6,label:'Gafas nasales 3L/min',bg:'#fefce8',color:'#ca8a04'},
+  {start:7,end:9,label:'Aire ambiente',bg:'#f0fdf4',color:'#16a34a'},
+  {start:10,end:11,label:'Aire ambiente',bg:'#f0fdf4',color:'#16a34a'}
+];
+
+// Medication administrations (for pattern analysis)
+const medAdmins = [
+  {med:'Paracetamol 1g EV',times:['08/05 14:30','09/05 14:00','10/05 06:00'],class:'antipiretico'},
+  {med:'Insulina Actrapid SC',times:['08/05 14:30','08/05 22:00','09/05 06:00','09/05 14:00','09/05 22:00','10/05 06:00'],
+   glucPre:[140,132,128,145,160,175],glucPost:[null,null,null,null,null,185],class:'insulina'},
+  {med:'Metamizol 2g EV',times:['08/05 18:00','09/05 10:00','09/05 22:00','10/05 06:00'],class:'analgesico'},
+  {med:'Metilprednisolona 40mg EV',times:['08/05 14:30','09/05 02:00','09/05 14:00','10/05 02:00'],class:'corticoide'},
+  {med:'Gentamicina 240mg EV',times:['08/05 14:30','09/05 14:00','10/05 06:00'],class:'aminoglucosido'}
+];
+
+// ===== RANGES (fixed thresholds) =====
+const ranges = {
+  tas: {low:90,high:140,unit:'mmHg'},
+  tad: {low:60,high:90,unit:'mmHg'},
+  fc:  {low:60,high:100,unit:'bpm'},
+  temp:{low:36.0,high:37.5,unit:'°C'},
+  spo2:{low:94,high:100,unit:'%'},
+  fr:  {low:12,high:20,unit:'rpm'},
+  gluc:{low:70,high:180,unit:'mg/dL'},
+  dolor:{low:0,high:3,unit:'/10'}
+};
+
+// Drug interaction / nephrotoxicity / allergy databases (simplified)
+const nephrotoxicDrugs = ['gentamicina','tobramicina','vancomicina','amikacina','anfotericina','ibuprofeno','ketorolaco','diclofenaco'];
+const betabloqueantes = ['bisoprolol','atenolol','carvedilol','metoprolol','propranolol','nebivolol'];
+const antihipertensivos = ['enalapril','ramipril','losartan','valsartan','amlodipino','nifedipino','bisoprolol','atenolol','carvedilol','hidroclorotiazida','furosemida'];
+const corticoides = ['metilprednisolona','prednisona','prednisolona','dexametasona','hidrocortisona'];
+
+// ===== ANALYSIS ENGINE =====
+function median(arr){ const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+
+function computeBaselines(){
+  const keys=['tas','tad','fc','spo2','fr','temp','gluc'];
+  const baselines={};
+  keys.forEach(k=>{
+    const allVals=[];
+    prevAdmissions.forEach(a=>{ if(a.vitals[k]) a.vitals[k].forEach(v=>{ if(v!=null) allVals.push(v); }); });
+    if(allVals.length>0) baselines[k]={median:median(allVals),mean:Math.round(mean(allVals)*10)/10,min:Math.min(...allVals),max:Math.max(...allVals),n:allVals.length};
+  });
+  return baselines;
+}
+
+function computeBaselinesByEra(){
+  // Split baselines: before and after Enalapril (started 2025-01)
+  const before=[],after=[];
+  prevAdmissions.forEach(a=>{
+    if(a.date<'2025-01') before.push(a); else after.push(a);
+  });
+  const calc=(admissions,keys)=>{
+    const b={};
+    keys.forEach(k=>{
+      const vals=[];
+      admissions.forEach(a=>{ if(a.vitals[k]) a.vitals[k].forEach(v=>{ if(v!=null) vals.push(v); }); });
+      if(vals.length>0) b[k]={median:median(vals),mean:Math.round(mean(vals)*10)/10,min:Math.min(...vals),max:Math.max(...vals),n:vals.length};
+    });
+    return b;
+  };
+  return {before:calc(before,['tas','tad','fc','spo2','fr','temp','gluc']),after:calc(after,['tas','tad','fc','spo2','fr','temp','gluc'])};
+}
+
+function classifyCell(key,val){
+  if(val==null) return 'v-ok';
+  const r=ranges[key];
+  if(!r) return 'v-ok';
+  if(val>r.high) return 'v-high';
+  if(val<r.low) return 'v-low';
+  return 'v-ok';
+}
+
+function generateInsights(){
+  const insights=[];
+  const baselines=computeBaselines();
+  const eras=computeBaselinesByEra();
+  const last=key=>{const v=currentVitals[key];for(let i=v.length-1;i>=0;i--) if(v[i]!=null) return v[i];return null;};
+  const lastN=(key,n)=>currentVitals[key].slice(-n).filter(v=>v!=null);
+  const respReasons=['disnea','tos','neumonía','broncoespasmo','asma','epoc reagud'];
+  const isRespReason=respReasons.some(r=>patient.reason.toLowerCase().includes(r));
+
+  // ============================================================
+  // 1. ALERGIAS vs PRESCRIPCIONES DEL INGRESO
+  // ============================================================
+  if(patient.alergias && patient.alergias.length>0){
+    patient.medIngreso.forEach(med=>{
+      patient.alergias.forEach(al=>{
+        const medName=med.name.toLowerCase();
+        const alSub=al.substance.toLowerCase();
+        // Check direct match or same family
+        const amoxFamily=['amoxicilina','ampicilina','penicilina','piperacilina'];
+        const isAmoxAllergy=amoxFamily.some(a=>alSub.includes(a));
+        const isAmoxMed=amoxFamily.some(a=>medName.includes(a));
+        const isMatch=medName.includes(alSub) || alSub.includes(medName) || (isAmoxAllergy && isAmoxMed);
+        if(isMatch){
+          const isMetamizol=alSub.includes('metamizol');
+          insights.push({
+            level:'critical',
+            title:'⚠ Alergia a '+al.substance+' — '+med.name+' pautado',
+            detail:'El paciente tiene alergia documentada a '+al.substance+' (severidad: '+al.severity+', reacción: '+al.reaction+'). Se ha pautado '+med.name+' '+med.dose+' '+med.route+'.',
+            reasoning:isMetamizol
+              ?'CONTRAINDICADO. Suspender inmediatamente. Alternativa analgésica: Paracetamol (ya pautado) o valorar opioides si dolor intenso.'
+              :'Verificar que no exista reacción cruzada. Si la alergia es al principio activo directo, SUSPENDER inmediatamente y notificar al médico prescriptor.'
+          });
+        }
+      });
+    });
+  }
+
+  // ============================================================
+  // 2. NEFROTOXICIDAD en paciente con IRC
+  // ============================================================
+  const hasIRC=patient.antecedentes.some(a=>a.toLowerCase().includes('irc') || a.toLowerCase().includes('insuficiencia renal'));
+  if(hasIRC){
+    const nephroMeds=patient.medIngreso.filter(m=>nephrotoxicDrugs.some(d=>m.name.toLowerCase().includes(d)));
+    nephroMeds.forEach(med=>{
+      insights.push({
+        level:'critical',
+        title:'Nefrotóxico en paciente con IRC — '+med.name,
+        detail:med.name+' '+med.dose+' '+med.route+' '+med.freq+' es potencialmente nefrotóxico. El paciente tiene IRC estadio 3 en antecedentes.',
+        reasoning:'Valorar ajuste de dosis según filtrado glomerular, monitorizar función renal (creatinina, urea) y niveles del fármaco si disponible. Considerar alternativa menos nefrotóxica.'
+      });
+    });
+  }
+
+  // ============================================================
+  // 3. BASELINE TA con contexto de medicación (Enalapril)
+  // ============================================================
+  if(eras.after.tas && eras.before.tas){
+    const curTAS=last('tas'), curTAD=last('tad');
+    const afterMedianTAS=eras.after.tas.median;
+    const beforeMedianTAS=eras.before.tas.median;
+    if(curTAS > afterMedianTAS + 15){
+      insights.push({
+        level:'warning',
+        title:'TA por encima de su basal reciente',
+        detail:'TAS actual '+curTAS+'/'+curTAD+' mmHg. Desde que inició Enalapril 20mg (ene-2025), su basal era '+Math.round(afterMedianTAS)+'/'+Math.round(eras.after.tad.median)+' mmHg.',
+        reasoning:'Basal pre-Enalapril: '+Math.round(beforeMedianTAS)+'/'+Math.round(eras.before.tad.median)+'. El valor actual se acerca a niveles previos al tratamiento. Valorar adherencia o causa secundaria.'
+      });
+    }
+  }
+
+  // ============================================================
+  // 4. BRADICARDIA + BETABLOQUEANTES
+  // ============================================================
+  const curFC=last('fc');
+  const hasBetabloq=patient.medHabitual.some(m=>betabloqueantes.some(b=>m.name.toLowerCase().includes(b)));
+  if(curFC<60 && hasBetabloq){
+    const bbMed=patient.medHabitual.find(m=>betabloqueantes.some(b=>m.name.toLowerCase().includes(b)));
+    const fcVals=lastN('fc',6);
+    const avgFC=fcVals.length>0?Math.round(mean(fcVals)):curFC;
+    insights.push({
+      level:'warning',
+      title:'Bradicardia (FC '+curFC+' bpm) en paciente con betabloqueante',
+      detail:'El paciente toma '+bbMed.name+' '+bbMed.dose+' '+bbMed.freq+' como medicación habitual. FC media en este ingreso: '+avgFC+' bpm.',
+      reasoning:'La bradicardia puede estar inducida por el betabloqueante. Valorar si es sintomática (mareo, síncope). Si FC<50 o sintomática, considerar suspender '+bbMed.name+' durante el ingreso.'
+    });
+  }
+
+  // ============================================================
+  // 5. HIPOTENSIÓN + ANTIHIPERTENSIVOS MÚLTIPLES
+  // ============================================================
+  const curTAS=last('tas'), curTAD=last('tad');
+  const ahMeds=[...patient.medHabitual,...patient.medIngreso].filter(m=>antihipertensivos.some(a=>m.name.toLowerCase().includes(a)));
+  if(curTAS<100 && ahMeds.length>=2){
+    insights.push({
+      level:'warning',
+      title:'Hipotensión ('+curTAS+'/'+curTAD+') con '+ahMeds.length+' antihipertensivos',
+      detail:'Fármacos con efecto hipotensor: '+ahMeds.map(m=>m.name+' '+m.dose).join(', ')+'.',
+      reasoning:'Múltiples antihipertensivos pueden causar hipotensión sumativa. Valorar suspender alguno durante el ingreso si TA<100 mmHg de forma sostenida.'
+    });
+  }
+
+  // ============================================================
+  // 6. SpO2 + MOTIVO DE CONSULTA + BASELINE
+  // ============================================================
+  const curSpO2=last('spo2');
+  if(baselines.spo2){
+    const baseSpO2=baselines.spo2.median;
+    if(curSpO2 < baseSpO2-3 && isRespReason){
+      insights.push({
+        level:'critical',
+        title:'SpO2 '+curSpO2+'% — por debajo de su basal',
+        detail:'Su mediana histórica es '+Math.round(baseSpO2)+'%. Descenso de '+(Math.round(baseSpO2)-curSpO2)+' puntos respecto a su basal.',
+        reasoning:'En un paciente EPOC con basal de '+Math.round(baseSpO2)+'%, una caída a '+curSpO2+'% es significativa. Valorar reintroducir soporte respiratorio.'
+      });
+    } else if(curSpO2>=baseSpO2-1 && curSpO2<=baseSpO2+1 && isRespReason && curSpO2<ranges.spo2.low){
+      insights.push({
+        level:'info',
+        title:'SpO2 '+curSpO2+'% — dentro de su basal habitual',
+        detail:'Su mediana histórica es '+Math.round(baseSpO2)+'% (rango '+baselines.spo2.min+'-'+baselines.spo2.max+'% en '+baselines.spo2.n+' registros previos).',
+        reasoning:'El motivo de consulta es "'+patient.reason+'". Aunque el valor parece bajo, es consistente con su basal de paciente EPOC.'
+      });
+    }
+  }
+
+  // ============================================================
+  // 7. DESATURACIÓN TRAS RETIRADA DE SOPORTE RESPIRATORIO
+  // ============================================================
+  const spo2Vals=currentVitals.spo2;
+  for(let i=1;i<respSupport.length;i++){
+    const prev=respSupport[i-1], curr=respSupport[i];
+    // Detect step-down (from device to less support or air)
+    const isStepDown=(prev.label.includes('Ventimax')||prev.label.includes('Gafas')||prev.label.includes('reservorio')) && curr.label.includes('Aire ambiente');
+    if(isStepDown){
+      const spo2Before=spo2Vals[prev.end];
+      const spo2After=spo2Vals.slice(curr.start,curr.end+1);
+      const spo2AfterMin=Math.min(...spo2After);
+      if(spo2Before-spo2AfterMin>=2){
+        insights.push({
+          level:'warning',
+          title:'Desaturación tras retirada de soporte respiratorio',
+          detail:'SpO2 pasó de '+spo2Before+'% (con '+prev.label.split(' ')[0]+') a '+spo2AfterMin+'% en aire ambiente. Descenso de '+(spo2Before-spo2AfterMin)+' puntos.',
+          reasoning:'La caída de SpO2 al retirar soporte sugiere que el paciente aún depende de oxigenoterapia. Valorar reintroducir soporte o mantener vigilancia estrecha.'
+        });
+        break;
+      }
+    }
+  }
+
+  // ============================================================
+  // 8. GLUCEMIA EN ASCENSO vs INSULINA + CORTICOIDES
+  // ============================================================
+  const glucVals=currentVitals.gluc.filter(v=>v!=null);
+  if(glucVals.length>=3){
+    const lastThree=glucVals.slice(-3);
+    const rising=lastThree[0]<lastThree[1] && lastThree[1]<lastThree[2];
+    const insulinAdmin=medAdmins.find(m=>m.class==='insulina');
+    const corticoAdmin=patient.medIngreso.find(m=>corticoides.some(c=>m.name.toLowerCase().includes(c)));
+    if(rising && insulinAdmin && insulinAdmin.times.length>=3){
+      let detail='Últimos 3 valores: '+lastThree.join('→')+' mg/dL. Insulina administrada en '+insulinAdmin.times.length+' ocasiones.';
+      let reasoning='La tendencia ascendente con insulina administrada puede indicar necesidad de ajustar la escala de dosificación.';
+      if(corticoAdmin){
+        detail+=' El paciente recibe '+corticoAdmin.name+' '+corticoAdmin.dose+' '+corticoAdmin.route+' '+corticoAdmin.freq+'.';
+        reasoning='Los corticoides ('+corticoAdmin.name+') son causa conocida de hiperglucemia. Valorar ajustar escala de insulina o añadir insulina basal mientras dure el tratamiento corticoideo.';
+      }
+      insights.push({level:'warning',title:'Glucemia en ascenso a pesar de insulina pautada',detail,reasoning});
+    }
+  }
+
+  // ============================================================
+  // 9. PATRÓN TÉRMICO CÍCLICO + ANTIPIRÉTICOS
+  // ============================================================
+  const temps=currentVitals.temp;
+  const antipiAdmin=medAdmins.filter(m=>m.class==='antipiretico');
+  const feverPeaks=temps.filter(t=>t>=37.8).length;
+  const defervescence=temps.filter((t,i)=>i>0 && temps[i-1]>=37.5 && t<37.2).length;
+  if(feverPeaks>=2 && defervescence>=1 && antipiAdmin.length>0){
+    const totalAdmin=antipiAdmin.reduce((s,a)=>s+a.times.length,0);
+    insights.push({
+      level:'warning',
+      title:'Patrón térmico cíclico recurrente',
+      detail:feverPeaks+' picos febriles (máx '+Math.max(...temps).toFixed(1)+'°C) con '+defervescence+' defervescencias. Antipiréticos administrados '+totalAdmin+' veces.',
+      reasoning:'La fiebre recurre tras efecto del antipirético. Patrón compatible con foco infeccioso activo. Valorar: 1) Pasar antipirético de condicional a pauta fija, 2) Revisar cobertura antibiótica, 3) Solicitar hemocultivos si no se han extraído.'
+    });
+  }
+
+  // ============================================================
+  // 10. TAQUICARDIA PROPORCIONAL A FIEBRE
+  // ============================================================
+  // Check if FC rises proportionally with temperature
+  const fcTemps=[];
+  for(let i=0;i<temps.length;i++){
+    if(currentVitals.fc[i]!=null && temps[i]!=null) fcTemps.push({fc:currentVitals.fc[i],temp:temps[i]});
+  }
+  const feverMoments=fcTemps.filter(ft=>ft.temp>=37.8);
+  const normalMoments=fcTemps.filter(ft=>ft.temp<37.2);
+  if(feverMoments.length>=1 && normalMoments.length>=1){
+    const avgFCFever=Math.round(mean(feverMoments.map(f=>f.fc)));
+    const avgFCNormal=Math.round(mean(normalMoments.map(f=>f.fc)));
+    const diff=avgFCFever-avgFCNormal;
+    if(diff>=8){
+      insights.push({
+        level:'info',
+        title:'FC correlacionada con temperatura',
+        detail:'FC media con fiebre (≥37.8°C): '+avgFCFever+' bpm. FC media afebril (<37.2°C): '+avgFCNormal+' bpm. Diferencia: +'+diff+' bpm.',
+        reasoning:'Aumento de ~8-10 bpm por cada grado de fiebre es fisiológico. Si la taquicardia persiste sin fiebre, buscar otra causa.'
+      });
+    }
+  }
+
+  // ============================================================
+  // 11. DOLOR NO CONTROLADO
+  // ============================================================
+  if(currentVitals.dolor){
+    const dolorVals=currentVitals.dolor.filter(v=>v!=null);
+    const curDolor=last('dolor');
+    const analgesicAdmin=medAdmins.filter(m=>m.class==='analgesico');
+    const totalAnalgesic=analgesicAdmin.reduce((s,a)=>s+a.times.length,0);
+    const highPainCount=dolorVals.filter(d=>d>=4).length;
+    if(curDolor>=4 && totalAnalgesic>=3 && highPainCount>=Math.floor(dolorVals.length*0.5)){
+      insights.push({
+        level:'warning',
+        title:'Dolor no controlado (EVA '+curDolor+'/10)',
+        detail:'El dolor ha sido ≥4 en '+highPainCount+' de '+dolorVals.length+' registros ('+Math.round(highPainCount/dolorVals.length*100)+'%). Se han administrado analgésicos '+totalAnalgesic+' veces.',
+        reasoning:'El dolor persiste a pesar de analgesia. Valorar: 1) Escalar analgesia (añadir opioide menor), 2) Revisar pauta (¿condicional→fija?), 3) Descartar causa tratable del dolor.'
+      });
+    }
+  }
+
+  // ============================================================
+  // 12. DETERIORO PROGRESIVO MULTIPARÁMETRO
+  // ============================================================
+  const last4TAS=lastN('tas',4), last4FC=lastN('fc',4), last4SpO2=lastN('spo2',4), last4FR=lastN('fr',4);
+  let deteriorating=0;
+  const detailParts=[];
+  if(last4TAS.length>=3 && last4TAS[last4TAS.length-1]-last4TAS[0]<-15){deteriorating++;detailParts.push('TA↓ ('+last4TAS.join('→')+')');}
+  if(last4FC.length>=3 && last4FC[last4FC.length-1]-last4FC[0]>15){deteriorating++;detailParts.push('FC↑ ('+last4FC.join('→')+')');}
+  if(last4SpO2.length>=3 && last4SpO2[0]-last4SpO2[last4SpO2.length-1]>3){deteriorating++;detailParts.push('SpO2↓ ('+last4SpO2.join('→')+')');}
+  if(last4FR.length>=3 && last4FR[last4FR.length-1]-last4FR[0]>4){deteriorating++;detailParts.push('FR↑ ('+last4FR.join('→')+')');}
+  if(deteriorating>=2){
+    insights.push({
+      level:'critical',
+      title:'Deterioro progresivo multiparámetro',
+      detail:detailParts.join(', ')+' en las últimas horas.',
+      reasoning:'Empeoramiento simultáneo de '+deteriorating+' constantes. Considerar valoración médica urgente y monitorización continua.'
+    });
+  }
+
+  // ============================================================
+  // 13. FR ELEVADA EN CONTEXTO RESPIRATORIO
+  // ============================================================
+  const curFR=last('fr');
+  if(curFR>20 && isRespReason){
+    insights.push({
+      level:'warning',
+      title:'FR '+curFR+' rpm — taquipnea en paciente con disnea',
+      detail:'Rango normal: 12-20 rpm. El paciente consulta por '+patient.reason+'.',
+      reasoning:'FR elevada persistente en contexto respiratorio. Correlacionar con SpO2 ('+last('spo2')+'%) y soporte respiratorio actual.'
+    });
+  }
+
+  // ============================================================
+  // 14. CORTICOIDES → HIPERGLUCEMIA (insight propio)
+  // ============================================================
+  const cortiMed=patient.medIngreso.find(m=>corticoides.some(c=>m.name.toLowerCase().includes(c)));
+  if(cortiMed && glucVals.length>=2){
+    const lastGluc=glucVals[glucVals.length-1];
+    if(lastGluc>140){
+      const hasDM=patient.antecedentes.some(a=>a.toLowerCase().includes('dm') || a.toLowerCase().includes('diabetes'));
+      insights.push({
+        level:'info',
+        title:'Hiperglucemia inducida por corticoides',
+        detail:'Glucemia actual: '+lastGluc+' mg/dL. El paciente recibe '+cortiMed.name+' '+cortiMed.dose+' '+cortiMed.route+'.'+(hasDM?' Antecedente de diabetes.':''),
+        reasoning:'Los corticoides producen hiperglucemia por resistencia a la insulina, especialmente en las horas posteriores a la administración. Monitorizar glucemias pre y postprandiales.'
+      });
+    }
+  }
+
+  // Sort: critical first, then warning, then info
+  const order={critical:0,warning:1,info:2};
+  insights.sort((a,b)=>order[a.level]-order[b.level]);
+  return insights;
+}
+
+// ===== RENDER FUNCTIONS =====
+function renderSummaryCards(){
+  const container=document.getElementById('summaryCards');
+  const baselines=computeBaselines();
+  const lastVal=key=>{const v=currentVitals[key];for(let i=v.length-1;i>=0;i--) if(v[i]!=null) return v[i];return null;};
+  const cards=[
+    {key:'tas',label:'TA',valFn:()=>lastVal('tas')+'/'+lastVal('tad'),unit:'mmHg',checkKey:'tas'},
+    {key:'fc',label:'FC',valFn:()=>lastVal('fc'),unit:'bpm',checkKey:'fc'},
+    {key:'temp',label:'Tª',valFn:()=>lastVal('temp'),unit:'°C',checkKey:'temp'},
+    {key:'spo2',label:'SpO2',valFn:()=>lastVal('spo2'),unit:'%',checkKey:'spo2'},
+    {key:'fr',label:'FR',valFn:()=>lastVal('fr'),unit:'rpm',checkKey:'fr'},
+    {key:'gluc',label:'Glucemia',valFn:()=>lastVal('gluc'),unit:'mg/dL',checkKey:'gluc'},
+    {key:'dolor',label:'Dolor',valFn:()=>lastVal('dolor'),unit:'/10',checkKey:'dolor'}
+  ];
+  let html='';
+  cards.forEach(c=>{
+    const val=lastVal(c.checkKey);
+    const cls=classifyCell(c.checkKey,val);
+    let cardCls=cls==='v-high'?'s-card v-high':cls==='v-low'?'s-card v-low':'s-card';
+    let hint='';
+    // Add baseline hint
+    if(baselines[c.checkKey] && val!=null){
+      const b=baselines[c.checkKey];
+      const diff=val-b.median;
+      if(Math.abs(diff)>10 && ['tas','tad'].includes(c.checkKey)){
+        hint='<div class="hint '+(diff>0?'red':'amber')+'">Basal: '+Math.round(b.median)+' ('+b.min+'-'+b.max+')</div>';
+        if(cls==='v-ok' && Math.abs(diff)>15){cardCls='s-card v-baseline';}
+      } else if(c.checkKey==='spo2' && Math.abs(diff)<=2 && val<ranges.spo2.low){
+        hint='<div class="hint blue">Su basal habitual: '+Math.round(b.median)+'%</div>';
+        cardCls='s-card v-baseline';
+      }
+    }
+    html+='<div class="'+cardCls+'"><div class="label">'+c.label+'</div><div class="value">'+c.valFn()+' <span class="unit">'+c.unit+'</span></div>'+hint+'</div>';
+  });
+  container.innerHTML=html;
+}
+
+function renderVitalsTable(){
+  const table=document.getElementById('vitalsTable');
+  // Header
+  let thead='<thead><tr><th>Constante</th>';
+  timestamps.forEach(t=>{ thead+='<th>'+t+'</th>'; });
+  thead+='</tr></thead>';
+
+  // Body rows
+  const rows=[
+    {key:'tas',label:'TAS (mmHg)'},
+    {key:'tad',label:'TAD (mmHg)'},
+    {key:'fc',label:'FC (bpm)'},
+    {key:'temp',label:'Tª (°C)'},
+    {key:'spo2',label:'SpO2 (%)'},
+    {key:'fr',label:'FR (rpm)'},
+    {key:'gluc',label:'Glucemia (mg/dL)'},
+    {key:'dolor',label:'Dolor (EVA)'}
+  ];
+  let tbody='<tbody>';
+  rows.forEach(r=>{
+    tbody+='<tr><th>'+r.label+'</th>';
+    currentVitals[r.key].forEach(v=>{
+      if(v==null){tbody+='<td>—</td>';return;}
+      const cls=classifyCell(r.key,v);
+      tbody+='<td class="'+cls+'">'+v+'</td>';
+    });
+    tbody+='</tr>';
+  });
+  // Respiratory support row
+  tbody+='<tr><th>Soporte resp.</th>';
+  respSupport.forEach(rs=>{
+    const span=rs.end-rs.start+1;
+    tbody+='<td colspan="'+span+'" style="background:'+rs.bg+';color:'+rs.color+';font-weight:500">'+rs.label+'</td>';
+  });
+  tbody+='</tr></tbody>';
+  table.innerHTML=thead+tbody;
+}
+
+function renderInsights(){
+  const container=document.getElementById('insightsContainer');
+  const insights=generateInsights();
+  if(insights.length===0){container.innerHTML='';return;}
+
+  const counts={critical:0,warning:0,info:0};
+  insights.forEach(i=>counts[i.level]++);
+
+  let badges='';
+  if(counts.critical) badges+='<span class="badge bg-red">'+counts.critical+' crítica'+(counts.critical>1?'s':'')+'</span>';
+  if(counts.warning) badges+='<span class="badge bg-amber">'+counts.warning+' aviso'+(counts.warning>1?'s':'')+'</span>';
+  if(counts.info) badges+='<span class="badge bg-blue">'+counts.info+' info</span>';
+
+  let html='<div class="insights-panel">';
+  html+='<button class="insights-toggle" onclick="toggleInsights(this)">';
+  html+='<svg style="width:16px;height:16px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>';
+  html+='<h3>Análisis clínico contextual</h3>'+badges;
+  html+='<span class="chevron">▼</span></button>';
+  html+='<div class="insights-body" id="insightsBody">';
+
+  insights.forEach(i=>{
+    const dotCls=i.level==='critical'?'dot-red':i.level==='warning'?'dot-amber':'dot-blue';
+    html+='<div class="insight-item"><div class="insight-dot '+dotCls+'"></div><div>';
+    html+='<div class="title">'+i.title+'</div>';
+    html+='<div class="detail">'+i.detail+'</div>';
+    if(i.reasoning) html+='<div class="reasoning">'+i.reasoning+'</div>';
+    html+='</div></div>';
+  });
+
+  html+='</div></div>';
+  container.innerHTML=html;
+}
+
+function toggleInsights(btn){
+  btn.classList.toggle('collapsed');
+  document.getElementById('insightsBody').classList.toggle('hidden');
+}
+
+// ===== INIT =====
+renderSummaryCards();
+renderInsights();
+renderVitalsTable();
+</script>
+</body>
+</html>

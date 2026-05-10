@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patients Monitoring — Lista de Pacientes</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/lucide-static@0.263.1/font/lucide.min.css" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:#f1f5f9; color:#1e293b; display:flex; height:100vh; overflow:hidden; }
+
+  /* === SIDEBAR === */
+  .sidebar { width:256px; background:#0f172a; color:#fff; display:flex; flex-direction:column; flex-shrink:0; }
+  .sidebar-logo { padding:24px 20px; border-bottom:1px solid #1e293b; }
+  .sidebar-logo h1 { font-size:18px; font-weight:700; }
+  .sidebar-logo span { color:#38bdf8; }
+  .sidebar-nav { flex:1; padding:16px 0; }
+  .sidebar-nav a { display:flex; align-items:center; gap:12px; padding:10px 20px; color:#94a3b8; text-decoration:none; font-size:14px; transition:all .15s; }
+  .sidebar-nav a:hover { color:#fff; background:#1e293b; }
+  .sidebar-nav a.active { color:#fff; background:#1e293b; border-left:3px solid #38bdf8; }
+  .sidebar-nav a svg { width:18px; height:18px; }
+  .sidebar-user { padding:16px 20px; border-top:1px solid #1e293b; font-size:13px; color:#94a3b8; }
+  .sidebar-user .name { color:#fff; font-weight:500; }
+
+  /* === MAIN === */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* === HEADER === */
+  .header { background:#fff; padding:16px 24px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:16px; flex-shrink:0; }
+  .header h2 { font-size:20px; font-weight:700; margin-right:auto; }
+  .search-box { display:flex; align-items:center; gap:8px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; width:280px; }
+  .search-box input { border:none; background:none; outline:none; font-size:14px; width:100%; }
+  .view-toggle { display:flex; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
+  .view-toggle button { padding:8px 14px; border:none; background:#fff; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px; color:#64748b; transition:all .15s; }
+  .view-toggle button.active { background:#0f172a; color:#fff; }
+  .view-toggle button:hover:not(.active) { background:#f1f5f9; }
+  .btn-new { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .btn-new:hover { background:#0284c7; }
+
+  /* === CONTENT === */
+  .content { flex:1; overflow-y:auto; padding:20px 24px; padding-bottom:80px; }
+
+  /* === CARDS VIEW === */
+  .cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px; }
+  .patient-card { border-radius:12px; padding:16px; cursor:pointer; transition:all .15s; position:relative; border:2px solid transparent; }
+  .patient-card:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.1); }
+  .patient-card.selected { border-color:#3b82f6 !important; box-shadow:0 0 0 3px rgba(59,130,246,.2); }
+  .card-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .sex-icon { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; flex-shrink:0; }
+  .sex-male { background:#dbeafe; color:#2563eb; }
+  .sex-female { background:#fce7f3; color:#db2777; }
+  .sex-other { background:#f1f5f9; color:#64748b; }
+  .card-name { font-weight:600; font-size:15px; flex:1; }
+  .age-badge { font-size:12px; font-weight:600; padding:2px 8px; border-radius:12px; background:#fff; }
+  .triage-badge { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px; flex-shrink:0; }
+  .card-details { display:flex; flex-direction:column; gap:6px; font-size:13px; color:#475569; }
+  .card-details .row { display:flex; align-items:center; gap:8px; }
+  .mat-badge { font-size:11px; padding:2px 8px; border-radius:6px; font-weight:500; }
+  .card-footer { display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:12px; color:#64748b; }
+
+  /* Triage colors */
+  .triage-1 { background:#fef2f2; border-color:#fca5a5 !important; }
+  .triage-1 .triage-badge { background:#dc2626; }
+  .triage-1 .age-badge { border:1px solid #fca5a5; }
+  .triage-1 .mat-badge { background:#fee2e2; color:#991b1b; }
+
+  .triage-2 { background:#fff7ed; border-color:#fdba74 !important; }
+  .triage-2 .triage-badge { background:#ea580c; }
+  .triage-2 .age-badge { border:1px solid #fdba74; }
+  .triage-2 .mat-badge { background:#ffedd5; color:#9a3412; }
+
+  .triage-3 { background:#fefce8; border-color:#fde047 !important; }
+  .triage-3 .triage-badge { background:#ca8a04; }
+  .triage-3 .age-badge { border:1px solid #fde047; }
+  .triage-3 .mat-badge { background:#fef9c3; color:#854d0e; }
+
+  .triage-4 { background:#f0fdf4; border-color:#86efac !important; }
+  .triage-4 .triage-badge { background:#16a34a; }
+  .triage-4 .age-badge { border:1px solid #86efac; }
+  .triage-4 .mat-badge { background:#dcfce7; color:#166534; }
+
+  .triage-5 { background:#eff6ff; border-color:#93c5fd !important; }
+  .triage-5 .triage-badge { background:#2563eb; }
+  .triage-5 .age-badge { border:1px solid #93c5fd; }
+  .triage-5 .mat-badge { background:#dbeafe; color:#1e40af; }
+
+  /* === TABLE VIEW === */
+  .table-view { display:none; }
+  .table-view.active { display:block; }
+  .cards-grid.active { display:grid; }
+  .cards-grid:not(.active) { display:none; }
+
+  .patients-table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .patients-table th { background:#f8fafc; padding:12px 16px; text-align:left; font-size:12px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.5px; cursor:pointer; user-select:none; white-space:nowrap; }
+  .patients-table th:hover { background:#f1f5f9; }
+  .patients-table th .sort-icon { margin-left:4px; font-size:11px; }
+  .patients-table td { padding:12px 16px; border-top:1px solid #f1f5f9; font-size:14px; }
+  .patients-table tr { cursor:pointer; transition:background .1s; }
+  .patients-table tr:hover { background:#f8fafc; }
+  .patients-table tr.selected { background:#eff6ff; }
+  .table-patient-info { display:flex; align-items:center; gap:10px; }
+  .table-patient-info .name-block { display:flex; flex-direction:column; }
+  .table-patient-info .name-block .nhc { font-size:12px; color:#94a3b8; }
+  .table-triage-row-1 { border-left:4px solid #dc2626; }
+  .table-triage-row-2 { border-left:4px solid #ea580c; }
+  .table-triage-row-3 { border-left:4px solid #ca8a04; }
+  .table-triage-row-4 { border-left:4px solid #16a34a; }
+  .table-triage-row-5 { border-left:4px solid #2563eb; }
+  .triage-badge-1 { background:#dc2626; }
+  .triage-badge-2 { background:#ea580c; }
+  .triage-badge-3 { background:#ca8a04; }
+  .triage-badge-4 { background:#16a34a; }
+  .triage-badge-5 { background:#2563eb; }
+
+  /* === ACTION BAR === */
+  .action-bar { position:fixed; bottom:0; left:256px; right:0; background:#fff; border-top:1px solid #e2e8f0; padding:12px 24px; display:flex; align-items:center; gap:20px; z-index:100; }
+  .action-bar .patient-name { font-size:14px; color:#64748b; }
+  .action-bar .patient-name strong { color:#1e293b; }
+  .action-btn { background:none; border:none; cursor:pointer; padding:4px; display:flex; align-items:center; transition:opacity .15s; }
+  .action-btn:disabled { opacity:.3; cursor:not-allowed; }
+  .action-btn .icon { width:22px; height:22px; }
+  .action-btn.registros { color:#dc2626; }
+  .action-btn.antecedentes { color:#d97706; }
+  .action-btn.medicacion { color:#0d9488; }
+  .action-btn:not(:disabled):hover { opacity:.7; }
+  .action-btn.active-tab { opacity:1; }
+  .action-btn.active-tab .icon { stroke-width:2.5; }
+
+  /* SVG icons inline */
+  .icon { width:18px; height:18px; display:inline-block; vertical-align:middle; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1><span>P</span>atients <span>M</span>onitoring</h1>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#" class="active">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Pacientes
+    </a>
+    <a href="07-busqueda-dados-alta.html">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      Dados de alta
+    </a>
+  </nav>
+  <div class="sidebar-user">
+    <div class="name">Javi Herrada Álvarez</div>
+    <div>Enfermería</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- HEADER -->
+  <header class="header">
+    <h2>Pacientes activos</h2>
+    <div class="search-box">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" placeholder="Buscar por nombre o NHC..." id="searchInput">
+    </div>
+    <div class="view-toggle">
+      <button class="active" id="btnCards" onclick="switchView('cards')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Tarjetas
+      </button>
+      <button id="btnList" onclick="switchView('list')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Lista
+      </button>
+    </div>
+    <button class="btn-new" onclick="window.location.href='02-abrir-ficha.html'">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nueva ficha
+    </button>
+  </header>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <!-- CARDS VIEW -->
+    <div class="cards-grid active" id="cardsView">
+    </div>
+
+    <!-- TABLE VIEW -->
+    <div class="table-view" id="tableView">
+      <table class="patients-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable('triage')">Nivel <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('bed')">Ubicación <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('name')">Paciente <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('reason')">Motivo de consulta <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('date')">Ingreso <span class="sort-icon">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+  <button class="action-btn registros" disabled id="btnRegistros" onclick="navigateTo('03-ficha-paciente.html')" title="Registros">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>
+  </button>
+  <button class="action-btn antecedentes" disabled id="btnAntecedentes" onclick="navigateTo('08-antecedentes.html')" title="Antecedentes">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10.01h.01"/><path d="M10 14.01h.01"/><path d="M14 10.01h.01"/><path d="M14 14.01h.01"/><path d="M18 6v11.5"/><path d="M6 6v12"/><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+  </button>
+  <button class="action-btn medicacion" disabled id="btnMedicacion" onclick="navigateTo('09-medicacion.html')" title="Medicación">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+  </button>
+  <div class="patient-name" id="selectedPatientName">Selecciona un paciente</div>
+</div>
+
+<script>
+const patients = [
+  { id:1, name:"García López, María", sex:"F", age:72, nhc:"NHC-001234", triage:1, reason:"Dolor torácico", bed:"B1", date:"08/05/2026 14:30" },
+  { id:2, name:"Martínez Ruiz, Pedro", sex:"M", age:58, nhc:"NHC-002345", triage:2, reason:"Disnea aguda", bed:"B2", date:"08/05/2026 16:45" },
+  { id:3, name:"Fernández Díaz, Ana", sex:"F", age:34, nhc:"NHC-003456", triage:3, reason:"Dolor abdominal", bed:"B3", date:"09/05/2026 08:15" },
+  { id:4, name:"Rodríguez Sanz, Carlos", sex:"M", age:45, nhc:"NHC-004567", triage:2, reason:"Traumatismo craneal", bed:"B4", date:"09/05/2026 09:00" },
+  { id:5, name:"López Herrera, Lucía", sex:"F", age:81, nhc:"NHC-005678", triage:1, reason:"Síncope", bed:"B5", date:"09/05/2026 10:20" },
+  { id:6, name:"Sánchez Moreno, Javier", sex:"M", age:29, nhc:"NHC-006789", triage:4, reason:"Herida incisa", bed:"B6", date:"09/05/2026 11:30" },
+  { id:7, name:"Torres Vega, Elena", sex:"F", age:67, nhc:"NHC-007890", triage:3, reason:"Fiebre alta", bed:"B7", date:"09/05/2026 12:00" },
+  { id:8, name:"Navarro Gil, Miguel", sex:"M", age:53, nhc:"NHC-008901", triage:5, reason:"Lumbalgia", bed:"B8", date:"10/05/2026 07:45" },
+  { id:9, name:"Romero Blanco, Carmen", sex:"F", age:41, nhc:"NHC-009012", triage:4, reason:"Cefalea tensional", bed:"B9", date:"10/05/2026 08:30" },
+  { id:10, name:"Jiménez Pardo, Andrés", sex:"M", age:76, nhc:"NHC-010123", triage:2, reason:"Arritmia", bed:"B10", date:"10/05/2026 09:15" },
+];
+
+let selectedPatient = null;
+let currentView = 'cards';
+
+function renderCards() {
+  const container = document.getElementById('cardsView');
+  container.innerHTML = patients.map(p => `
+    <div class="patient-card triage-${p.triage} ${selectedPatient===p.id?'selected':''}" onclick="selectPatient(${p.id})" data-id="${p.id}">
+      <div class="card-top">
+        <div class="sex-icon ${p.sex==='M'?'sex-male':p.sex==='F'?'sex-female':'sex-other'}">${p.sex==='M'?'♂':p.sex==='F'?'♀':'⚬'}</div>
+        <div class="card-name">${p.name}</div>
+        <span class="age-badge">${p.age} años</span>
+        <div class="triage-badge">${p.triage}</div>
+      </div>
+      <div class="card-details">
+        <div class="row">
+          <span class="mat-badge">${p.reason}</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${p.date}</span>
+        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>${p.bed}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = patients.map(p => `
+    <tr class="table-triage-row-${p.triage} ${selectedPatient===p.id?'selected':''}" onclick="selectPatient(${p.id})" data-id="${p.id}">
+      <td><div class="triage-badge triage-badge-${p.triage}" style="margin:0 auto;">${p.triage}</div></td>
+      <td>${p.bed}</td>
+      <td>
+        <div class="table-patient-info">
+          <div class="sex-icon ${p.sex==='M'?'sex-male':p.sex==='F'?'sex-female':'sex-other'}" style="width:28px;height:28px;font-size:14px;">${p.sex==='M'?'♂':p.sex==='F'?'♀':'⚬'}</div>
+          <div class="name-block">
+            <span style="font-weight:500;">${p.name}</span>
+            <span class="nhc">${p.nhc} · ${p.age} años</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="mat-badge" style="background:#f1f5f9;color:#475569;">${p.reason}</span></td>
+      <td>${p.date}</td>
+    </tr>
+  `).join('');
+}
+
+function selectPatient(id) {
+  selectedPatient = selectedPatient === id ? null : id;
+  renderCards();
+  renderTable();
+  updateActionBar();
+}
+
+function updateActionBar() {
+  const btns = [document.getElementById('btnRegistros'), document.getElementById('btnAntecedentes'), document.getElementById('btnMedicacion')];
+  const nameEl = document.getElementById('selectedPatientName');
+  if (selectedPatient) {
+    const p = patients.find(x => x.id === selectedPatient);
+    nameEl.innerHTML = `<strong>${p.name}</strong> · ${p.nhc}`;
+    btns.forEach(b => b.disabled = false);
+  } else {
+    nameEl.textContent = 'Selecciona un paciente';
+    btns.forEach(b => b.disabled = true);
+  }
+}
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('cardsView').classList.toggle('active', view === 'cards');
+  document.getElementById('tableView').classList.toggle('active', view === 'list');
+  document.getElementById('btnCards').classList.toggle('active', view === 'cards');
+  document.getElementById('btnList').classList.toggle('active', view === 'list');
+}
+
+function navigateTo(url) {
+  if (selectedPatient) window.location.href = url;
+}
+
+let sortState = {};
+function sortTable(field) {
+  const dir = sortState[field] === 'asc' ? 'desc' : 'asc';
+  sortState = { [field]: dir };
+  const key = { triage:'triage', name:'name', bed:'bed', reason:'reason', date:'date' }[field];
+  patients.sort((a, b) => {
+    let va = a[key], vb = b[key];
+    if (typeof va === 'number') return dir === 'asc' ? va - vb : vb - va;
+    return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+  renderCards();
+  renderTable();
+}
+
+document.getElementById('searchInput').addEventListener('input', function(e) {
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.patient-card').forEach(card => {
+    const id = parseInt(card.dataset.id);
+    const p = patients.find(x => x.id === id);
+    card.style.display = (p.name.toLowerCase().includes(q) || p.nhc.toLowerCase().includes(q)) ? '' : 'none';
+  });
+  document.querySelectorAll('#tableBody tr').forEach(row => {
+    const id = parseInt(row.dataset.id);
+    const p = patients.find(x => x.id === id);
+    row.style.display = (p.name.toLowerCase().includes(q) || p.nhc.toLowerCase().includes(q)) ? '' : 'none';
+  });
+});
+
+renderCards();
+renderTable();
+</script>
+</body>
+</html>

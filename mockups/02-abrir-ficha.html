@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patients Monitoring — Abrir Ficha</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:#f1f5f9; color:#1e293b; display:flex; height:100vh; overflow:hidden; }
+
+  /* === SIDEBAR === */
+  .sidebar { width:256px; background:#0f172a; color:#fff; display:flex; flex-direction:column; flex-shrink:0; }
+  .sidebar-logo { padding:24px 20px; border-bottom:1px solid #1e293b; }
+  .sidebar-logo h1 { font-size:18px; font-weight:700; }
+  .sidebar-logo span { color:#38bdf8; }
+  .sidebar-nav { flex:1; padding:16px 0; }
+  .sidebar-nav a { display:flex; align-items:center; gap:12px; padding:10px 20px; color:#94a3b8; text-decoration:none; font-size:14px; transition:all .15s; }
+  .sidebar-nav a:hover { color:#fff; background:#1e293b; }
+  .sidebar-nav a.active { color:#fff; background:#1e293b; border-left:3px solid #38bdf8; }
+  .sidebar-nav a svg { width:18px; height:18px; }
+  .sidebar-user { padding:16px 20px; border-top:1px solid #1e293b; font-size:13px; color:#94a3b8; }
+  .sidebar-user .name { color:#fff; font-weight:500; }
+  .icon { width:18px; height:18px; display:inline-block; vertical-align:middle; }
+
+  /* === MAIN === */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* === HEADER === */
+  .header { background:#fff; padding:16px 24px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:16px; flex-shrink:0; }
+  .header h2 { font-size:20px; font-weight:700; }
+  .header .back-link { color:#64748b; text-decoration:none; font-size:14px; display:flex; align-items:center; gap:6px; margin-right:16px; }
+  .header .back-link:hover { color:#0f172a; }
+
+  /* === FORM === */
+  .content { flex:1; overflow-y:auto; padding:32px 24px; display:flex; justify-content:center; }
+  .form-card { background:#fff; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); padding:32px; width:100%; max-width:640px; }
+  .form-card h3 { font-size:16px; font-weight:600; margin-bottom:4px; }
+  .form-card .subtitle { font-size:13px; color:#64748b; margin-bottom:24px; }
+
+  .form-section { margin-bottom:24px; }
+  .form-section-title { font-size:13px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #f1f5f9; }
+
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .form-row.single { grid-template-columns:1fr; }
+  .form-row.triple { grid-template-columns:1fr 1fr 1fr; }
+
+  .form-group { display:flex; flex-direction:column; gap:4px; }
+  .form-group label { font-size:13px; font-weight:500; color:#475569; }
+  .form-group label .required { color:#dc2626; }
+  .form-group input, .form-group select { padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit; outline:none; transition:border .15s; }
+  .form-group input:focus, .form-group select:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
+  .form-group input.error { border-color:#dc2626; }
+  .form-group .hint { font-size:11px; color:#94a3b8; }
+  .form-group .error-msg { font-size:11px; color:#dc2626; display:none; }
+
+  .form-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:32px; padding-top:20px; border-top:1px solid #f1f5f9; }
+  .btn { padding:10px 24px; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; border:none; transition:all .15s; font-family:inherit; }
+  .btn-cancel { background:#f1f5f9; color:#475569; }
+  .btn-cancel:hover { background:#e2e8f0; }
+  .btn-primary { background:#0ea5e9; color:#fff; }
+  .btn-primary:hover { background:#0284c7; }
+  .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* Triage selector */
+  .triage-selector { display:flex; gap:8px; }
+  .triage-option { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; color:#fff; cursor:pointer; border:3px solid transparent; transition:all .15s; opacity:.5; }
+  .triage-option:hover { opacity:.8; }
+  .triage-option.selected { opacity:1; border-color:#0f172a; transform:scale(1.1); }
+  .triage-1 { background:#dc2626; }
+  .triage-2 { background:#ea580c; }
+  .triage-3 { background:#ca8a04; }
+  .triage-4 { background:#16a34a; }
+  .triage-5 { background:#2563eb; }
+
+  /* Sex selector */
+  .sex-selector { display:flex; gap:8px; }
+  .sex-option { padding:10px 20px; border-radius:8px; border:2px solid #e2e8f0; cursor:pointer; font-size:14px; font-weight:500; transition:all .15s; display:flex; align-items:center; gap:8px; }
+  .sex-option:hover { border-color:#94a3b8; }
+  .sex-option.selected-m { border-color:#2563eb; background:#eff6ff; color:#2563eb; }
+  .sex-option.selected-f { border-color:#db2777; background:#fdf2f8; color:#db2777; }
+
+  /* Toast */
+  .toast { position:fixed; top:24px; right:24px; background:#0f172a; color:#fff; padding:14px 24px; border-radius:10px; font-size:14px; display:none; align-items:center; gap:10px; box-shadow:0 8px 24px rgba(0,0,0,.2); z-index:200; }
+  .toast.show { display:flex; animation:slideIn .3s ease; }
+  @keyframes slideIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1><span>P</span>atients <span>M</span>onitoring</h1>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="02-lista-pacientes.html">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Pacientes
+    </a>
+    <a href="07-busqueda-dados-alta.html">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      Dados de alta
+    </a>
+  </nav>
+  <div class="sidebar-user">
+    <div class="name">Javi Herrada Álvarez</div>
+    <div>Enfermería</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="header">
+    <a href="02-lista-pacientes.html" class="back-link">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      Volver
+    </a>
+    <h2>Abrir nueva ficha de paciente</h2>
+  </header>
+
+  <div class="content">
+    <div class="form-card">
+      <h3>Datos del paciente</h3>
+      <p class="subtitle">Abrir ficha equivale a ingresar al paciente en el sistema de monitorización.</p>
+
+      <!-- Identificación -->
+      <div class="form-section">
+        <div class="form-section-title">Identificación</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>NHC <span class="required">*</span></label>
+            <input type="text" id="nhc" placeholder="Ej: NHC-001234">
+            <span class="error-msg" id="nhcError">Campo obligatorio</span>
+          </div>
+          <div class="form-group">
+            <label>DNI / NIE</label>
+            <input type="text" id="dni" placeholder="Ej: 12345678A">
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos personales -->
+      <div class="form-section">
+        <div class="form-section-title">Datos personales</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre <span class="required">*</span></label>
+            <input type="text" id="nombre" placeholder="Nombre del paciente">
+            <span class="error-msg" id="nombreError">Campo obligatorio</span>
+          </div>
+          <div class="form-group">
+            <label>Apellidos <span class="required">*</span></label>
+            <input type="text" id="apellidos" placeholder="Apellidos del paciente">
+            <span class="error-msg" id="apellidosError">Campo obligatorio</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha de nacimiento <span class="required">*</span></label>
+            <input type="date" id="fechaNac">
+            <span class="error-msg" id="fechaNacError">Campo obligatorio</span>
+          </div>
+          <div class="form-group">
+            <label>Sexo <span class="required">*</span></label>
+            <div class="sex-selector">
+              <div class="sex-option" onclick="selectSex('M', this)">♂ Hombre</div>
+              <div class="sex-option" onclick="selectSex('F', this)">♀ Mujer</div>
+            </div>
+            <input type="hidden" id="sexo">
+            <span class="error-msg" id="sexoError">Selecciona el sexo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos de ingreso -->
+      <div class="form-section">
+        <div class="form-section-title">Datos de ingreso</div>
+        <div class="form-row triple">
+          <div class="form-group">
+            <label>Nivel de triaje <span class="required">*</span></label>
+            <div class="triage-selector">
+              <div class="triage-option triage-1" onclick="selectTriage(1, this)">1</div>
+              <div class="triage-option triage-2" onclick="selectTriage(2, this)">2</div>
+              <div class="triage-option triage-3" onclick="selectTriage(3, this)">3</div>
+              <div class="triage-option triage-4" onclick="selectTriage(4, this)">4</div>
+              <div class="triage-option triage-5" onclick="selectTriage(5, this)">5</div>
+            </div>
+            <input type="hidden" id="triage">
+            <span class="error-msg" id="triageError">Selecciona un nivel</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Motivo de consulta (categoría MAT/SET) <span class="required">*</span></label>
+            <select id="motivo">
+              <option value="">Seleccionar...</option>
+              <option>Dolor torácico</option>
+              <option>Disnea aguda</option>
+              <option>Dolor abdominal</option>
+              <option>Traumatismo craneal</option>
+              <option>Síncope</option>
+              <option>Herida incisa</option>
+              <option>Fiebre alta</option>
+              <option>Lumbalgia</option>
+              <option>Cefalea tensional</option>
+              <option>Arritmia</option>
+              <option>Convulsiones</option>
+              <option>Intoxicación</option>
+              <option>Reacción alérgica</option>
+              <option>Otro</option>
+            </select>
+            <span class="error-msg" id="motivoError">Campo obligatorio</span>
+          </div>
+          <div class="form-group">
+            <label>Ubicación (cama) <span class="required">*</span></label>
+            <select id="cama">
+              <option value="">Seleccionar...</option>
+              <option>B1</option><option>B2</option><option>B3</option><option>B4</option><option>B5</option>
+              <option>B6</option><option>B7</option><option>B8</option><option>B9</option><option>B10</option>
+              <option>B11</option><option>B12</option>
+            </select>
+            <span class="error-msg" id="camaError">Campo obligatorio</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-cancel" onclick="window.location.href='02-lista-pacientes.html'">Cancelar</button>
+        <button class="btn btn-primary" onclick="submitForm()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Abrir ficha
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+  Ficha abierta correctamente
+</div>
+
+<script>
+let selectedSex = null;
+let selectedTriage = null;
+
+function selectSex(sex, el) {
+  selectedSex = sex;
+  document.getElementById('sexo').value = sex;
+  document.querySelectorAll('.sex-option').forEach(o => o.classList.remove('selected-m','selected-f'));
+  el.classList.add(sex === 'M' ? 'selected-m' : 'selected-f');
+}
+
+function selectTriage(level, el) {
+  selectedTriage = level;
+  document.getElementById('triage').value = level;
+  document.querySelectorAll('.triage-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function submitForm() {
+  let valid = true;
+  const fields = [
+    { id:'nhc', errorId:'nhcError' },
+    { id:'nombre', errorId:'nombreError' },
+    { id:'apellidos', errorId:'apellidosError' },
+    { id:'fechaNac', errorId:'fechaNacError' },
+    { id:'sexo', errorId:'sexoError' },
+    { id:'triage', errorId:'triageError' },
+    { id:'motivo', errorId:'motivoError' },
+    { id:'cama', errorId:'camaError' },
+  ];
+
+  fields.forEach(f => {
+    const input = document.getElementById(f.id);
+    const error = document.getElementById(f.errorId);
+    if (!input.value) {
+      if (input.type !== 'hidden') input.classList.add('error');
+      error.style.display = 'block';
+      valid = false;
+    } else {
+      if (input.type !== 'hidden') input.classList.remove('error');
+      error.style.display = 'none';
+    }
+  });
+
+  if (valid) {
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      window.location.href = '02-lista-pacientes.html';
+    }, 1500);
+  }
+}
+</script>
+</body>
+</html>
