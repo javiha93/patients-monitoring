@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import PatientList from './pages/PatientList'
 import PatientRecord from './pages/PatientRecord'
 import PatientHistory from './pages/PatientHistory'
+import PatientMedication from './pages/PatientMedication'
 import DischargedSearch from './pages/DischargedSearch'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
             <Route path="/" element={<PatientList />} />
             <Route path="/patient/:id" element={<PatientRecord />} />
             <Route path="/patient/:id/history" element={<PatientHistory />} />
+            <Route path="/patient/:id/medication" element={<PatientMedication />} />
             <Route path="/discharged" element={<DischargedSearch />} />
           </Routes>
         </main>
