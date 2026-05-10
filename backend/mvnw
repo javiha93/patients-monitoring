@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+MAVEN_PROJECTBASEDIR="${MAVEN_BASEDIR:-$(cd "$(dirname "$0")" && pwd)}"
+MAVEN_OPTS="${MAVEN_OPTS:-}"
+exec mvn "$@"

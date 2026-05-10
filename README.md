@@ -69,6 +69,41 @@ cd mockups
 python3 -m http.server 8080
 ```
 
+## Despliegue en Railway
+
+### Configuración inicial (una sola vez)
+
+1. Crea una cuenta en [railway.app](https://railway.app) (login con GitHub)
+2. Click **"New Project"** → **"Deploy from GitHub Repo"**
+3. Selecciona `javiha93/patients-monitoring`
+4. Railway detectará el `Dockerfile` automáticamente
+
+### Añadir base de datos PostgreSQL
+
+1. En el proyecto Railway, click **"+ New"** → **"Database"** → **"PostgreSQL"**
+2. Railway conecta automáticamente las variables `DATABASE_URL`, `PGHOST`, `PGPORT`, etc.
+3. Añade estas variables de entorno en el servicio de la app (Settings → Variables):
+   ```
+   SPRING_DATASOURCE_URL=jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}
+   SPRING_DATASOURCE_USERNAME=${PGUSER}
+   SPRING_DATASOURCE_PASSWORD=${PGPASSWORD}
+   SPRING_JPA_HIBERNATE_DDL_AUTO=update
+   ```
+
+### Despliegue automático
+
+Cada push a `main` dispara:
+- **GitHub Actions** — compila y testea backend + frontend
+- **Railway** — rebuild y redeploy automático
+
+La app queda accesible en una URL tipo `https://patients-monitoring-production.up.railway.app`
+
+### CI/CD
+
+El workflow `.github/workflows/ci.yml` ejecuta en cada push/PR:
+- Backend: `mvn clean verify` (Java 21)
+- Frontend: `npm ci && npm run build` (Node 20)
+
 ## Funcionalidades principales
 
 - Gestión de pacientes (listado, alta, búsqueda)
