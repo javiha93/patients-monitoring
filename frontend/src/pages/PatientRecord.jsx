@@ -7,6 +7,7 @@ import ActionBar from '../components/ActionBar'
 import VitalsSummaryCards from '../components/VitalsSummaryCards'
 import VitalsTable from '../components/VitalsTable'
 import NewVitalSignModal from '../components/NewVitalSignModal'
+import InsightsPanel from '../components/InsightsPanel'
 
 function calcAge(birthDate) {
   if (!birthDate) return null
@@ -93,6 +94,7 @@ export default function PatientRecord() {
       </div>
 
       <div className="flex-1 overflow-auto p-6 pb-24 space-y-4">
+        {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} />}
         <VitalsSummaryCards vitals={vitals} />
         <VitalsTable vitals={vitals} />
       </div>
