@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import PatientList from './pages/PatientList'
 import PatientRecord from './pages/PatientRecord'
+import DischargedSearch from './pages/DischargedSearch'
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
           <Routes>
             <Route path="/" element={<PatientList />} />
             <Route path="/patient/:id" element={<PatientRecord />} />
+            <Route path="/discharged" element={<DischargedSearch />} />
           </Routes>
         </main>
       </div>
