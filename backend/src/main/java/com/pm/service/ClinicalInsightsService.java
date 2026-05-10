@@ -1,0 +1,371 @@
+package com.pm.service;
+
+import com.pm.dto.ClinicalInsightDTO;
+import com.pm.entity.*;
+import com.pm.repository.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ClinicalInsightsService {
+
+    private final VitalSignRepository vitalSignRepo;
+    private final AdmissionRepository admissionRepo;
+    private final AllergyRepository allergyRepo;
+    private final MedicationRepository medicationRepo;
+    private final MedicalHistoryRepository historyRepo;
+    private final AdmissionPrescriptionRepository prescriptionRepo;
+    private final MedicationAdministrationRepository adminRepo;
+
+    public List<ClinicalInsightDTO> analyze(Long patientId, Long admissionId) {
+        List<ClinicalInsightDTO> insights = new ArrayList<>();
+
+        List<VitalSign> vitals = vitalSignRepo.findByAdmissionIdOrderByRecordedAtAsc(admissionId);
+        List<Allergy> allergies = allergyRepo.findByPatientId(patientId);
+        List<Medication> habitual = medicationRepo.findByPatientIdOrderByNameAsc(patientId);
+        List<MedicalHistory> history = historyRepo.findByPatientIdOrderByPriorityOrderAscRegisteredDateDesc(patientId);
+        List<AdmissionPrescription> prescriptions = prescriptionRepo.findByAdmissionIdAndActiveTrue(admissionId);
+        List<Admission> allAdmissions = admissionRepo.findByPatientIdOrderByAdmissionDateDesc(patientId);
+
+        // Collect prior vitals for baseline calculation
+        List<VitalSign> priorVitals = new ArrayList<>();
+        for (Admission a : allAdmissions) {
+            if (!a.getId().equals(admissionId) && a.getStatus() == Admission.Status.discharged) {
+                priorVitals.addAll(vitalSignRepo.findByAdmissionIdOrderByRecordedAtAsc(a.getId()));
+            }
+        }
+
+        Set<String> historyLabels = history.stream().map(h -> h.getLabel().toLowerCase()).collect(Collectors.toSet());
+
+        // Run all 14 analyses
+        checkAllergyConflicts(insights, allergies, prescriptions);
+        checkNephrotoxicity(insights, historyLabels, prescriptions);
+        checkBaselineDeviation(insights, vitals, priorVitals, habitual);
+        checkBradycardiaBetaBlockers(insights, vitals, habitual, prescriptions);
+        checkHypotensionAntihypertensives(insights, vitals, habitual, prescriptions);
+        checkSpo2Context(insights, vitals, priorVitals, admissionId);
+        checkDesaturationAfterSupportWithdrawal(insights, vitals);
+        checkGlycemiaTrend(insights, vitals, prescriptions);
+        checkCyclicThermalPattern(insights, vitals, prescriptions);
+        checkTachycardiaFever(insights, vitals);
+        checkUncontrolledPain(insights, vitals);
+        checkMultiParameterDeterioration(insights, vitals);
+        checkElevatedRespiratoryRate(insights, vitals, admissionId);
+        checkCorticosteroidHyperglycemia(insights, vitals, prescriptions);
+
+        // Sort: critical first, then warning, then info
+        insights.sort(Comparator.comparingInt(i -> levelOrder(i.getLevel())));
+        return insights;
+    }
+
+    private int levelOrder(String level) {
+        return switch (level) { case "critical" -> 0; case "warning" -> 1; default -> 2; };
+    }
+
+    private List<VitalSign> lastN(List<VitalSign> vitals, int n) {
+        return vitals.subList(Math.max(0, vitals.size() - n), vitals.size());
+    }
+
+    // ── PLACEHOLDER METHODS (will be filled incrementally) ──
+
+    private void checkAllergyConflicts(List<ClinicalInsightDTO> insights, List<Allergy> allergies, List<AdmissionPrescription> rx) {
+        for (Allergy a : allergies) {
+            if (a.getType() != Allergy.AllergyType.drug) continue;
+            String substance = a.getSubstance().toLowerCase();
+            for (AdmissionPrescription p : rx) {
+                if (p.getName().toLowerCase().contains(substance)) {
+                    insights.add(ClinicalInsightDTO.builder()
+                        .level("critical")
+                        .title("Alergia vs prescripción: " + p.getName())
+                        .detail("Paciente alérgico a " + a.getSubstance() + " (severidad: " + a.getSeverity() + "). Prescripción activa: " + p.getName() + " " + p.getAmount() + p.getUnit())
+                        .reasoning("Cruce directo entre alergia medicamentosa registrada y prescripción activa del ingreso")
+                        .analysisType("allergy_conflict")
+                        .build());
+                }
+            }
+        }
+    }
+    private void checkNephrotoxicity(List<ClinicalInsightDTO> insights, Set<String> history, List<AdmissionPrescription> rx) {
+        boolean hasIRC = history.stream().anyMatch(h -> h.contains("irc") || h.contains("insuficiencia renal") || h.contains("enfermedad renal"));
+        if (!hasIRC) return;
+        List<String> nephrotoxic = List.of("ibuprofeno", "diclofenaco", "ketorolaco", "naproxeno", "gentamicina", "amikacina", "vancomicina", "anfotericina", "aine");
+        for (AdmissionPrescription p : rx) {
+            String name = p.getName().toLowerCase();
+            for (String drug : nephrotoxic) {
+                if (name.contains(drug)) {
+                    insights.add(ClinicalInsightDTO.builder()
+                        .level("critical")
+                        .title("Nefrotóxico en paciente con IRC: " + p.getName())
+                        .detail("Paciente con IRC tiene prescrito " + p.getName() + " " + p.getAmount() + p.getUnit() + " — fármaco potencialmente nefrotóxico")
+                        .reasoning("Los AINEs y aminoglucósidos pueden agravar la insuficiencia renal. Considerar alternativas o ajuste de dosis")
+                        .analysisType("nephrotoxicity")
+                        .build());
+                    break;
+                }
+            }
+        }
+    }
+    private void checkBaselineDeviation(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<VitalSign> prior, List<Medication> habitual) {
+        if (prior.isEmpty() || vitals.isEmpty()) return;
+        // Calculate baseline systolic BP from prior admissions
+        OptionalDouble baselineSys = prior.stream().filter(v -> v.getSystolicBp() != null).mapToInt(VitalSign::getSystolicBp).average();
+        if (baselineSys.isEmpty()) return;
+        double bSys = baselineSys.getAsDouble();
+        // Last 3 readings of current admission
+        List<VitalSign> recent = vitals.subList(Math.max(0, vitals.size() - 3), vitals.size());
+        OptionalDouble currentSys = recent.stream().filter(v -> v.getSystolicBp() != null).mapToInt(VitalSign::getSystolicBp).average();
+        if (currentSys.isEmpty()) return;
+        double cSys = currentSys.getAsDouble();
+        double diff = cSys - bSys;
+        // Check if patient takes antihypertensives
+        boolean takesAntihypertensive = habitual.stream().anyMatch(m -> {
+            String n = m.getName().toLowerCase();
+            return n.contains("enalapril") || n.contains("losartan") || n.contains("amlodipino") || n.contains("ramipril") || n.contains("valsartan");
+        });
+        if (Math.abs(diff) > 20) {
+            String direction = diff > 0 ? "por encima" : "por debajo";
+            String medContext = takesAntihypertensive ? " Paciente con antihipertensivo habitual." : "";
+            insights.add(ClinicalInsightDTO.builder()
+                .level(Math.abs(diff) > 40 ? "warning" : "info")
+                .title("TA sistólica " + String.format("%.0f", Math.abs(diff)) + " mmHg " + direction + " del baseline")
+                .detail("Baseline previo: " + String.format("%.0f", bSys) + " mmHg. Media actual: " + String.format("%.0f", cSys) + " mmHg." + medContext)
+                .reasoning("Desviación significativa respecto al baseline calculado de ingresos previos. Valorar contexto clínico y medicación")
+                .analysisType("baseline_deviation")
+                .build());
+        }
+    }
+    private void checkBradycardiaBetaBlockers(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<Medication> habitual, List<AdmissionPrescription> rx) {
+        List<VitalSign> recent = lastN(vitals, 3);
+        boolean bradycardia = recent.stream().filter(v -> v.getHeartRate() != null).anyMatch(v -> v.getHeartRate() < 55);
+        if (!bradycardia) return;
+        List<String> betaBlockers = List.of("atenolol", "bisoprolol", "carvedilol", "metoprolol", "propranolol", "nebivolol");
+        List<String> found = new ArrayList<>();
+        for (Medication m : habitual) {
+            if (betaBlockers.stream().anyMatch(b -> m.getName().toLowerCase().contains(b))) found.add(m.getName());
+        }
+        for (AdmissionPrescription p : rx) {
+            if (betaBlockers.stream().anyMatch(b -> p.getName().toLowerCase().contains(b))) found.add(p.getName());
+        }
+        if (!found.isEmpty()) {
+            int minHR = recent.stream().filter(v -> v.getHeartRate() != null).mapToInt(VitalSign::getHeartRate).min().orElse(0);
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("Bradicardia + betabloqueante")
+                .detail("FC mínima reciente: " + minHR + " lpm. Betabloqueantes: " + String.join(", ", found))
+                .reasoning("La bradicardia puede estar inducida o agravada por betabloqueantes. Valorar reducción de dosis o suspensión")
+                .analysisType("bradycardia_beta_blockers")
+                .build());
+        }
+    }
+    private void checkHypotensionAntihypertensives(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<Medication> habitual, List<AdmissionPrescription> rx) {
+        List<VitalSign> recent = lastN(vitals, 3);
+        boolean hypotension = recent.stream().filter(v -> v.getSystolicBp() != null).anyMatch(v -> v.getSystolicBp() < 95);
+        if (!hypotension) return;
+        List<String> antihyp = List.of("enalapril", "losartan", "amlodipino", "ramipril", "valsartan", "hidroclorotiazida", "furosemida", "doxazosina", "nifedipino");
+        List<String> found = new ArrayList<>();
+        for (Medication m : habitual) {
+            if (antihyp.stream().anyMatch(a -> m.getName().toLowerCase().contains(a))) found.add(m.getName() + " (habitual)");
+        }
+        for (AdmissionPrescription p : rx) {
+            if (antihyp.stream().anyMatch(a -> p.getName().toLowerCase().contains(a))) found.add(p.getName() + " (ingreso)");
+        }
+        if (found.size() >= 2) {
+            int minSys = recent.stream().filter(v -> v.getSystolicBp() != null).mapToInt(VitalSign::getSystolicBp).min().orElse(0);
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("Hipotensión con " + found.size() + " antihipertensivos")
+                .detail("TAS mínima: " + minSys + " mmHg. Fármacos: " + String.join(", ", found))
+                .reasoning("Múltiples antihipertensivos pueden causar hipotensión sumativa. Considerar suspender alguno durante el ingreso")
+                .analysisType("hypotension_antihypertensives")
+                .build());
+        }
+    }
+    private void checkSpo2Context(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<VitalSign> prior, Long admissionId) {
+        List<VitalSign> recent = lastN(vitals, 3);
+        OptionalDouble avgSpo2 = recent.stream().filter(v -> v.getSpo2() != null).mapToInt(VitalSign::getSpo2).average();
+        if (avgSpo2.isEmpty()) return;
+        double spo2 = avgSpo2.getAsDouble();
+        // Baseline from prior admissions
+        OptionalDouble baselineSpo2 = prior.stream().filter(v -> v.getSpo2() != null).mapToInt(VitalSign::getSpo2).average();
+        double baseline = baselineSpo2.isPresent() ? baselineSpo2.getAsDouble() : 97.0;
+        if (spo2 < 93 || (spo2 < baseline - 3)) {
+            String level = spo2 < 90 ? "critical" : "warning";
+            String baselineStr = baselineSpo2.isPresent() ? String.format("%.0f", baseline) : "97 (estimado)";
+            insights.add(ClinicalInsightDTO.builder()
+                .level(level)
+                .title("SpO2 baja: " + String.format("%.0f", spo2) + "%")
+                .detail("SpO2 media reciente: " + String.format("%.1f", spo2) + "%. Baseline: " + baselineStr + "%")
+                .reasoning("Desaturación respecto al baseline. Valorar soporte respiratorio y causa subyacente")
+                .analysisType("spo2_context")
+                .build());
+        }
+    }
+    private void checkDesaturationAfterSupportWithdrawal(List<ClinicalInsightDTO> insights, List<VitalSign> vitals) {
+        if (vitals.size() < 2) return;
+        for (int i = 1; i < vitals.size(); i++) {
+            VitalSign prev = vitals.get(i - 1);
+            VitalSign curr = vitals.get(i);
+            boolean hadSupport = prev.getRespiratorySupport() != null && prev.getRespiratorySupport().getDeviceType() != RespiratorySupport.DeviceType.none;
+            boolean noSupport = curr.getRespiratorySupport() == null || curr.getRespiratorySupport().getDeviceType() == RespiratorySupport.DeviceType.none;
+            if (hadSupport && noSupport && curr.getSpo2() != null && curr.getSpo2() < 93) {
+                insights.add(ClinicalInsightDTO.builder()
+                    .level("warning")
+                    .title("Desaturación tras retirada de soporte respiratorio")
+                    .detail("SpO2 " + curr.getSpo2() + "% tras retirar " + prev.getRespiratorySupport().getDeviceType().name().replace('_', ' '))
+                    .reasoning("La retirada del soporte respiratorio ha provocado desaturación. Considerar reinstaurar o weaning más gradual")
+                    .analysisType("desaturation_withdrawal")
+                    .build());
+                break; // Only report the most recent occurrence
+            }
+        }
+    }
+    private void checkGlycemiaTrend(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<AdmissionPrescription> rx) {
+        // Use temperature field > 200 as proxy for glycemia if no dedicated readings (simplified)
+        // In production this would query GlycemiaReading table
+        boolean hasInsulin = rx.stream().anyMatch(p -> p.getCategory() == AdmissionPrescription.Category.insulin);
+        boolean hasCorticosteroids = rx.stream().anyMatch(p -> {
+            String n = p.getName().toLowerCase();
+            return n.contains("dexametasona") || n.contains("metilprednisolona") || n.contains("prednisona") || n.contains("hidrocortisona");
+        });
+        if (hasInsulin && hasCorticosteroids) {
+            insights.add(ClinicalInsightDTO.builder()
+                .level("info")
+                .title("Insulina + corticoides: monitorizar glucemia")
+                .detail("Paciente con pauta de insulina y corticoides simultáneos")
+                .reasoning("Los corticoides elevan la glucemia, lo que puede requerir ajuste de la pauta de insulina. Vigilar tendencia glucémica")
+                .analysisType("glycemia_trend")
+                .build());
+        }
+    }
+    private void checkCyclicThermalPattern(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<AdmissionPrescription> rx) {
+        List<VitalSign> withTemp = vitals.stream().filter(v -> v.getTemperature() != null).toList();
+        if (withTemp.size() < 4) return;
+        // Count fever peaks (>38) followed by drops (<37.5)
+        int peaks = 0;
+        for (int i = 1; i < withTemp.size(); i++) {
+            if (withTemp.get(i - 1).getTemperature() >= 38.0 && withTemp.get(i).getTemperature() < 37.5) peaks++;
+        }
+        if (peaks >= 2) {
+            boolean hasAntipyretic = rx.stream().anyMatch(p -> {
+                String n = p.getName().toLowerCase();
+                return n.contains("paracetamol") || n.contains("metamizol") || n.contains("ibuprofeno");
+            });
+            double maxTemp = withTemp.stream().mapToDouble(VitalSign::getTemperature).max().orElse(0);
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("Patrón térmico cíclico: " + peaks + " picos febriles")
+                .detail("Tª máxima: " + String.format("%.1f", maxTemp) + "°C. " + (hasAntipyretic ? "Antipirético pautado." : "Sin antipirético pautado."))
+                .reasoning("Patrón de fiebre recurrente sugiere proceso infeccioso no controlado. " + (hasAntipyretic ? "El antipirético enmascara pero no resuelve la causa" : "Considerar pautar antipirético y buscar foco"))
+                .analysisType("cyclic_thermal")
+                .build());
+        }
+    }
+    private void checkTachycardiaFever(List<ClinicalInsightDTO> insights, List<VitalSign> vitals) {
+        List<VitalSign> recent = lastN(vitals, 3);
+        for (VitalSign v : recent) {
+            if (v.getHeartRate() != null && v.getTemperature() != null && v.getHeartRate() > 100 && v.getTemperature() >= 38.0) {
+                // ~10 bpm per degree above 37
+                double expectedIncrease = (v.getTemperature() - 37.0) * 10;
+                boolean proportional = v.getHeartRate() <= 80 + expectedIncrease + 15;
+                insights.add(ClinicalInsightDTO.builder()
+                    .level(proportional ? "info" : "warning")
+                    .title("Taquicardia " + (proportional ? "proporcional" : "desproporcionada") + " a fiebre")
+                    .detail("FC: " + v.getHeartRate() + " lpm, Tª: " + String.format("%.1f", v.getTemperature()) + "°C. Esperado: ~" + String.format("%.0f", 80 + expectedIncrease) + " lpm")
+                    .reasoning(proportional ? "Taquicardia reactiva a fiebre, esperable" : "FC superior a la esperada por fiebre. Descartar otras causas: dolor, hipovolemia, sepsis")
+                    .analysisType("tachycardia_fever")
+                    .build());
+                break;
+            }
+        }
+    }
+    private void checkUncontrolledPain(List<ClinicalInsightDTO> insights, List<VitalSign> vitals) {
+        List<VitalSign> recent = lastN(vitals, 4);
+        List<Integer> painScores = recent.stream().filter(v -> v.getPainLevel() != null).map(VitalSign::getPainLevel).toList();
+        if (painScores.size() < 2) return;
+        boolean allHigh = painScores.stream().allMatch(p -> p >= 6);
+        boolean increasing = true;
+        for (int i = 1; i < painScores.size(); i++) {
+            if (painScores.get(i) < painScores.get(i - 1)) { increasing = false; break; }
+        }
+        if (allHigh || (increasing && painScores.getLast() >= 7)) {
+            int maxPain = painScores.stream().mapToInt(Integer::intValue).max().orElse(0);
+            insights.add(ClinicalInsightDTO.builder()
+                .level(maxPain >= 8 ? "warning" : "info")
+                .title("Dolor no controlado (EVA " + maxPain + "/10)")
+                .detail("Últimas " + painScores.size() + " lecturas: " + painScores.stream().map(String::valueOf).collect(Collectors.joining(", ")))
+                .reasoning(allHigh ? "Dolor persistentemente elevado. Revisar pauta analgésica" : "Tendencia ascendente del dolor. Considerar rescate o ajuste")
+                .analysisType("uncontrolled_pain")
+                .build());
+        }
+    }
+    private void checkMultiParameterDeterioration(List<ClinicalInsightDTO> insights, List<VitalSign> vitals) {
+        if (vitals.size() < 4) return;
+        List<VitalSign> early = vitals.subList(0, Math.min(3, vitals.size()));
+        List<VitalSign> recent = lastN(vitals, 3);
+        int deteriorating = 0;
+        List<String> params = new ArrayList<>();
+        // HR increasing
+        OptionalDouble earlyHR = early.stream().filter(v -> v.getHeartRate() != null).mapToInt(VitalSign::getHeartRate).average();
+        OptionalDouble recentHR = recent.stream().filter(v -> v.getHeartRate() != null).mapToInt(VitalSign::getHeartRate).average();
+        if (earlyHR.isPresent() && recentHR.isPresent() && recentHR.getAsDouble() > earlyHR.getAsDouble() + 15) { deteriorating++; params.add("FC↑"); }
+        // BP decreasing
+        OptionalDouble earlySys = early.stream().filter(v -> v.getSystolicBp() != null).mapToInt(VitalSign::getSystolicBp).average();
+        OptionalDouble recentSys = recent.stream().filter(v -> v.getSystolicBp() != null).mapToInt(VitalSign::getSystolicBp).average();
+        if (earlySys.isPresent() && recentSys.isPresent() && recentSys.getAsDouble() < earlySys.getAsDouble() - 20) { deteriorating++; params.add("TAS↓"); }
+        // SpO2 decreasing
+        OptionalDouble earlySpo2 = early.stream().filter(v -> v.getSpo2() != null).mapToInt(VitalSign::getSpo2).average();
+        OptionalDouble recentSpo2 = recent.stream().filter(v -> v.getSpo2() != null).mapToInt(VitalSign::getSpo2).average();
+        if (earlySpo2.isPresent() && recentSpo2.isPresent() && recentSpo2.getAsDouble() < earlySpo2.getAsDouble() - 3) { deteriorating++; params.add("SpO2↓"); }
+        // Temperature increasing
+        OptionalDouble earlyTemp = early.stream().filter(v -> v.getTemperature() != null).mapToDouble(VitalSign::getTemperature).average();
+        OptionalDouble recentTemp = recent.stream().filter(v -> v.getTemperature() != null).mapToDouble(VitalSign::getTemperature).average();
+        if (earlyTemp.isPresent() && recentTemp.isPresent() && recentTemp.getAsDouble() > earlyTemp.getAsDouble() + 0.8) { deteriorating++; params.add("Tª↑"); }
+        if (deteriorating >= 3) {
+            insights.add(ClinicalInsightDTO.builder()
+                .level("critical")
+                .title("Deterioro progresivo multiparámetro")
+                .detail("Parámetros en deterioro: " + String.join(", ", params))
+                .reasoning("Empeoramiento simultáneo de " + deteriorating + " constantes vitales. Patrón compatible con deterioro clínico significativo. Valoración médica urgente")
+                .analysisType("multi_parameter_deterioration")
+                .build());
+        }
+    }
+    private void checkElevatedRespiratoryRate(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, Long admissionId) {
+        List<VitalSign> recent = lastN(vitals, 3);
+        OptionalDouble avgFR = recent.stream().filter(v -> v.getRespiratoryRate() != null).mapToInt(VitalSign::getRespiratoryRate).average();
+        if (avgFR.isEmpty()) return;
+        double fr = avgFR.getAsDouble();
+        if (fr > 22) {
+            boolean hasLowSpo2 = recent.stream().filter(v -> v.getSpo2() != null).anyMatch(v -> v.getSpo2() < 94);
+            insights.add(ClinicalInsightDTO.builder()
+                .level(fr > 28 ? "warning" : "info")
+                .title("FR elevada: " + String.format("%.0f", fr) + " rpm")
+                .detail("Media últimos registros: " + String.format("%.1f", fr) + " rpm." + (hasLowSpo2 ? " Asociada a SpO2 baja." : ""))
+                .reasoning("Frecuencia respiratoria elevada" + (hasLowSpo2 ? " con desaturación asociada — posible insuficiencia respiratoria" : " — monitorizar evolución y descartar causa"))
+                .analysisType("elevated_respiratory_rate")
+                .build());
+        }
+    }
+    private void checkCorticosteroidHyperglycemia(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<AdmissionPrescription> rx) {
+        boolean hasCorticosteroid = rx.stream().anyMatch(p -> {
+            String n = p.getName().toLowerCase();
+            return n.contains("dexametasona") || n.contains("metilprednisolona") || n.contains("prednisona") || n.contains("hidrocortisona") || n.contains("prednisolona");
+        });
+        if (!hasCorticosteroid) return;
+        boolean hasInsulin = rx.stream().anyMatch(p -> p.getCategory() == AdmissionPrescription.Category.insulin);
+        if (!hasInsulin) {
+            insights.add(ClinicalInsightDTO.builder()
+                .level("info")
+                .title("Corticoides sin pauta de insulina")
+                .detail("Paciente con corticoides activos sin pauta de insulina asociada")
+                .reasoning("Los corticoides inducen hiperglucemia. Monitorizar glucemia capilar y valorar pauta de insulina correctora")
+                .analysisType("corticosteroid_hyperglycemia")
+                .build());
+        }
+    }
+}
