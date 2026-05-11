@@ -53,9 +53,9 @@ const defaultProps = {
 /* ── Unit tests: calcDoseFromScale ── */
 
 describe('calcDoseFromScale — unit tests', () => {
-  it('returns "0" for glycemia < 150', () => {
+  it('returns "0" for glycemia 1-149', () => {
+    expect(calcDoseFromScale(insulinScales, 1)).toBe('0')
     expect(calcDoseFromScale(insulinScales, 100)).toBe('0')
-    expect(calcDoseFromScale(insulinScales, 0)).toBe('0')
     expect(calcDoseFromScale(insulinScales, 149)).toBe('0')
   })
 
@@ -83,11 +83,11 @@ describe('calcDoseFromScale — unit tests', () => {
     expect(calcDoseFromScale(insulinScales, '300')).toBe('4')
   })
 
-  it('returns null for null/undefined/empty glycemia', () => {
+  it('returns null for null/undefined/empty/zero glycemia', () => {
     expect(calcDoseFromScale(insulinScales, null)).toBeNull()
     expect(calcDoseFromScale(insulinScales, undefined)).toBeNull()
     expect(calcDoseFromScale(insulinScales, '')).toBeNull()
-    expect(calcDoseFromScale(insulinScales, 0)).toBeNull()
+    expect(calcDoseFromScale(insulinScales, 0)).toBeNull()  // 0 is not a valid glucose
   })
 
   it('returns null for null/empty scales', () => {

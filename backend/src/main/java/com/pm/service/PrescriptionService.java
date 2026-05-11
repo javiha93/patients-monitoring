@@ -20,12 +20,14 @@ public class PrescriptionService {
     private final AdmissionRepository admissionRepo;
     private final PrescriptionDoseHistoryRepository doseHistoryRepo;
 
+    @Transactional(readOnly = true)
     public List<PrescriptionDTO> getByAdmission(Long admissionId) {
         return prescriptionRepo.findByAdmissionId(admissionId).stream()
                 .map(PrescriptionDTO::fromEntity)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<PrescriptionDTO> getActiveByAdmission(Long admissionId) {
         return prescriptionRepo.findByAdmissionIdAndActiveTrue(admissionId).stream()
                 .map(PrescriptionDTO::fromEntity)
