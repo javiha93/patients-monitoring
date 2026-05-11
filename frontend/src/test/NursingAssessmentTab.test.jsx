@@ -60,7 +60,7 @@ describe('KAN-79: Valoración de enfermería', () => {
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
-    expect(screen.getByText('Consciencia')).toBeInTheDocument()
+    expect(screen.getByText('Consciencia *')).toBeInTheDocument()
     expect(screen.getByText('Dolor')).toBeInTheDocument()
     expect(screen.getByText('Alimentación')).toBeInTheDocument()
     expect(screen.getByText('Estado anímico')).toBeInTheDocument()

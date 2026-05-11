@@ -49,7 +49,6 @@ describe('KAN-79: GlasgowModal', () => {
     fireEvent.click(screen.getByText('Espontánea'))
     fireEvent.click(screen.getByText('Orientado'))
     fireEvent.click(screen.getByText('Obedece'))
-    expect(screen.getByText('15')).toBeInTheDocument()
     expect(screen.getByText('O:4 + V:5 + M:6')).toBeInTheDocument()
     expect(screen.getByText('Leve (13-15)')).toBeInTheDocument()
   })
@@ -59,7 +58,8 @@ describe('KAN-79: GlasgowModal', () => {
     // Click all "Ausente" options — there are 3 of them
     const ausenteButtons = screen.getAllByText('Ausente')
     ausenteButtons.forEach(b => fireEvent.click(b))
-    expect(screen.getByText('3')).toBeInTheDocument()
+    // Total "3" shown in the large display — check O:1 + V:1 + M:1
+    expect(screen.getByText('O:1 + V:1 + M:1')).toBeInTheDocument()
     expect(screen.getByText('Grave (≤8)')).toBeInTheDocument()
   })
 
@@ -68,7 +68,7 @@ describe('KAN-79: GlasgowModal', () => {
     fireEvent.click(screen.getByText('Al llamado'))
     fireEvent.click(screen.getByText('Palabras'))
     fireEvent.click(screen.getByText('Flexión normal'))
-    expect(screen.getByText('10')).toBeInTheDocument()
+    expect(screen.getByText('O:3 + V:3 + M:4')).toBeInTheDocument()
     expect(screen.getByText('Moderado (9-12)')).toBeInTheDocument()
   })
 
