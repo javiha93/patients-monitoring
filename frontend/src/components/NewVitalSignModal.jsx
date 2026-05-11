@@ -83,31 +83,31 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">TAS (mmHg)</label>
-            <input type="number" value={form.systolicBp} onChange={set('systolicBp')} placeholder="120" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <input type="number" value={form.systolicBp} onChange={set('systolicBp')} placeholder="120" min="40" max="300" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">TAD (mmHg)</label>
-            <input type="number" value={form.diastolicBp} onChange={set('diastolicBp')} placeholder="80" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <input type="number" value={form.diastolicBp} onChange={set('diastolicBp')} placeholder="80" min="20" max="200" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">FC (bpm)</label>
-            <input type="number" value={form.heartRate} onChange={set('heartRate')} placeholder="80" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <input type="number" value={form.heartRate} onChange={set('heartRate')} placeholder="80" min="20" max="300" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">SpO2 (%)</label>
-            <input type="number" value={form.spo2} onChange={set('spo2')} placeholder="98" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <input type="number" value={form.spo2} onChange={set('spo2')} placeholder="98" min="30" max="100" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">FR (rpm)</label>
-            <input type="number" value={form.respiratoryRate} onChange={set('respiratoryRate')} placeholder="16" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <input type="number" value={form.respiratoryRate} onChange={set('respiratoryRate')} placeholder="16" min="4" max="60" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">Tª (°C)</label>
-            <input type="number" step="0.1" value={form.temperature} onChange={set('temperature')} placeholder="36.5" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <input type="number" step="0.1" value={form.temperature} onChange={set('temperature')} placeholder="36.5" min="30" max="43" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">Dolor (0-10)</label>
@@ -119,11 +119,11 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">Glucemia capilar (mg/dL)</label>
-            <input type="number" value={form.bloodGlucose} onChange={set('bloodGlucose')} placeholder="120" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <input type="number" value={form.bloodGlucose} onChange={set('bloodGlucose')} placeholder="120" min="10" max="700" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">Diuresis (mL)</label>
-            <input type="number" value={form.diuresis} onChange={set('diuresis')} placeholder="200" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <input type="number" value={form.diuresis} onChange={set('diuresis')} placeholder="200" min="0" max="5000" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
         </div>
 
