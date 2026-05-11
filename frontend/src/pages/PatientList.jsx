@@ -258,7 +258,14 @@ export default function PatientList() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 flex-shrink-0">
-        <h2 className="text-lg font-bold flex-1">Pacientes activos</h2>
+        <h2 className="text-lg font-bold flex-1">
+          Pacientes activos
+          <span className="ml-2 text-sm font-normal text-slate-400">
+            {filtered.length !== patients.length
+              ? `${filtered.length} de ${patients.length}`
+              : patients.length}
+          </span>
+        </h2>
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar paciente..." className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-64 focus:border-blue-500 outline-none" />
