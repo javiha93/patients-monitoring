@@ -3,9 +3,9 @@ import { X, AlertTriangle } from 'lucide-react'
 
 /**
  * Calculate dose from insulin scale based on glycemia value.
- * Returns the matching doseUi or null if no match.
+ * Returns the matching doseUi as string, or null if no match.
  */
-function calcDoseFromScale(insulinScales, glycemia) {
+export function calcDoseFromScale(insulinScales, glycemia) {
   if (!insulinScales || !glycemia) return null
   const g = parseInt(glycemia)
   if (isNaN(g)) return null
@@ -22,7 +22,7 @@ function calcDoseFromScale(insulinScales, glycemia) {
  * Find the most recent glucose reading from vitals.
  * Returns { value, recordedAt, isStale } or null.
  */
-function getLatestGlucose(vitals) {
+export function getLatestGlucose(vitals) {
   if (!vitals || vitals.length === 0) return null
   const withGlucose = vitals
     .filter(v => v.bloodGlucose != null)
