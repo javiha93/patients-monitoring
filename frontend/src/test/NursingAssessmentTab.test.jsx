@@ -206,8 +206,8 @@ describe('KAN-79: Valoración de enfermería', () => {
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
     // Entrada → Llegada visible
-    expect(screen.getByText('Llegada')).toBeInTheDocument()
-    expect(screen.getByText('Modo de llegada')).toBeInTheDocument()
+    expect(screen.getByText('Llegada *')).toBeInTheDocument()
+    expect(screen.getByText('Modo de llegada *')).toBeInTheDocument()
   })
 
   it('sección Llegada oculta en valoración sucesiva', async () => {
@@ -215,8 +215,8 @@ describe('KAN-79: Valoración de enfermería', () => {
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
     // Sucesiva → Llegada no visible
-    expect(screen.queryByText('Llegada')).not.toBeInTheDocument()
-    expect(screen.queryByText('Modo de llegada')).not.toBeInTheDocument()
+    expect(screen.queryByText('Llegada *')).not.toBeInTheDocument()
+    expect(screen.queryByText('Modo de llegada *')).not.toBeInTheDocument()
   })
 
   it('barrera comunicación está en sección Estado físico y cognitivo', async () => {
