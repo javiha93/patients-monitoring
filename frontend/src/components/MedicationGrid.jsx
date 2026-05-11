@@ -27,6 +27,111 @@ function parseScheduledHours(str) {
   return str.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
 }
 
+// Parse frequency string like "c/8h" → 8, "c/12h" → 12, etc. Returns null if not parseable.
+function parseFrequencyHours(freq) {
+  if (!freq) return null
+  const m = freq.match(/c\/(\d+)h/i)
+  return m ? parseInt(m[1]) : null
+}
+
+/**
+ * Compute which slot indices should show ▶ for a given prescription.
+ * After each administration, the next ▶ shifts to adminTime + interval.
+ * Returns a Set of slot indices.
+ */
+function computeScheduledSlotIndices(slots, scheduledHours, administrations, frequencyHours) {
+  const indices = new Set()
+
+  if (!frequencyHours || frequencyHours <= 0) {
+    // Non-interval meds (conditional, continuous): use static scheduled hours
+    for (let i = 0; i < slots.length; i++) {
+      if (scheduledHours.includes(slots[i].getHours())) indices.add(i)
+    }
+    return indices
+  }
+
+  // Sort administrations by time
+  const sortedAdmins = (administrations || [])
+    .map(a => new Date(a.administeredAt))
+    .sort((a, b) => a - b)
+
+  // Start from the static scheduled hours, then chain from each administration
+  // Find the first scheduled slot as the starting anchor
+  let anchors = []
+  for (let i = 0; i < slots.length; i++) {
+    if (scheduledHours.includes(slots[i].getHours())) {
+      anchors.push(slots[i])
+      break // only need the first one as initial anchor
+    }
+  }
+
+  // Build the chain: start from first scheduled hour, then every `frequencyHours`
+  // But if an administration exists, the chain restarts from that admin time
+  if (anchors.length === 0 && slots.length > 0) {
+    anchors.push(slots[0])
+  }
+
+  let nextDueTime = anchors[0]
+
+  // Walk through the timeline, placing ▶ and adjusting when admins are found
+  const gridStart = slots[0]
+  const gridEnd = slots[slots.length - 1]
+
+  // Collect all admin times that fall within the grid
+  const adminsInGrid = sortedAdmins.filter(a => a >= gridStart && a <= gridEnd)
+
+  // Strategy: iterate forward from the first anchor, placing markers every `frequencyHours`.
+  // When we encounter an administration, the next marker shifts to admin + interval.
+  let currentTime = new Date(nextDueTime)
+  let adminIdx = 0
+
+  while (currentTime <= gridEnd) {
+    // Check if there's an administration at or near this scheduled time
+    // (or any admin between the last marker and this one that should reset the chain)
+    let chainReset = false
+    while (adminIdx < adminsInGrid.length && adminsInGrid[adminIdx] <= currentTime) {
+      // This admin happened at or before the current scheduled time
+      // The next dose should be relative to this admin
+      currentTime = new Date(adminsInGrid[adminIdx].getTime() + frequencyHours * 3600000)
+      adminIdx++
+      chainReset = true
+    }
+
+    if (chainReset) continue // re-evaluate with the new currentTime
+
+    // Check if any admin falls between now and the next interval
+    // (admin given at a non-scheduled time)
+    if (adminIdx < adminsInGrid.length) {
+      const nextAdmin = adminsInGrid[adminIdx]
+      const nextScheduled = new Date(currentTime.getTime() + frequencyHours * 3600000)
+      if (nextAdmin < nextScheduled) {
+        // Admin happened before next scheduled → find the slot for current time, then reset
+        const slotIdx = slots.findIndex(s => isSameHour(s, currentTime))
+        if (slotIdx >= 0) {
+          const hasAdmin = sortedAdmins.some(a => isSameHour(a, currentTime))
+          if (!hasAdmin) indices.add(slotIdx)
+        }
+        // Reset chain from this admin
+        currentTime = new Date(nextAdmin.getTime() + frequencyHours * 3600000)
+        adminIdx++
+        continue
+      }
+    }
+
+    // Place ▶ at this time if it maps to a slot and isn't already administered
+    const slotIdx = slots.findIndex(s => isSameHour(s, currentTime))
+    if (slotIdx >= 0) {
+      const hasAdmin = sortedAdmins.some(a => isSameHour(a, currentTime))
+      if (!hasAdmin) indices.add(slotIdx)
+    }
+
+    // Move to next interval
+    currentTime = new Date(currentTime.getTime() + frequencyHours * 3600000)
+  }
+
+  return indices
+}
+
 // Format a Date as local ISO string (yyyy-MM-ddTHH:mm:ss) without UTC conversion.
 // Backend uses LocalDateTime, so we must send local time, not UTC.
 function toLocalISOString(d) {
@@ -175,9 +280,15 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                   ))}
                 </tr>
                 {meds.map(p => {
-                  const scheduled = parseScheduledHours(p.scheduledHours)
+                  const scheduledHours = parseScheduledHours(p.scheduledHours)
+                  const frequencyHours = parseFrequencyHours(p.frequency)
                   const isInsulin = section.key === 'insulin'
                   if (!firstMedRendered) firstMedRendered = true
+
+                  // Compute dynamic scheduled slot indices based on administrations
+                  const scheduledSlotIndices = computeScheduledSlotIndices(
+                    slots, scheduledHours, p.administrations, frequencyHours
+                  )
 
                   return (
                     <tr key={p.id}>
@@ -210,12 +321,11 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                         const isNow = isCurrentHour(slot)
                         const midnight = isMidnight(slot) && si > 0
                         const admin = p.administrations?.find(a => isSameHour(new Date(a.administeredAt), slot))
-                        const hour = slot.getHours()
-                        const isScheduled = scheduled.includes(hour)
+                        const isScheduled = scheduledSlotIndices.has(si)
                         const cellKey = `${p.id}-${si}`
                         const isHovered = hoveredCell === cellKey
 
-                        // ▶ on ALL scheduled+unsigned slots
+                        // ▶ on scheduled+unsigned slots
                         const isNext = isScheduled && !admin
 
                         let bg = '#fff'
