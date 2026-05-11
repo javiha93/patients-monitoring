@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Clock, Pencil } from 'lucide-react'
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Clock, Pencil, X } from 'lucide-react'
 import { deviceApi } from '../services/deviceApi'
 import ConfirmModal from './ConfirmModal'
 
 /* ── Constants ── */
 
-const CATEGORIES = {
+export const CATEGORIES = {
   vascular: {
     label: 'Dispositivos de Acceso Vascular',
     color: 'red',
@@ -32,7 +32,7 @@ const CATEGORIES = {
   },
 }
 
-const VVP_LOCATIONS = [
+export const VVP_LOCATIONS = [
   { value: 'plexo_derecho', label: 'Plexo derecho' },
   { value: 'plexo_izquierdo', label: 'Plexo izquierdo' },
   { value: 'mano_derecha', label: 'Mano derecha' },
@@ -41,10 +41,10 @@ const VVP_LOCATIONS = [
   { value: 'brazo_izquierdo', label: 'Brazo izquierdo' },
 ]
 
-const VVP_GAUGES = ['14G', '16G', '18G', '20G', '22G', '24G']
-const SNG_GAUGES = ['8Fr', '10Fr', '12Fr', '14Fr', '16Fr', '18Fr']
-const SV_GAUGES = ['10Fr', '12Fr', '14Fr', '16Fr', '18Fr', '20Fr', '22Fr', '24Fr']
-const SV_LUMENS = [1, 2, 3]
+export const VVP_GAUGES = ['14G', '16G', '18G', '20G', '22G', '24G']
+export const SNG_GAUGES = ['8Fr', '10Fr', '12Fr', '14Fr', '16Fr', '18Fr']
+export const SV_GAUGES = ['10Fr', '12Fr', '14Fr', '16Fr', '18Fr', '20Fr', '22Fr', '24Fr']
+export const SV_LUMENS = [1, 2, 3]
 
 function toLocalISOString() {
   const d = new Date()
@@ -58,24 +58,124 @@ function formatDateTime(dateStr) {
     d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 }
 
+/* ── Device Form Modal ── */
+
+export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel, saving, editing }) {
+  if (!open || !category) return null
+
+  const cat = CATEGORIES[category]
+  const showTypeSelect = cat.types.length > 1
+
+  const showGauge = ['via_periferica', 'sng', 'sonda_vesical'].includes(form.type)
+  const showLocation = form.type === 'via_periferica'
+  const showLumens = form.type === 'sonda_vesical'
+
+  const gaugeOptions = form.type === 'via_periferica' ? VVP_GAUGES
+    : form.type === 'sng' ? SNG_GAUGES
+    : form.type === 'sonda_vesical' ? SV_GAUGES : []
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <form onSubmit={onSubmit} className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-slate-800">{editing ? 'Editar dispositivo' : 'Nuevo dispositivo'}</h3>
+          <button type="button" onClick={onCancel} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {showTypeSelect && (
+              <div>
+                <label className="text-[11px] font-medium text-slate-600">Tipo</label>
+                <select value={form.type || ''} onChange={e => set('type', e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+                  {cat.types.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+            )}
+
+            {showGauge && (
+              <div>
+                <label className="text-[11px] font-medium text-slate-600">Calibre</label>
+                <select value={form.gauge || ''} onChange={e => set('gauge', e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+                  <option value="">Seleccionar...</option>
+                  {gaugeOptions.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+            )}
+
+            {showLocation && (
+              <div>
+                <label className="text-[11px] font-medium text-slate-600">Localización</label>
+                <select value={form.location || ''} onChange={e => set('location', e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+                  <option value="">Seleccionar...</option>
+                  {VVP_LOCATIONS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+            )}
+
+            {showLumens && (
+              <div>
+                <label className="text-[11px] font-medium text-slate-600">Luces</label>
+                <select value={form.lumens || ''} onChange={e => set('lumens', e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+                  <option value="">Seleccionar...</option>
+                  {SV_LUMENS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-[11px] font-medium text-slate-600">Observaciones</label>
+            <input type="text" value={form.notes || ''} onChange={e => set('notes', e.target.value)}
+              placeholder="Opcional" className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5" />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-slate-100">
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
+          <button type="submit" disabled={saving}
+            className="bg-sky-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-sky-600 disabled:opacity-50">
+            {saving ? 'Guardando...' : editing ? 'Guardar' : 'Registrar'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 /* ── Main Component ── */
 
-export default function DevicesTab({ admissionId, toast }) {
+const DevicesTab = forwardRef(function DevicesTab({ admissionId, toast }, ref) {
   const [devices, setDevices] = useState([])
-  const [formOpen, setFormOpen] = useState(null) // category key or null
+  const [modalCategory, setModalCategory] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({})
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
 
-  const fetch = async () => {
+  const fetchDevices = async () => {
     try {
       const { data } = await deviceApi.getByAdmission(admissionId)
       setDevices(data)
     } catch { /* ignore */ }
   }
 
-  useEffect(() => { if (admissionId) fetch() }, [admissionId])
+  useEffect(() => { if (admissionId) fetchDevices() }, [admissionId])
+
+  // Expose methods for external callers (e.g. vitals modal prompting to add sonda vesical)
+  useImperativeHandle(ref, () => ({
+    openNewSondaVesical: () => {
+      setForm({ category: 'elimination', type: 'sonda_vesical' })
+      setModalCategory('elimination')
+      setEditingId(null)
+    },
+    hasActiveSondaVesical: () => devices.some(d => d.type === 'sonda_vesical' && !d.removedAt),
+    refresh: fetchDevices,
+  }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -87,10 +187,8 @@ export default function DevicesTab({ admissionId, toast }) {
         await deviceApi.create({ ...form, admissionId, insertedAt: form.insertedAt || toLocalISOString() })
       }
       toast.success(editingId ? 'Dispositivo actualizado' : 'Dispositivo registrado')
-      setFormOpen(null)
-      setEditingId(null)
-      setForm({})
-      fetch()
+      closeModal()
+      fetchDevices()
     } catch (e) {
       toast.error(e.response?.data?.error || 'Error guardando dispositivo')
     } finally {
@@ -102,7 +200,7 @@ export default function DevicesTab({ admissionId, toast }) {
     try {
       await deviceApi.delete(id)
       toast.success('Dispositivo eliminado')
-      fetch()
+      fetchDevices()
     } catch {
       toast.error('Error eliminando dispositivo')
     }
@@ -113,7 +211,7 @@ export default function DevicesTab({ admissionId, toast }) {
       const device = devices.find(d => d.id === id)
       await deviceApi.update(id, { ...device, removedAt: toLocalISOString() })
       toast.success('Dispositivo retirado')
-      fetch()
+      fetchDevices()
     } catch {
       toast.error('Error retirando dispositivo')
     }
@@ -122,14 +220,20 @@ export default function DevicesTab({ admissionId, toast }) {
   const openNewForm = (category) => {
     const cat = CATEGORIES[category]
     setForm({ category, type: cat.types[0].value })
-    setFormOpen(category)
+    setModalCategory(category)
     setEditingId(null)
   }
 
   const openEditForm = (device) => {
     setForm({ ...device })
-    setFormOpen(device.category)
+    setModalCategory(device.category)
     setEditingId(device.id)
+  }
+
+  const closeModal = () => {
+    setModalCategory(null)
+    setEditingId(null)
+    setForm({})
   }
 
   const devicesByCategory = (cat) => devices.filter(d => d.category === cat)
@@ -143,28 +247,11 @@ export default function DevicesTab({ admissionId, toast }) {
 
         return (
           <CategorySection key={catKey} label={cat.label} color={cat.color} count={active.length}>
-            {/* Add button */}
-            {formOpen !== catKey && (
-              <button onClick={() => openNewForm(catKey)}
-                className="flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 mb-3">
-                <Plus size={15} /> Añadir {cat.types.length === 1 ? cat.types[0].label.toLowerCase() : 'dispositivo'}
-              </button>
-            )}
+            <button onClick={() => openNewForm(catKey)}
+              className="flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 mb-3">
+              <Plus size={15} /> Añadir {cat.types.length === 1 ? cat.types[0].label.toLowerCase() : 'dispositivo'}
+            </button>
 
-            {/* Form */}
-            {formOpen === catKey && (
-              <DeviceForm
-                form={form}
-                set={(field, val) => setForm(prev => ({ ...prev, [field]: val }))}
-                category={catKey}
-                onSubmit={handleSubmit}
-                onCancel={() => { setFormOpen(null); setEditingId(null); setForm({}) }}
-                saving={saving}
-                editing={!!editingId}
-              />
-            )}
-
-            {/* Active devices */}
             {active.map(d => (
               <DeviceCard key={d.id} device={d}
                 onEdit={() => openEditForm(d)}
@@ -173,17 +260,27 @@ export default function DevicesTab({ admissionId, toast }) {
               />
             ))}
 
-            {/* Removed devices */}
             {removed.length > 0 && (
               <RemovedSection devices={removed} />
             )}
 
-            {active.length === 0 && formOpen !== catKey && removed.length === 0 && (
+            {active.length === 0 && removed.length === 0 && (
               <p className="text-slate-400 text-sm">Sin dispositivos registrados</p>
             )}
           </CategorySection>
         )
       })}
+
+      <DeviceFormModal
+        open={modalCategory != null}
+        form={form}
+        set={(field, val) => setForm(prev => ({ ...prev, [field]: val }))}
+        category={modalCategory}
+        onSubmit={handleSubmit}
+        onCancel={closeModal}
+        saving={saving}
+        editing={!!editingId}
+      />
 
       <ConfirmModal
         open={confirmDelete != null}
@@ -193,7 +290,9 @@ export default function DevicesTab({ admissionId, toast }) {
       />
     </div>
   )
-}
+})
+
+export default DevicesTab
 
 /* ── Category Section ── */
 
@@ -219,94 +318,6 @@ function CategorySection({ label, color, count, children }) {
       </div>
       {children}
     </div>
-  )
-}
-
-/* ── Device Form ── */
-
-function DeviceForm({ form, set, category, onSubmit, onCancel, saving, editing }) {
-  const cat = CATEGORIES[category]
-  const showTypeSelect = cat.types.length > 1
-
-  const showGauge = ['via_periferica', 'sng', 'sonda_vesical'].includes(form.type)
-  const showLocation = form.type === 'via_periferica'
-  const showLumens = form.type === 'sonda_vesical'
-
-  const gaugeOptions = form.type === 'via_periferica' ? VVP_GAUGES
-    : form.type === 'sng' ? SNG_GAUGES
-    : form.type === 'sonda_vesical' ? SV_GAUGES : []
-
-  return (
-    <form onSubmit={onSubmit} className="bg-white rounded-lg border border-slate-200 p-4 mb-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-700">{editing ? 'Editar dispositivo' : 'Nuevo dispositivo'}</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {/* Type selector */}
-        {showTypeSelect && (
-          <div>
-            <label className="text-[11px] font-medium text-slate-600">Tipo</label>
-            <select value={form.type || ''} onChange={e => set('type', e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
-              {cat.types.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
-        )}
-
-        {/* Gauge */}
-        {showGauge && (
-          <div>
-            <label className="text-[11px] font-medium text-slate-600">Calibre</label>
-            <select value={form.gauge || ''} onChange={e => set('gauge', e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
-              <option value="">Seleccionar...</option>
-              {gaugeOptions.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-          </div>
-        )}
-
-        {/* Location (VVP only) */}
-        {showLocation && (
-          <div>
-            <label className="text-[11px] font-medium text-slate-600">Localización</label>
-            <select value={form.location || ''} onChange={e => set('location', e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
-              <option value="">Seleccionar...</option>
-              {VVP_LOCATIONS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-            </select>
-          </div>
-        )}
-
-        {/* Lumens (sonda vesical only) */}
-        {showLumens && (
-          <div>
-            <label className="text-[11px] font-medium text-slate-600">Luces</label>
-            <select value={form.lumens || ''} onChange={e => set('lumens', e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
-              <option value="">Seleccionar...</option>
-              {SV_LUMENS.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Notes */}
-      <div>
-        <label className="text-[11px] font-medium text-slate-600">Observaciones</label>
-        <input type="text" value={form.notes || ''} onChange={e => set('notes', e.target.value)}
-          placeholder="Opcional" className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5" />
-      </div>
-
-      {/* Actions */}
-      <div className="flex justify-end gap-2 pt-1">
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-xs text-slate-500">Cancelar</button>
-        <button type="submit" disabled={saving}
-          className="bg-sky-500 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-sky-600 disabled:opacity-50">
-          {saving ? 'Guardando...' : editing ? 'Guardar' : 'Registrar'}
-        </button>
-      </div>
-    </form>
   )
 }
 

@@ -13,6 +13,7 @@ vi.mock('../services/deviceApi', () => ({
     create: vi.fn(() => Promise.resolve({ data: { id: 3 } })),
     update: vi.fn(() => Promise.resolve({ data: {} })),
     delete: vi.fn(() => Promise.resolve()),
+    hasActiveByType: vi.fn(() => Promise.resolve({ data: false })),
   },
 }))
 
@@ -54,7 +55,7 @@ describe('DevicesTab', () => {
     expect(screen.getByText('2 luces')).toBeInTheDocument()
   })
 
-  it('abre formulario al hacer clic en añadir', async () => {
+  it('abre modal al hacer clic en añadir', async () => {
     renderTab()
     await waitFor(() => screen.getByText('Añadir dispositivo'))
     fireEvent.click(screen.getByText('Añadir dispositivo'))
@@ -62,7 +63,7 @@ describe('DevicesTab', () => {
     expect(screen.getByText('Registrar')).toBeInTheDocument()
   })
 
-  it('crea dispositivo al enviar formulario', async () => {
+  it('crea dispositivo al enviar formulario del modal', async () => {
     const { deviceApi } = await import('../services/deviceApi')
     renderTab()
     await waitFor(() => screen.getByText('Añadir dispositivo'))
@@ -74,14 +75,23 @@ describe('DevicesTab', () => {
     })
   })
 
+  it('cierra modal con botón cancelar', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Añadir dispositivo'))
+    fireEvent.click(screen.getByText('Añadir dispositivo'))
+    expect(screen.getByText('Nuevo dispositivo')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Cancelar'))
+    await waitFor(() => {
+      expect(screen.queryByText('Nuevo dispositivo')).not.toBeInTheDocument()
+    })
+  })
+
   it('elimina dispositivo con confirmación', async () => {
     const { deviceApi } = await import('../services/deviceApi')
     renderTab()
     await waitFor(() => screen.getByText('Vía Periférica'))
-    // Hover actions — find delete button by title
     const deleteBtn = screen.getByTitle('Eliminar')
     fireEvent.click(deleteBtn)
-    // Confirm modal
     fireEvent.click(screen.getByText('Confirmar'))
     await waitFor(() => {
       expect(deviceApi.delete).toHaveBeenCalledWith(1)

@@ -51,6 +51,16 @@ vi.mock('../services/prescriptionApi', () => ({
   },
 }))
 
+vi.mock('../services/deviceApi', () => ({
+  deviceApi: {
+    getByAdmission: vi.fn(() => Promise.resolve({ data: [] })),
+    create: vi.fn(() => Promise.resolve({ data: {} })),
+    update: vi.fn(() => Promise.resolve({ data: {} })),
+    delete: vi.fn(() => Promise.resolve()),
+    hasActiveByType: vi.fn(() => Promise.resolve({ data: false })),
+  },
+}))
+
 function renderRecord() {
   return render(
     <MemoryRouter initialEntries={['/patient/1']}>

@@ -212,6 +212,7 @@ export default function PatientRecord() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleNewVital}
         patientName={`${patient.lastName}, ${patient.firstName} · ${age || ''}`}
+        admissionId={admission?.id}
       />
 
       <EditVitalSignModal
@@ -220,6 +221,7 @@ export default function PatientRecord() {
         onSubmit={handleEditVital}
         vitalSign={editVital}
         patientName={`${patient.lastName}, ${patient.firstName} · ${age || ''}`}
+        admissionId={admission?.id}
       />
 
       <ConfirmModal

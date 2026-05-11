@@ -59,4 +59,8 @@ public class DeviceService {
     public void delete(Long id) {
         deviceRepo.deleteById(id);
     }
+
+    public boolean hasActiveByType(Long admissionId, String type) {
+        return deviceRepo.existsByAdmissionIdAndTypeAndRemovedAtIsNull(admissionId, type);
+    }
 }

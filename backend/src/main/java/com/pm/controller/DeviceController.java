@@ -36,4 +36,9 @@ public class DeviceController {
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }
+
+    @GetMapping("/admission/{admissionId}/has-active")
+    public boolean hasActiveByType(@PathVariable Long admissionId, @RequestParam String type) {
+        return service.hasActiveByType(admissionId, type);
+    }
 }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, AlertTriangle, Plus } from 'lucide-react'
 import VitalInput, { validateVitals } from './VitalInput'
+import { deviceApi } from '../services/deviceApi'
+import { DeviceFormModal } from './DevicesTab'
 
 const devices = [
   { value: '', label: 'Sin soporte' },
@@ -19,9 +21,18 @@ function toLocalInput(isoStr) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }
 
-export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign, patientName }) {
+function toLocalISOString() {
+  const d = new Date()
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19)
+}
+
+export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign, patientName, admissionId }) {
   const [form, setForm] = useState({})
   const [errors, setErrors] = useState({})
+  const [hasSondaVesical, setHasSondaVesical] = useState(null)
+  const [showDeviceModal, setShowDeviceModal] = useState(false)
+  const [deviceForm, setDeviceForm] = useState({})
+  const [deviceSaving, setDeviceSaving] = useState(false)
 
   useEffect(() => {
     if (open && vitalSign) {
@@ -54,6 +65,17 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
     }
   }, [open, vitalSign])
 
+  // Check sonda vesical status when urineSource changes to sonda_vesical
+  useEffect(() => {
+    if (form.urineSource === 'sonda_vesical' && admissionId) {
+      deviceApi.hasActiveByType(admissionId, 'sonda_vesical')
+        .then(({ data }) => setHasSondaVesical(data))
+        .catch(() => setHasSondaVesical(false))
+    } else {
+      setHasSondaVesical(null)
+    }
+  }, [form.urineSource, admissionId])
+
   if (!open || !vitalSign) return null
 
   const set = (f) => (e) => {
@@ -61,8 +83,31 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
     if (errors[f]) setErrors({ ...errors, [f]: undefined })
   }
 
+  const needsSondaVesical = form.urineSource === 'sonda_vesical' && hasSondaVesical === false
+
+  const handleOpenDeviceModal = () => {
+    setDeviceForm({ category: 'elimination', type: 'sonda_vesical' })
+    setShowDeviceModal(true)
+  }
+
+  const handleDeviceSubmit = async (e) => {
+    e.preventDefault()
+    setDeviceSaving(true)
+    try {
+      await deviceApi.create({ ...deviceForm, admissionId, insertedAt: deviceForm.insertedAt || toLocalISOString() })
+      setShowDeviceModal(false)
+      setDeviceForm({})
+      setHasSondaVesical(true)
+    } catch {
+      // keep modal open on error
+    } finally {
+      setDeviceSaving(false)
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
+    if (needsSondaVesical) return
     const errs = validateVitals(form)
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
@@ -163,6 +208,22 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
           )}
         </div>
 
+        {needsSondaVesical && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-1 flex items-start gap-2" data-testid="sonda-vesical-alert">
+            <AlertTriangle size={16} className="text-amber-500 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-amber-700">No hay sonda vesical registrada</div>
+              <div className="text-[11px] text-amber-600 mt-0.5">
+                Para registrar diuresis por sonda vesical, primero debe registrar el dispositivo en la pestaña de Dispositivos.
+              </div>
+              <button type="button" onClick={handleOpenDeviceModal}
+                className="mt-2 flex items-center gap-1.5 text-xs font-medium text-sky-600 hover:text-sky-700">
+                <Plus size={13} /> Añadir sonda vesical ahora
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Soporte respiratorio</div>
         {!form.spo2 ? (
           <p className="text-xs text-slate-400 mb-3">Registre SpO2 para poder añadir soporte respiratorio</p>
@@ -230,9 +291,23 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
 
         <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
           <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Cancelar</button>
-          <button type="submit" className="px-5 py-2.5 rounded-lg text-sm font-medium bg-sky-500 text-white hover:bg-sky-600">Guardar cambios</button>
+          <button type="submit" disabled={needsSondaVesical}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium ${needsSondaVesical ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-sky-500 text-white hover:bg-sky-600'}`}>
+            Guardar cambios
+          </button>
         </div>
       </form>
+
+      <DeviceFormModal
+        open={showDeviceModal}
+        form={deviceForm}
+        set={(field, val) => setDeviceForm(prev => ({ ...prev, [field]: val }))}
+        category="elimination"
+        onSubmit={handleDeviceSubmit}
+        onCancel={() => { setShowDeviceModal(false); setDeviceForm({}) }}
+        saving={deviceSaving}
+        editing={false}
+      />
     </div>
   )
 }

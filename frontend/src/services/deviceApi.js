@@ -5,4 +5,5 @@ export const deviceApi = {
   create: (data) => api.post('/devices', data),
   update: (id, data) => api.put(`/devices/${id}`, data),
   delete: (id) => api.delete(`/devices/${id}`),
+  hasActiveByType: (admissionId, type) => api.get(`/devices/admission/${admissionId}/has-active`, { params: { type } }),
 }
