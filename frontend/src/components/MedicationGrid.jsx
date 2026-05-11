@@ -42,10 +42,13 @@ function parseFrequencyHours(freq) {
 function computeScheduledSlotIndices(slots, scheduledHours, administrations, frequencyHours) {
   const indices = new Set()
 
+  const now = new Date()
+
   if (!frequencyHours || frequencyHours <= 0) {
-    // Non-interval meds (conditional, continuous): use static scheduled hours
+    // Non-interval meds (conditional, continuous): use static scheduled hours, skip past
     for (let i = 0; i < slots.length; i++) {
-      if (scheduledHours.includes(slots[i].getHours())) indices.add(i)
+      const isPast = slots[i] < now && !isSameHour(slots[i], now)
+      if (scheduledHours.includes(slots[i].getHours()) && !isPast) indices.add(i)
     }
     return indices
   }
@@ -109,7 +112,8 @@ function computeScheduledSlotIndices(slots, scheduledHours, administrations, fre
         const slotIdx = slots.findIndex(s => isSameHour(s, currentTime))
         if (slotIdx >= 0) {
           const hasAdmin = sortedAdmins.some(a => isSameHour(a, currentTime))
-          if (!hasAdmin) indices.add(slotIdx)
+          const isPast = currentTime < now && !isSameHour(currentTime, now)
+          if (!hasAdmin && !isPast) indices.add(slotIdx)
         }
         // Reset chain from this admin
         currentTime = new Date(nextAdmin.getTime() + frequencyHours * 3600000)
@@ -118,11 +122,12 @@ function computeScheduledSlotIndices(slots, scheduledHours, administrations, fre
       }
     }
 
-    // Place ▶ at this time if it maps to a slot and isn't already administered
+    // Place ▶ at this time if it maps to a slot, isn't administered, and isn't in the past
     const slotIdx = slots.findIndex(s => isSameHour(s, currentTime))
     if (slotIdx >= 0) {
       const hasAdmin = sortedAdmins.some(a => isSameHour(a, currentTime))
-      if (!hasAdmin) indices.add(slotIdx)
+      const isPast = currentTime < now && !isSameHour(currentTime, now)
+      if (!hasAdmin && !isPast) indices.add(slotIdx)
     }
 
     // Move to next interval
