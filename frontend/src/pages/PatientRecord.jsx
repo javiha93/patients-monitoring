@@ -12,6 +12,7 @@ import { useToast, ToastContainer } from '../components/Toast'
 import InsightsPanel from '../components/InsightsPanel'
 import NursingAssessmentTab from '../components/NursingAssessmentTab'
 import ConfirmModal from '../components/ConfirmModal'
+import DevicesTab from '../components/DevicesTab'
 
 function calcAge(birthDate) {
   if (!birthDate) return null
@@ -153,6 +154,7 @@ export default function PatientRecord() {
         {[
           { key: 'vitals', label: 'Constantes vitales' },
           { key: 'nursing', label: 'Valoración enfermería' },
+          { key: 'devices', label: 'Dispositivos' },
         ].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px
@@ -196,6 +198,10 @@ export default function PatientRecord() {
         </>}
         {activeTab === 'nursing' && admission && (
           <NursingAssessmentTab admissionId={admission.id} patientId={patient.id} toast={toast} />
+        )}
+
+        {activeTab === 'devices' && admission && (
+          <DevicesTab admissionId={admission.id} toast={toast} />
         )}
       </div>
 
