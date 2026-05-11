@@ -444,3 +444,50 @@ describe('KAN-58: Insulina — Firma con modal', () => {
     }
   })
 })
+
+describe('KAN-52: Grid — Ancho fijo de celdas y scroll', () => {
+  it('[KAN-52] la tabla tiene ancho fijo (240 + 72*56 = 4272px)', () => {
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+    )
+    const table = container.querySelector('table')
+    expect(table).toBeInTheDocument()
+    // 240 (label) + 72 * 56 (cells) = 4272
+    expect(table.style.width).toBe('4272px')
+    expect(table.style.tableLayout).toBe('fixed')
+  })
+
+  it('[KAN-52] tiene colgroup con 73 columnas (1 label + 72 horas)', () => {
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+    )
+    const cols = container.querySelectorAll('colgroup col')
+    expect(cols.length).toBe(73) // 1 label + 72 hours
+  })
+
+  it('[KAN-52] primera columna del colgroup tiene ancho 240px', () => {
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+    )
+    const firstCol = container.querySelector('colgroup col')
+    expect(firstCol.style.width).toBe('240px')
+  })
+
+  it('[KAN-52] columnas de horas tienen ancho 56px', () => {
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+    )
+    const cols = container.querySelectorAll('colgroup col')
+    // Second col (first hour column)
+    expect(cols[1].style.width).toBe('56px')
+    expect(cols[72].style.width).toBe('56px')
+  })
+
+  it('[KAN-52] contenedor tiene overflow-x-auto para scroll horizontal', () => {
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+    )
+    const scrollContainer = container.firstChild
+    expect(scrollContainer.classList.contains('overflow-x-auto')).toBe(true)
+  })
+})

@@ -257,6 +257,10 @@ const MedicationGrid = forwardRef(function MedicationGrid(
       className="flex-1 overflow-x-auto overflow-y-auto pb-16"
     >
       <table className="border-collapse" style={{ width: LABEL_W + (slots.length * CELL_W), tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: LABEL_W }} />
+          {slots.map((_, i) => <col key={i} style={{ width: CELL_W }} />)}
+        </colgroup>
         <thead className="sticky top-0 z-30">
           <tr>
             <th
