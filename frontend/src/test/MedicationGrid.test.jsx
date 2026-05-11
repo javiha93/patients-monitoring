@@ -203,11 +203,8 @@ describe('KAN-57: Celda firmada — Dosis con unidad', () => {
   })
 })
 
-describe('KAN-57: Desfirmar — Clic directo con confirm', () => {
-  it('[KAN-57] clic en celda firmada llama onDirectUnsign tras confirm', () => {
-    const originalConfirm = window.confirm
-    window.confirm = vi.fn(() => true)
-
+describe('KAN-57: Desfirmar — Clic directo sin confirmación', () => {
+  it('[KAN-57] clic en celda firmada llama onDirectUnsign directamente', () => {
     const onDirectUnsign = vi.fn()
     const signedMed = {
       ...fixedMed,
@@ -222,35 +219,8 @@ describe('KAN-57: Desfirmar — Clic directo con confirm', () => {
     const signedCell = Array.from(container.querySelectorAll('td')).find(td => td.textContent.includes('✓'))
     if (signedCell) {
       fireEvent.click(signedCell)
-      expect(window.confirm).toHaveBeenCalled()
       expect(onDirectUnsign).toHaveBeenCalledWith(100)
     }
-
-    window.confirm = originalConfirm
-  })
-
-  it('[KAN-57] cancelar confirm no desfirma', () => {
-    const originalConfirm = window.confirm
-    window.confirm = vi.fn(() => false)
-
-    const onDirectUnsign = vi.fn()
-    const signedMed = {
-      ...fixedMed,
-      administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
-        doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
-      }],
-    }
-    const { container } = render(
-      <MedicationGrid prescriptions={[signedMed]} {...defaultProps} onDirectUnsign={onDirectUnsign} />
-    )
-    const signedCell = Array.from(container.querySelectorAll('td')).find(td => td.textContent.includes('✓'))
-    if (signedCell) {
-      fireEvent.click(signedCell)
-      expect(onDirectUnsign).not.toHaveBeenCalled()
-    }
-
-    window.confirm = originalConfirm
   })
 })
 

@@ -91,10 +91,8 @@ const MedicationGrid = forwardRef(function MedicationGrid(
 
   function handleCellClick(e, p, slot, admin) {
     if (admin) {
-      // Signed cell: confirm then unsign directly
-      if (confirm(`¿Desfirmar ${p.name}?`)) {
-        onDirectUnsign(admin.id)
-      }
+      // Signed cell: unsign directly
+      onDirectUnsign(admin.id)
     } else if (p.category === 'insulin') {
       onOpenInsulinModal(p, toLocalISOString(slot))
     } else {
