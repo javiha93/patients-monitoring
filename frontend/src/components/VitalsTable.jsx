@@ -45,6 +45,29 @@ const deviceLabels = {
   mechanical_ventilation: 'VM',
 }
 
+const MAX_INHERIT_MS = 10 * 60 * 60 * 1000 // 10 hours
+
+/**
+ * For a given vital record and field key, find the most recent previous
+ * record (within 10h) that has a value for that field.
+ * Returns { value, inherited: true } or null.
+ */
+function findInheritedValue(vitals, idx, key) {
+  const current = vitals[idx]
+  const currentTime = new Date(current.recordedAt).getTime()
+  for (let i = idx - 1; i >= 0; i--) {
+    const prev = vitals[i]
+    if (prev[key] != null) {
+      const prevTime = new Date(prev.recordedAt).getTime()
+      if (currentTime - prevTime <= MAX_INHERIT_MS) {
+        return { value: prev[key], inherited: true }
+      }
+      return null // too old
+    }
+  }
+  return null
+}
+
 export default function VitalsTable({ vitals, onEdit, onDelete }) {
   if (!vitals || vitals.length === 0) {
     return <p className="text-slate-400 text-center py-8">No hay registros de constantes</p>
@@ -67,11 +90,26 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
           {rows.map(r => (
             <tr key={r.key} className="border-t border-slate-100">
               <th className="px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10">{r.label}</th>
-              {vitals.map(v => {
+              {vitals.map((v, idx) => {
                 const val = v[r.key]
+                if (val != null) {
+                  return (
+                    <td key={v.id} className={`px-3 py-2.5 text-center text-sm whitespace-nowrap ${cellClass(r.key, val)}`}>
+                      {val}
+                    </td>
+                  )
+                }
+                const prev = findInheritedValue(vitals, idx, r.key)
+                if (prev) {
+                  return (
+                    <td key={v.id} className="px-3 py-2.5 text-center text-sm whitespace-nowrap text-slate-300 italic">
+                      {prev.value}
+                    </td>
+                  )
+                }
                 return (
-                  <td key={v.id} className={`px-3 py-2.5 text-center text-sm whitespace-nowrap ${cellClass(r.key, val)}`}>
-                    {val != null ? val : '—'}
+                  <td key={v.id} className="px-3 py-2.5 text-center text-sm whitespace-nowrap text-slate-300">
+                    —
                   </td>
                 )
               })}
