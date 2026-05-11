@@ -35,7 +35,7 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
   const handleSubmit = (e) => {
     e.preventDefault()
     const data = {
-      recordedAt: new Date(form.recordedAt).toISOString(),
+      recordedAt: form.recordedAt + ':00',
       systolicBp: form.systolicBp ? parseInt(form.systolicBp) : null,
       diastolicBp: form.diastolicBp ? parseInt(form.diastolicBp) : null,
       heartRate: form.heartRate ? parseInt(form.heartRate) : null,

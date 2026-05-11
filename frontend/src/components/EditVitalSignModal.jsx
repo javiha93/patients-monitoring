@@ -57,7 +57,7 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
     e.preventDefault()
     const data = {
       admissionId: vitalSign.admissionId,
-      recordedAt: new Date(form.recordedAt).toISOString(),
+      recordedAt: form.recordedAt + ':00',
       systolicBp: parseInt(form.systolicBp),
       diastolicBp: parseInt(form.diastolicBp),
       heartRate: parseInt(form.heartRate),
