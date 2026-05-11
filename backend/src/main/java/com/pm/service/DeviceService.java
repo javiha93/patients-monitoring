@@ -36,6 +36,7 @@ public class DeviceService {
             .gauge(dto.getGauge())
             .location(dto.getLocation())
             .lumens(dto.getLumens())
+            .material(dto.getMaterial())
             .insertedAt(dto.getInsertedAt())
             .removedAt(dto.getRemovedAt())
             .notes(dto.getNotes())
@@ -50,6 +51,7 @@ public class DeviceService {
         device.setGauge(dto.getGauge());
         device.setLocation(dto.getLocation());
         device.setLumens(dto.getLumens());
+        device.setMaterial(dto.getMaterial());
         device.setInsertedAt(dto.getInsertedAt());
         device.setRemovedAt(dto.getRemovedAt());
         device.setNotes(dto.getNotes());

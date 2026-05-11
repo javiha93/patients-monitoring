@@ -13,6 +13,7 @@ public class DeviceDTO {
     private String gauge;
     private String location;
     private Integer lumens;
+    private String material;
     private LocalDateTime insertedAt;
     private LocalDateTime removedAt;
     private String notes;
@@ -26,6 +27,7 @@ public class DeviceDTO {
             .gauge(d.getGauge())
             .location(d.getLocation())
             .lumens(d.getLumens())
+            .material(d.getMaterial())
             .insertedAt(d.getInsertedAt())
             .removedAt(d.getRemovedAt())
             .notes(d.getNotes())

@@ -3,9 +3,15 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import DevicesTab from '../components/DevicesTab'
 
 const mockDevices = [
-  { id: 1, admissionId: 10, category: 'vascular', type: 'via_periferica', gauge: '20G', location: 'mano_derecha', lumens: null, insertedAt: '2026-05-11T08:00:00', removedAt: null, notes: '' },
-  { id: 2, admissionId: 10, category: 'elimination', type: 'sonda_vesical', gauge: '16Fr', location: null, lumens: 2, insertedAt: '2026-05-11T09:00:00', removedAt: '2026-05-11T15:00:00', notes: 'Retirada por mejoría' },
+  { id: 1, admissionId: 10, category: 'vascular', type: 'via_periferica', gauge: '20G', location: 'mano_derecha', lumens: null, material: null, insertedAt: '2026-05-11T08:00:00', removedAt: null, notes: '' },
+  { id: 2, admissionId: 10, category: 'elimination', type: 'sonda_vesical', gauge: '16Fr', location: null, lumens: 2, material: 'latex', insertedAt: '2026-05-11T09:00:00', removedAt: '2026-05-11T15:00:00', notes: 'Retirada por mejoría' },
 ]
+
+vi.mock('../services/insightsApi', () => ({
+  insightsApi: {
+    getByPatientAdmission: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}))
 
 vi.mock('../services/deviceApi', () => ({
   deviceApi: {
@@ -20,7 +26,7 @@ vi.mock('../services/deviceApi', () => ({
 const mockToast = { success: vi.fn(), error: vi.fn() }
 
 function renderTab() {
-  return render(<DevicesTab admissionId={10} toast={mockToast} />)
+  return render(<DevicesTab admissionId={10} patientId={1} toast={mockToast} />)
 }
 
 describe('DevicesTab', () => {
@@ -42,6 +48,13 @@ describe('DevicesTab', () => {
       expect(screen.getByText('20G')).toBeInTheDocument()
       expect(screen.getByText('Mano dcha.')).toBeInTheDocument()
     })
+  })
+
+  it('muestra material del dispositivo', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('1 retirado'))
+    fireEvent.click(screen.getByText('1 retirado'))
+    expect(screen.getByText('Látex')).toBeInTheDocument()
   })
 
   it('muestra sección de retirados colapsable', async () => {
@@ -97,6 +110,15 @@ describe('DevicesTab', () => {
       expect(deviceApi.delete).toHaveBeenCalledWith(1)
       expect(mockToast.success).toHaveBeenCalledWith('Dispositivo eliminado')
     })
+  })
+
+  it('muestra campo material al añadir sonda vesical', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Añadir sonda vesical'))
+    fireEvent.click(screen.getByText('Añadir sonda vesical'))
+    expect(screen.getByText('Material')).toBeInTheDocument()
+    expect(screen.getByText('Látex')).toBeInTheDocument()
+    expect(screen.getByText('Silicona')).toBeInTheDocument()
   })
 
   it('permite eliminar dispositivo retirado', async () => {

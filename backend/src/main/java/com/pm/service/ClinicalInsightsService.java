@@ -22,6 +22,7 @@ public class ClinicalInsightsService {
     private final AdmissionPrescriptionRepository prescriptionRepo;
     private final MedicationAdministrationRepository adminRepo;
     private final NursingAssessmentRepository nursingRepo;
+    private final DeviceRepository deviceRepo;
 
     public List<ClinicalInsightDTO> analyze(Long patientId, Long admissionId) {
         List<ClinicalInsightDTO> insights = new ArrayList<>();
@@ -80,6 +81,21 @@ public class ClinicalInsightsService {
         checkOpioidRespiratoryDepression(insights, vitals, prescriptions);
         checkAnticoagulantFallRisk(insights, currentAssessments, habitual, prescriptions);
         checkHabitualAnalgesicNotPrescribed(insights, habitual, prescriptions);
+
+        // Device alerts
+        List<Device> activeDevices = deviceRepo.findByAdmissionIdAndRemovedAtIsNull(admissionId);
+
+        checkVvpProlonged(insights, activeDevices);
+        checkVvpEmergencyChange(insights, activeDevices);
+        checkSngPvcChangeDue(insights, activeDevices);
+        checkSngSiliconeChangeDue(insights, activeDevices);
+        checkSvLatexChangeDue(insights, activeDevices);
+        checkSvSiliconeChangeDue(insights, activeDevices);
+        checkSvItuRisk(insights, activeDevices);
+        checkVvcReviewDressing(insights, activeDevices);
+        checkVvcReviewLines(insights, activeDevices);
+        checkPiccReviewDressing(insights, activeDevices);
+        checkSngAspirationRisk(insights, activeDevices, currentAssessments);
 
         // Sort: critical first, then warning, then info
         insights.sort(Comparator.comparingInt(i -> levelOrder(i.getLevel())));
@@ -866,6 +882,205 @@ public class ClinicalInsightsService {
             .detail("Episodios registrados en ingresos anteriores: " + String.join(", ", parts))
             .reasoning("Paciente con historial de alteración conductual. Anticipar medidas preventivas y plan de contención si precisa")
             .analysisType("prior_agitation_history")
+            .build());
+    }
+
+    // ── DEVICE ALERTS ──
+
+    private long hoursActive(Device d) {
+        return java.time.Duration.between(d.getInsertedAt(), LocalDateTime.now()).toHours();
+    }
+
+    private long daysActive(Device d) {
+        return java.time.Duration.between(d.getInsertedAt(), LocalDateTime.now()).toDays();
+    }
+
+    /** 1. VVP activa >96h — revisar punto de inserción */
+    private void checkVvpProlonged(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"via_periferica".equals(d.getType())) continue;
+            long hours = hoursActive(d);
+            if (hours <= 96) continue;
+            long days = hours / 24;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("VVP con más de " + days + " días")
+                .detail("Vía periférica insertada hace " + days + " días (" + hours + "h). Revisar punto de inserción: signos de flebitis, dolor o extravasación.")
+                .reasoning("Protocolo actual: no se cambia por tiempo sino por signos clínicos, pero se recomienda revisión tras 96h de permanencia")
+                .analysisType("vvp_prolonged")
+                .build());
+        }
+    }
+
+    /** 2. VVP de emergencia activa >48h — debe cambiarse */
+    private void checkVvpEmergencyChange(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"via_periferica".equals(d.getType())) continue;
+            if (d.getNotes() == null) continue;
+            String notes = d.getNotes().toLowerCase();
+            if (!notes.contains("urgencia") && !notes.contains("emergencia")) continue;
+            long hours = hoursActive(d);
+            if (hours <= 48) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("critical")
+                .title("VVP de emergencia debe cambiarse")
+                .detail("VVP insertada en contexto de emergencia hace " + (hours / 24) + " días (" + hours + "h). Supera el límite de 48h para vías sin técnica estéril garantizada.")
+                .reasoning("Las vías insertadas en emergencia (fuera del hospital o sin asepsia) deben cambiarse en un máximo de 24-48h por alto riesgo de infección")
+                .analysisType("vvp_emergency_change")
+                .build());
+        }
+    }
+
+    /** 3. SNG PVC activa >10 días */
+    private void checkSngPvcChangeDue(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"sng".equals(d.getType())) continue;
+            if (!"pvc".equals(d.getMaterial())) continue;
+            long days = daysActive(d);
+            if (days <= 10) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("SNG de PVC: cambio recomendado")
+                .detail("Sonda nasogástrica de PVC insertada hace " + days + " días. El PVC se endurece con los jugos gástricos y puede causar lesiones.")
+                .reasoning("Las SNG de PVC deben cambiarse cada 7-10 días. Considerar cambio a poliuretano o silicona si se prevé uso prolongado")
+                .analysisType("sng_pvc_change_due")
+                .build());
+        }
+    }
+
+    /** 4. SNG silicona/poliuretano activa >42 días (6 semanas) */
+    private void checkSngSiliconeChangeDue(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"sng".equals(d.getType())) continue;
+            String mat = d.getMaterial();
+            if (!"silicona".equals(mat) && !"poliuretano".equals(mat)) continue;
+            long days = daysActive(d);
+            if (days <= 42) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("SNG de " + mat + ": cambio recomendado")
+                .detail("Sonda nasogástrica de " + mat + " insertada hace " + days + " días (>6 semanas). Verificar permeabilidad y estado.")
+                .reasoning("Las SNG de poliuretano/silicona pueden mantenerse 4-6 semanas. Tras este periodo, valorar cambio o retirada si no hay obstrucción")
+                .analysisType("sng_silicone_change_due")
+                .build());
+        }
+    }
+
+    /** 5. SV látex activa >21 días */
+    private void checkSvLatexChangeDue(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"sonda_vesical".equals(d.getType())) continue;
+            if (!"latex".equals(d.getMaterial())) continue;
+            long days = daysActive(d);
+            if (days <= 21) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("Sonda vesical de látex: cambio recomendado")
+                .detail("Sonda vesical de látex insertada hace " + days + " días. Supera el límite de 14-21 días para este material.")
+                .reasoning("Las sondas de látex deben cambiarse cada 14-21 días por riesgo de ITU-CA. Considerar cambio a silicona 100% si se prevé uso prolongado")
+                .analysisType("sv_latex_change_due")
+                .build());
+        }
+    }
+
+    /** 6. SV silicona activa >90 días */
+    private void checkSvSiliconeChangeDue(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"sonda_vesical".equals(d.getType())) continue;
+            if (!"silicona".equals(d.getMaterial())) continue;
+            long days = daysActive(d);
+            if (days <= 90) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("Sonda vesical de silicona: cambio recomendado")
+                .detail("Sonda vesical de silicona insertada hace " + days + " días (>90 días / 3 meses).")
+                .reasoning("Las sondas de silicona 100% pueden durar hasta 90 días. Tras este periodo, valorar cambio por riesgo acumulado de ITU-CA")
+                .analysisType("sv_silicone_change_due")
+                .build());
+        }
+    }
+
+    /** 7. SV activa >5 días — riesgo ITU-CA creciente */
+    private void checkSvItuRisk(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"sonda_vesical".equals(d.getType())) continue;
+            long days = daysActive(d);
+            if (days <= 5) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title("Sonda vesical >5 días: reevaluar necesidad")
+                .detail("Sonda vesical activa desde hace " + days + " días. El riesgo de ITU-CA aumenta un 3-7% por cada día de sondaje.")
+                .reasoning("La principal medida de prevención de ITU-CA es la retirada precoz. Reevaluar diariamente si el sondaje sigue siendo necesario")
+                .analysisType("sv_itu_risk")
+                .build());
+        }
+    }
+
+    /** 8. VVC activa >7 días — revisar apósito */
+    private void checkVvcReviewDressing(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"via_central".equals(d.getType())) continue;
+            long days = daysActive(d);
+            if (days <= 7) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("info")
+                .title("VVC: revisar apósito")
+                .detail("Vía venosa central activa desde hace " + days + " días. Verificar estado del apósito transparente.")
+                .reasoning("El apósito de VVC debe cambiarse cada 7 días si es transparente, o antes si está sucio, húmedo o despegado")
+                .analysisType("vvc_review_dressing")
+                .build());
+        }
+    }
+
+    /** 9. VVC activa — revisar sistemas/bioconectores cada 72-96h */
+    private void checkVvcReviewLines(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"via_central".equals(d.getType())) continue;
+            long hours = hoursActive(d);
+            if (hours <= 96) continue;
+            // Fire once when past 96h threshold
+            long daysSinceInsert = hours / 24;
+            if (daysSinceInsert < 4) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("info")
+                .title("VVC: revisar sistemas y bioconectores")
+                .detail("Vía venosa central activa desde hace " + daysSinceInsert + " días. Verificar fecha de último cambio de sistemas/bioconectores.")
+                .reasoning("Los sistemas y bioconectores de VVC deben cambiarse cada 72-96h. No se cambia la vía de forma rutinaria, solo los accesorios")
+                .analysisType("vvc_review_lines")
+                .build());
+        }
+    }
+
+    /** 10. PICC activa >7 días — revisar apósito (mismo protocolo que VVC) */
+    private void checkPiccReviewDressing(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!"picc".equals(d.getType())) continue;
+            long days = daysActive(d);
+            if (days <= 7) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("info")
+                .title("PICC: revisar apósito")
+                .detail("PICC activo desde hace " + days + " días. Verificar estado del apósito.")
+                .reasoning("El apósito de PICC sigue el mismo protocolo que VVC: cambio cada 7 días si transparente, o antes si está comprometido")
+                .analysisType("picc_review_dressing")
+                .build());
+        }
+    }
+
+    /** 11. SNG + nivel de consciencia alterado — riesgo de aspiración */
+    private void checkSngAspirationRisk(List<ClinicalInsightDTO> insights, List<Device> devices, List<NursingAssessment> assessments) {
+        boolean hasSng = devices.stream().anyMatch(d -> "sng".equals(d.getType()));
+        if (!hasSng) return;
+        if (assessments.isEmpty()) return;
+        NursingAssessment latest = assessments.get(0); // already sorted desc
+        String consciousness = latest.getConsciousnessLevel();
+        if (consciousness == null || "alerta".equalsIgnoreCase(consciousness)) return;
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("SNG con nivel de consciencia alterado")
+            .detail("Paciente con SNG activa y nivel de consciencia: " + consciousness + ". Riesgo aumentado de aspiración.")
+            .reasoning("La combinación de SNG con nivel de consciencia alterado incrementa el riesgo de broncoaspiración. Elevar cabecero 30-45°, verificar residuo gástrico antes de alimentar")
+            .analysisType("sng_aspiration_risk")
             .build());
     }
 }

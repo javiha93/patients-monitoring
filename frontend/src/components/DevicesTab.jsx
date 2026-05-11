@@ -2,6 +2,15 @@ import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp, Clock, Pencil, X } from 'lucide-react'
 import { deviceApi } from '../services/deviceApi'
 import ConfirmModal from './ConfirmModal'
+import InsightsPanel from './InsightsPanel'
+
+const deviceInsightTypes = [
+  'vvp_prolonged', 'vvp_emergency_change',
+  'sng_pvc_change_due', 'sng_silicone_change_due',
+  'sv_latex_change_due', 'sv_silicone_change_due', 'sv_itu_risk',
+  'vvc_review_dressing', 'vvc_review_lines', 'picc_review_dressing',
+  'sng_aspiration_risk',
+]
 
 /* ── Constants ── */
 
@@ -46,6 +55,24 @@ export const SNG_GAUGES = ['8Fr', '10Fr', '12Fr', '14Fr', '16Fr', '18Fr']
 export const SV_GAUGES = ['10Fr', '12Fr', '14Fr', '16Fr', '18Fr', '20Fr', '22Fr', '24Fr']
 export const SV_LUMENS = [1, 2, 3]
 
+export const SNG_MATERIALS = [
+  { value: 'pvc', label: 'PVC' },
+  { value: 'poliuretano', label: 'Poliuretano' },
+  { value: 'silicona', label: 'Silicona' },
+]
+
+export const SV_MATERIALS = [
+  { value: 'latex', label: 'Látex' },
+  { value: 'silicona', label: 'Silicona' },
+]
+
+const MATERIAL_LABELS = {
+  pvc: 'PVC',
+  poliuretano: 'Poliuretano',
+  silicona: 'Silicona',
+  latex: 'Látex',
+}
+
 function toLocalISOString() {
   const d = new Date()
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19)
@@ -69,10 +96,14 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
   const showGauge = ['via_periferica', 'sng', 'sonda_vesical'].includes(form.type)
   const showLocation = form.type === 'via_periferica'
   const showLumens = form.type === 'sonda_vesical'
+  const showMaterial = ['sng', 'sonda_vesical'].includes(form.type)
 
   const gaugeOptions = form.type === 'via_periferica' ? VVP_GAUGES
     : form.type === 'sng' ? SNG_GAUGES
     : form.type === 'sonda_vesical' ? SV_GAUGES : []
+
+  const materialOptions = form.type === 'sng' ? SNG_MATERIALS
+    : form.type === 'sonda_vesical' ? SV_MATERIALS : []
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && onCancel()}>
@@ -126,6 +157,17 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
                 </select>
               </div>
             )}
+
+            {showMaterial && (
+              <div>
+                <label className="text-[11px] font-medium text-slate-600">Material</label>
+                <select value={form.material || ''} onChange={e => set('material', e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+                  <option value="">Seleccionar...</option>
+                  {materialOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           <div>
@@ -149,7 +191,7 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
 
 /* ── Main Component ── */
 
-const DevicesTab = forwardRef(function DevicesTab({ admissionId, toast }, ref) {
+const DevicesTab = forwardRef(function DevicesTab({ admissionId, patientId, toast }, ref) {
   const [devices, setDevices] = useState([])
   const [modalCategory, setModalCategory] = useState(null)
   const [editingId, setEditingId] = useState(null)
@@ -240,6 +282,9 @@ const DevicesTab = forwardRef(function DevicesTab({ admissionId, toast }, ref) {
 
   return (
     <div className="space-y-6">
+      {patientId && admissionId && (
+        <InsightsPanel patientId={patientId} admissionId={admissionId} includeTypes={deviceInsightTypes} />
+      )}
       {Object.entries(CATEGORIES).map(([catKey, cat]) => {
         const catDevices = devicesByCategory(catKey)
         const active = catDevices.filter(d => !d.removedAt)
@@ -354,6 +399,7 @@ function DeviceCard({ device, onEdit, onRemove, onDelete }) {
           {d.gauge && <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{d.gauge}</span>}
           {d.location && <span className="text-xs text-slate-500">{LOCATION_LABELS[d.location] || d.location}</span>}
           {d.lumens && <span className="text-xs text-slate-500">{d.lumens} {d.lumens === 1 ? 'luz' : 'luces'}</span>}
+          {d.material && <span className="text-xs bg-violet-50 text-violet-600 px-1.5 py-0.5 rounded">{MATERIAL_LABELS[d.material] || d.material}</span>}
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {isActive && (

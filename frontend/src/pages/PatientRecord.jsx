@@ -175,6 +175,9 @@ export default function PatientRecord() {
             'sedative_somnolence', 'dysphagia_oral_meds', 'aspiration_risk_oral_meds',
             'agitation_no_sedative', 'desaturation_respiratory_pattern', 'tachycardia_agitation',
             'anticoagulant_fall_risk',
+            'vvp_prolonged', 'vvp_emergency_change', 'sng_pvc_change_due', 'sng_silicone_change_due',
+            'sv_latex_change_due', 'sv_silicone_change_due', 'sv_itu_risk',
+            'vvc_review_dressing', 'vvc_review_lines', 'picc_review_dressing', 'sng_aspiration_risk',
           ]} />}
           <VitalsSummaryCards vitals={vitals} />
           <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} />
@@ -201,7 +204,7 @@ export default function PatientRecord() {
         )}
 
         {activeTab === 'devices' && admission && (
-          <DevicesTab admissionId={admission.id} toast={toast} />
+          <DevicesTab admissionId={admission.id} patientId={patient.id} toast={toast} />
         )}
       </div>
 

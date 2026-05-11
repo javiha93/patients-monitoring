@@ -37,6 +37,7 @@ class ClinicalInsightsApiTest {
     @Autowired private VitalSignRepository vitalSignRepo;
     @Autowired private NursingAssessmentRepository nursingRepo;
     @Autowired private MedicationRepository medicationRepo;
+    @Autowired private DeviceRepository deviceRepo;
 
     private Patient patient;
     private Admission admission;
@@ -502,6 +503,146 @@ class ClinicalInsightsApiTest {
         String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertFalse(hasInsight(body, "fall_risk_mobility", null));
+    }
+
+    // ── Device alert tests ──
+
+    @Test
+    @DisplayName("VVP prolongada >96h genera alerta warning")
+    void vvpProlonged() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("vascular").type("via_periferica")
+                .insertedAt(LocalDateTime.now().minusHours(120)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "vvp_prolonged", "warning"));
+    }
+
+    @Test
+    @DisplayName("VVP de emergencia >48h genera alerta critical")
+    void vvpEmergencyChange() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("vascular").type("via_periferica")
+                .insertedAt(LocalDateTime.now().minusHours(72))
+                .notes("Insertada en urgencia").build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "vvp_emergency_change", "critical"));
+    }
+
+    @Test
+    @DisplayName("SNG PVC >10 días genera alerta warning")
+    void sngPvcChangeDue() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("gastrointestinal").type("sng")
+                .material("pvc").insertedAt(LocalDateTime.now().minusDays(12)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "sng_pvc_change_due", "warning"));
+    }
+
+    @Test
+    @DisplayName("SNG silicona >42 días genera alerta warning")
+    void sngSiliconeChangeDue() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("gastrointestinal").type("sng")
+                .material("silicona").insertedAt(LocalDateTime.now().minusDays(50)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "sng_silicone_change_due", "warning"));
+    }
+
+    @Test
+    @DisplayName("SV látex >21 días genera alerta warning")
+    void svLatexChangeDue() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("elimination").type("sonda_vesical")
+                .material("latex").insertedAt(LocalDateTime.now().minusDays(25)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "sv_latex_change_due", "warning"));
+    }
+
+    @Test
+    @DisplayName("SV silicona >90 días genera alerta warning")
+    void svSiliconeChangeDue() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("elimination").type("sonda_vesical")
+                .material("silicona").insertedAt(LocalDateTime.now().minusDays(95)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "sv_silicone_change_due", "warning"));
+    }
+
+    @Test
+    @DisplayName("SV activa >5 días genera alerta ITU risk")
+    void svItuRisk() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("elimination").type("sonda_vesical")
+                .material("latex").insertedAt(LocalDateTime.now().minusDays(7)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "sv_itu_risk", "warning"));
+    }
+
+    @Test
+    @DisplayName("VVC >7 días genera alerta de revisión de apósito")
+    void vvcReviewDressing() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("vascular").type("via_central")
+                .insertedAt(LocalDateTime.now().minusDays(8)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "vvc_review_dressing", "info"));
+    }
+
+    @Test
+    @DisplayName("VVC >96h genera alerta de revisión de sistemas")
+    void vvcReviewLines() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("vascular").type("via_central")
+                .insertedAt(LocalDateTime.now().minusDays(5)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "vvc_review_lines", "info"));
+    }
+
+    @Test
+    @DisplayName("SNG + consciencia alterada genera alerta de aspiración")
+    void sngAspirationRisk() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("gastrointestinal").type("sng")
+                .material("pvc").insertedAt(LocalDateTime.now().minusDays(1)).build());
+
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(2))
+                .consciousnessLevel("somnoliento").build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "sng_aspiration_risk", "warning"));
+    }
+
+    @Test
+    @DisplayName("Dispositivo retirado no genera alertas")
+    void retiredDeviceNoAlerts() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("vascular").type("via_periferica")
+                .insertedAt(LocalDateTime.now().minusDays(10))
+                .removedAt(LocalDateTime.now().minusDays(1)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(hasInsight(body, "vvp_prolonged", null));
     }
 
     // Helper to check for an insight by analysisType and optionally level

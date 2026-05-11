@@ -29,6 +29,8 @@ public class Device {
 
     private Integer lumens; // luces (sonda vesical)
 
+    private String material; // SNG: pvc, poliuretano, silicona | SV: latex, silicona
+
     @Column(name = "inserted_at", nullable = false)
     private LocalDateTime insertedAt;
 
