@@ -123,6 +123,14 @@ public class PatientService {
      * Discharge patient (close active admission).
      */
     @Transactional
+    @Transactional
+    public void updateAdmissionLocation(Long admissionId, String location) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        admission.setLocation(location);
+        admissionRepository.save(admission);
+    }
+
     public PatientDTO dischargePatient(Long patientId, DischargeRequest req) {
         List<Admission> active = admissionRepository.findByPatientIdAndStatus(patientId, Admission.Status.active);
         if (active.isEmpty()) {

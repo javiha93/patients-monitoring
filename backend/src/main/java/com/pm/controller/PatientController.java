@@ -47,6 +47,11 @@ public class PatientController {
         return patientService.dischargePatient(id, request);
     }
 
+    @PatchMapping("/admission/{admissionId}/location")
+    public void updateLocation(@PathVariable Long admissionId, @RequestParam String location) {
+        patientService.updateAdmissionLocation(admissionId, location);
+    }
+
     @PostMapping("/{id}/reopen")
     public PatientDTO reopen(
             @PathVariable Long id,

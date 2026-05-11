@@ -20,7 +20,8 @@ const mockPatients = [
 vi.mock('../services/patientApi', () => ({
   patientApi: {
     listActive: vi.fn(() => Promise.resolve({ data: mockPatients })),
-    create: vi.fn((data) => Promise.resolve({ data: { id: 3, ...data } })),
+    create: vi.fn((data) => Promise.resolve({ data: { id: 4, ...data } })),
+    updateLocation: vi.fn(() => Promise.resolve({ data: {} })),
   },
 }))
 
@@ -229,5 +230,56 @@ describe('KAN-5: Ordenación en modo tabla', () => {
 
     fireEvent.click(nivelHeader)
     expect(nivelHeader.textContent).toContain('↓')
+  })
+})
+
+describe('KAN-5: Cambiar ubicación desde la lista', () => {
+  it('[KAN-5] muestra un desplegable de ubicación con opciones B1-B25', async () => {
+    const { container } = renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const selects = container.querySelectorAll('select')
+    expect(selects.length).toBeGreaterThanOrEqual(1)
+
+    // Check options B1 to B25
+    const firstSelect = selects[0]
+    const options = Array.from(firstSelect.querySelectorAll('option'))
+    // 26 options: 1 empty + 25 locations
+    expect(options.length).toBe(26)
+    expect(options[1].value).toBe('B1')
+    expect(options[25].value).toBe('B25')
+  })
+
+  it('[KAN-5] el desplegable muestra la ubicación actual del paciente', async () => {
+    const { container } = renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const selects = container.querySelectorAll('select')
+    // García has location B1
+    expect(selects[0].value).toBe('B1')
+  })
+
+  it('[KAN-5] cambiar ubicación llama a la API con admissionId y nueva ubicación', async () => {
+    const { patientApi } = await import('../services/patientApi')
+    const { container } = renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const selects = container.querySelectorAll('select')
+    fireEvent.change(selects[0], { target: { value: 'B10' } })
+
+    await waitFor(() => {
+      expect(patientApi.updateLocation).toHaveBeenCalledWith(10, 'B10')
+    })
+  })
+
+  it('[KAN-5] clic en el desplegable no selecciona la fila del paciente', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const select = document.querySelector('select')
+    fireEvent.click(select)
+
+    // Should not navigate or select the row
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 })

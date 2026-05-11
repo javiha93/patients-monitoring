@@ -135,6 +135,27 @@ class PatientApiTest {
     }
 
     @Test
+    @DisplayName("[KAN-5] Cambiar ubicación de un ingreso activo")
+    void updateAdmissionLocation() throws Exception {
+        String response = mvc.perform(post("/api/patients")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(buildRequest("NHC-LOC", "Test", "Location"))))
+                .andReturn().getResponse().getContentAsString();
+        Long patientId = mapper.readTree(response).get("id").asLong();
+        Long admissionId = mapper.readTree(response).get("activeAdmission").get("id").asLong();
+
+        // Update location to B15
+        mvc.perform(patch("/api/patients/admission/" + admissionId + "/location")
+                .param("location", "B15"))
+                .andExpect(status().isOk());
+
+        // Verify location changed
+        mvc.perform(get("/api/patients/" + patientId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activeAdmission.location").value("B15"));
+    }
+
+    @Test
     @DisplayName("[KAN-5] Obtener detalle de paciente con ingreso activo")
     void getPatientDetail() throws Exception {
         String response = mvc.perform(post("/api/patients")

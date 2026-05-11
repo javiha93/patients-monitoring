@@ -170,7 +170,28 @@ export default function PatientList() {
                       className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}
                     >
                       <td className="px-4 py-3"><TriageBadge level={p.triageLevel} /></td>
-                      <td className="px-4 py-3 text-sm font-medium text-slate-700">{p.location || '—'}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-slate-700" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          className="bg-transparent border border-slate-200 rounded px-1.5 py-0.5 text-sm text-slate-700 cursor-pointer hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          value={p.location || ''}
+                          onChange={async (e) => {
+                            const newLoc = e.target.value
+                            try {
+                              await patientApi.updateLocation(p.admissionId, newLoc)
+                              setPatients(prev => prev.map(pt =>
+                                pt.admissionId === p.admissionId ? { ...pt, location: newLoc } : pt
+                              ))
+                            } catch (err) {
+                              alert('Error al cambiar ubicación')
+                            }
+                          }}
+                        >
+                          <option value="">—</option>
+                          {Array.from({ length: 25 }, (_, i) => `B${i + 1}`).map(loc => (
+                            <option key={loc} value={loc}>{loc}</option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="px-4 py-3 font-medium">{p.lastName}, {p.firstName}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{p.nhc}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
