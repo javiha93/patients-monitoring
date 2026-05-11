@@ -43,8 +43,10 @@ describe('KAN-52: Grid de medicación 72h — Estructura', () => {
 
   it('[KAN-52] muestra 72 columnas de horas en formato HH:00', () => {
     const { container } = render(<MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />)
-    expect(screen.getByText('08:00')).toBeInTheDocument()
-    expect(screen.getByText('09:00')).toBeInTheDocument()
+    // 08:00 appears twice (day 1 and day 3), so use getAllByText
+    const hours08 = screen.getAllByText('08:00')
+    expect(hours08.length).toBe(2) // day 1 + day 3
+    expect(screen.getAllByText('09:00').length).toBeGreaterThanOrEqual(1)
   })
 
   it('[KAN-52] muestra cabeceras de día en celdas de medianoche', () => {
