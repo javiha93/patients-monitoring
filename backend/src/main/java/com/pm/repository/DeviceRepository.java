@@ -8,4 +8,6 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     List<Device> findByAdmissionIdOrderByInsertedAtDesc(Long admissionId);
 
     boolean existsByAdmissionIdAndTypeAndRemovedAtIsNull(Long admissionId, String type);
+
+    List<Device> findByAdmissionIdAndCategoryAndRemovedAtIsNull(Long admissionId, String category);
 }

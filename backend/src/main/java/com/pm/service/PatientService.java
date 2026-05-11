@@ -21,6 +21,7 @@ public class PatientService {
     private final PatientRepository patientRepository;
     private final AdmissionRepository admissionRepository;
     private final NursingAssessmentService nursingAssessmentService;
+    private final DeviceService deviceService;
 
     /**
      * List all patients with active admissions.
@@ -150,6 +151,7 @@ public class PatientService {
         }
         Admission admission = active.get(0);
         nursingAssessmentService.markLastAsSalidaIfRecent(admission.getId());
+        deviceService.retireVascularDevices(admission.getId());
         admission.setStatus(Admission.Status.discharged);
         admission.setDischargeDate(req.getDischargeDate() != null ? req.getDischargeDate() : LocalDateTime.now());
         admissionRepository.save(admission);

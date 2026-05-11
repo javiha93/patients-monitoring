@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -62,5 +63,18 @@ public class DeviceService {
 
     public boolean hasActiveByType(Long admissionId, String type) {
         return deviceRepo.existsByAdmissionIdAndTypeAndRemovedAtIsNull(admissionId, type);
+    }
+
+    /**
+     * Retire all active vascular devices for an admission (called on discharge).
+     */
+    @Transactional
+    public void retireVascularDevices(Long admissionId) {
+        List<Device> active = deviceRepo.findByAdmissionIdAndCategoryAndRemovedAtIsNull(admissionId, "vascular");
+        LocalDateTime now = LocalDateTime.now();
+        for (Device d : active) {
+            d.setRemovedAt(now);
+        }
+        deviceRepo.saveAll(active);
     }
 }

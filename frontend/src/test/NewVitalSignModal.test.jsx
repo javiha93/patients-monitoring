@@ -151,4 +151,20 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
     fireEvent.change(urineSelect, { target: { value: 'panal' } })
     expect(screen.queryByTestId('sonda-vesical-alert')).not.toBeInTheDocument()
   })
+
+  it('bloquea si sonda vesical está retirada (backend devuelve false)', async () => {
+    const { deviceApi } = await import('../services/deviceApi')
+    // Backend returns false because the only sonda vesical is retired (removedAt != null)
+    deviceApi.hasActiveByType.mockResolvedValue({ data: false })
+
+    renderModal()
+
+    const urineSelect = screen.getByDisplayValue('— Sin registro —')
+    fireEvent.change(urineSelect, { target: { value: 'sonda_vesical' } })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sonda-vesical-alert')).toBeInTheDocument()
+      expect(screen.getByText('Guardar registro')).toBeDisabled()
+    })
+  })
 })

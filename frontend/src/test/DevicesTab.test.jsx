@@ -86,7 +86,7 @@ describe('DevicesTab', () => {
     })
   })
 
-  it('elimina dispositivo con confirmación', async () => {
+  it('elimina dispositivo activo con confirmación', async () => {
     const { deviceApi } = await import('../services/deviceApi')
     renderTab()
     await waitFor(() => screen.getByText('Vía Periférica'))
@@ -95,6 +95,23 @@ describe('DevicesTab', () => {
     fireEvent.click(screen.getByText('Confirmar'))
     await waitFor(() => {
       expect(deviceApi.delete).toHaveBeenCalledWith(1)
+      expect(mockToast.success).toHaveBeenCalledWith('Dispositivo eliminado')
+    })
+  })
+
+  it('permite eliminar dispositivo retirado', async () => {
+    const { deviceApi } = await import('../services/deviceApi')
+    renderTab()
+    // Expand removed section
+    await waitFor(() => screen.getByText('1 retirado'))
+    fireEvent.click(screen.getByText('1 retirado'))
+    // The removed device card should have a delete button
+    const deleteBtns = screen.getAllByTitle('Eliminar')
+    // Second delete button belongs to the removed device (id=2)
+    fireEvent.click(deleteBtns[1])
+    fireEvent.click(screen.getByText('Confirmar'))
+    await waitFor(() => {
+      expect(deviceApi.delete).toHaveBeenCalledWith(2)
       expect(mockToast.success).toHaveBeenCalledWith('Dispositivo eliminado')
     })
   })

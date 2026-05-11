@@ -261,7 +261,7 @@ const DevicesTab = forwardRef(function DevicesTab({ admissionId, toast }, ref) {
             ))}
 
             {removed.length > 0 && (
-              <RemovedSection devices={removed} />
+              <RemovedSection devices={removed} onDelete={(id) => setConfirmDelete(id)} />
             )}
 
             {active.length === 0 && removed.length === 0 && (
@@ -355,17 +355,19 @@ function DeviceCard({ device, onEdit, onRemove, onDelete }) {
           {d.location && <span className="text-xs text-slate-500">{LOCATION_LABELS[d.location] || d.location}</span>}
           {d.lumens && <span className="text-xs text-slate-500">{d.lumens} {d.lumens === 1 ? 'luz' : 'luces'}</span>}
         </div>
-        {isActive && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onEdit} className="p-1 text-slate-400 hover:text-sky-600" title="Editar">
-              <Pencil size={14} />
-            </button>
-            <button onClick={onRemove} className="text-xs text-amber-600 hover:text-amber-700 font-medium px-2">Retirar</button>
-            <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-600" title="Eliminar">
-              <Trash2 size={14} />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {isActive && (
+            <>
+              <button onClick={onEdit} className="p-1 text-slate-400 hover:text-sky-600" title="Editar">
+                <Pencil size={14} />
+              </button>
+              <button onClick={onRemove} className="text-xs text-amber-600 hover:text-amber-700 font-medium px-2">Retirar</button>
+            </>
+          )}
+          <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-600" title="Eliminar">
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
       <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
         <span className="flex items-center gap-1"><Clock size={11} /> {formatDateTime(d.insertedAt)}</span>
@@ -378,7 +380,7 @@ function DeviceCard({ device, onEdit, onRemove, onDelete }) {
 
 /* ── Removed Section (collapsible) ── */
 
-function RemovedSection({ devices }) {
+function RemovedSection({ devices, onDelete }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="mt-2">
@@ -389,7 +391,7 @@ function RemovedSection({ devices }) {
       </button>
       {open && (
         <div className="mt-1">
-          {devices.map(d => <DeviceCard key={d.id} device={d} />)}
+          {devices.map(d => <DeviceCard key={d.id} device={d} onDelete={() => onDelete(d.id)} />)}
         </div>
       )}
     </div>
