@@ -5,6 +5,7 @@ import { patientApi } from '../services/patientApi'
 import { prescriptionApi } from '../services/prescriptionApi'
 import { vitalsApi } from '../services/vitalsApi'
 import ActionBar from '../components/ActionBar'
+import InsightsPanel from '../components/InsightsPanel'
 import MedicationGrid from '../components/MedicationGrid'
 import { InsulinSignModal, EditAdminModal } from '../components/SignModal'
 import { useToast, ToastContainer } from '../components/Toast'
@@ -162,6 +163,13 @@ export default function PatientMedication() {
           <Plus size={14} /> Prescripción
         </button>
       </div>
+
+      {/* Insights — allergy conflicts */}
+      {admission && (
+        <div className="px-5 pt-2">
+          <InsightsPanel patientId={patient.id} admissionId={admission.id} includeTypes={['allergy_conflict']} />
+        </div>
+      )}
 
       {/* Grid */}
       <div className="flex-1 overflow-hidden flex flex-col" style={{ minWidth: 0 }}>

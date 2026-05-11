@@ -55,4 +55,22 @@ describe('KAN-69: Panel de insights clínicos', () => {
     fireEvent.click(screen.getByText('Inteligencia Clínica'))
     expect(screen.getByText('Alergia vs prescripción: Metamizol')).toBeInTheDocument()
   })
+
+  it('excludeTypes filtra insights por analysisType', async () => {
+    render(<InsightsPanel patientId={1} admissionId={10} excludeTypes={['allergy_conflict']} />)
+    await waitFor(() => {
+      expect(screen.getByText('Bradicardia + betabloqueante')).toBeInTheDocument()
+      expect(screen.queryByText('Alergia vs prescripción: Metamizol')).not.toBeInTheDocument()
+      expect(screen.getByText('2 insights')).toBeInTheDocument()
+    })
+  })
+
+  it('includeTypes muestra solo los tipos indicados', async () => {
+    render(<InsightsPanel patientId={1} admissionId={10} includeTypes={['allergy_conflict']} />)
+    await waitFor(() => {
+      expect(screen.getByText('Alergia vs prescripción: Metamizol')).toBeInTheDocument()
+      expect(screen.queryByText('Bradicardia + betabloqueante')).not.toBeInTheDocument()
+      expect(screen.getByText('1 insight')).toBeInTheDocument()
+    })
+  })
 })

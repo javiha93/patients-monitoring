@@ -162,7 +162,7 @@ export default function PatientRecord() {
 
       <div className="flex-1 overflow-auto p-6 pb-24 space-y-4">
         {activeTab === 'vitals' && <>
-          {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} />}
+          {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} excludeTypes={['allergy_conflict']} />}
           <VitalsSummaryCards vitals={vitals} />
           <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} />
 

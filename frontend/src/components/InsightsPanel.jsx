@@ -40,8 +40,8 @@ function InsightCard({ insight }) {
   )
 }
 
-export default function InsightsPanel({ patientId, admissionId }) {
-  const [insights, setInsights] = useState([])
+export default function InsightsPanel({ patientId, admissionId, includeTypes, excludeTypes }) {
+  const [rawInsights, setRawInsights] = useState([])
   const [loading, setLoading] = useState(true)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -49,10 +49,16 @@ export default function InsightsPanel({ patientId, admissionId }) {
     if (!patientId || !admissionId) return
     setLoading(true)
     insightsApi.getByPatientAdmission(patientId, admissionId)
-      .then(({ data }) => setInsights(data))
-      .catch(() => setInsights([]))
+      .then(({ data }) => setRawInsights(data))
+      .catch(() => setRawInsights([]))
       .finally(() => setLoading(false))
   }, [patientId, admissionId])
+
+  const insights = rawInsights.filter(i => {
+    if (includeTypes) return includeTypes.includes(i.analysisType)
+    if (excludeTypes) return !excludeTypes.includes(i.analysisType)
+    return true
+  })
 
   const criticalCount = insights.filter(i => i.level === 'critical').length
   const warningCount = insights.filter(i => i.level === 'warning').length
