@@ -255,6 +255,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
     <div
       ref={scrollRef}
       className="flex-1 overflow-x-auto overflow-y-auto pb-16"
+      style={{ minWidth: 0 }}
     >
       <table className="border-collapse" style={{ width: LABEL_W + (slots.length * CELL_W), tableLayout: 'fixed' }}>
         <colgroup>

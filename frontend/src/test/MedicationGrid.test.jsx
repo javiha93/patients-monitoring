@@ -483,11 +483,21 @@ describe('KAN-52: Grid — Ancho fijo de celdas y scroll', () => {
     expect(cols[72].style.width).toBe('56px')
   })
 
-  it('[KAN-52] contenedor tiene overflow-x-auto para scroll horizontal', () => {
+  it('[KAN-52] contenedor tiene overflow-x-auto y min-width:0 para scroll', () => {
     const { container } = render(
       <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
     )
     const scrollContainer = container.firstChild
     expect(scrollContainer.classList.contains('overflow-x-auto')).toBe(true)
+    expect(scrollContainer.style.minWidth).toBe('0')
+  })
+
+  it('[KAN-52] tabla es más ancha que un viewport típico (>1500px)', () => {
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+    )
+    const table = container.querySelector('table')
+    const tableWidth = parseInt(table.style.width)
+    expect(tableWidth).toBeGreaterThan(1500)
   })
 })

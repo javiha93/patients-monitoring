@@ -125,7 +125,7 @@ export default function PatientMedication() {
   const admission = patient.activeAdmission
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="flex flex-col h-full bg-slate-50" style={{ minWidth: 0, maxWidth: '100vw' }}>
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-5 py-2.5 flex items-center gap-3 flex-shrink-0">
         <Link to="/" className="text-slate-400 hover:text-slate-700 flex items-center gap-1 text-xs">
@@ -153,7 +153,7 @@ export default function PatientMedication() {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-col" style={{ minWidth: 0 }}>
         {admission ? (
           <MedicationGrid
             ref={gridRef}
