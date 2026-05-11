@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Clock, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, Clock, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
 import { nursingApi } from '../services/nursingApi'
+import GlasgowModal from './GlasgowModal'
 
 /* ── Reusable sub-components ── */
 
@@ -167,6 +168,10 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
 
 /* ── The form itself, split out for readability ── */
 function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
+  const [glasgowOpen, setGlasgowOpen] = useState(false)
+
+  const missingRequired = !form.consciousness || form.glasgowScore == null || form.glasgowScore === ''
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
       <div className="flex items-center justify-between">
@@ -179,9 +184,26 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Col 1 */}
         <div className="space-y-4">
-          <Section title="Consciencia" color="bg-indigo-500">
-            <Select label="Nivel" value={form.consciousness} onChange={v => set('consciousness', v)} options={OPTS.consciousness} />
-            <TextInput label="Glasgow (3-15)" value={form.glasgowScore} onChange={v => set('glasgowScore', v ? parseInt(v) || null : null)} placeholder="Ej: 15" />
+          <Section title="Consciencia *" color="bg-indigo-500">
+            <Select label="Nivel *" value={form.consciousness} onChange={v => set('consciousness', v)} options={OPTS.consciousness} />
+            {!form.consciousness && <p className="text-xs text-red-500">Obligatorio</p>}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-600">Glasgow (3-15) *</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="number" min={3} max={15}
+                  value={form.glasgowScore ?? ''}
+                  onChange={e => set('glasgowScore', e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="Ej: 15"
+                  className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none"
+                />
+                <button type="button" onClick={() => setGlasgowOpen(true)}
+                  className="px-2.5 py-1.5 border border-slate-200 rounded-md text-slate-500 hover:text-blue-500 hover:border-blue-300 transition-colors"
+                  title="Calculadora Glasgow"
+                ><HelpCircle size={16} /></button>
+              </div>
+              {(form.glasgowScore == null || form.glasgowScore === '') && <p className="text-xs text-red-500">Obligatorio</p>}
+            </div>
           </Section>
 
           <Section title="Dolor" color="bg-red-500">
@@ -281,12 +303,19 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
         <textarea value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2}
           className="px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none resize-none" />
       </div>
-      <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+      <div className="flex items-center gap-3 justify-end pt-2 border-t border-slate-100">
+        {missingRequired && <span className="text-xs text-red-500 mr-auto">* Consciencia y Glasgow son obligatorios</span>}
         <button onClick={onCancel} className="px-5 py-2 rounded-lg text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Cancelar</button>
-        <button onClick={onSubmit} disabled={saving} className="px-5 py-2 rounded-lg text-sm font-medium bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-50">
+        <button onClick={onSubmit} disabled={saving || missingRequired} className="px-5 py-2 rounded-lg text-sm font-medium bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed">
           {saving ? 'Guardando...' : 'Guardar valoración'}
         </button>
       </div>
+
+      <GlasgowModal
+        open={glasgowOpen}
+        onClose={() => setGlasgowOpen(false)}
+        onConfirm={(total) => set('glasgowScore', total)}
+      />
     </div>
   )
 }

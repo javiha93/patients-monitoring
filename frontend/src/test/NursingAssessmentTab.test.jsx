@@ -92,15 +92,49 @@ describe('KAN-79: Valoración de enfermería', () => {
     expect(screen.queryByText('Nueva valoración de enfermería')).not.toBeInTheDocument()
   })
 
-  it('guardar llama a la API y muestra toast de éxito', async () => {
+  it('botón guardar deshabilitado sin consciencia y glasgow', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
+    const saveBtn = screen.getByText('Guardar valoración')
+    expect(saveBtn.disabled).toBe(true)
+    expect(screen.getByText('* Consciencia y Glasgow son obligatorios')).toBeInTheDocument()
+  })
+
+  it('guardar habilitado tras rellenar consciencia y glasgow', async () => {
     const { nursingApi } = await import('../services/nursingApi')
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
-    fireEvent.click(screen.getByText('Guardar valoración'))
+    // Fill consciousness
+    const consciousnessSelect = screen.getAllByRole('combobox').find(s =>
+      Array.from(s.options).some(o => o.value === 'alerta')
+    )
+    fireEvent.change(consciousnessSelect, { target: { value: 'alerta' } })
+    // Fill glasgow
+    const glasgowInput = screen.getByPlaceholderText('Ej: 15')
+    fireEvent.change(glasgowInput, { target: { value: '15' } })
+    // Now save should be enabled
+    const saveBtn = screen.getByText('Guardar valoración')
+    expect(saveBtn.disabled).toBe(false)
+    fireEvent.click(saveBtn)
     await waitFor(() => {
       expect(nursingApi.create).toHaveBeenCalledTimes(1)
       expect(mockToast.success).toHaveBeenCalledWith('Valoración guardada')
+    })
+  })
+
+  it('muestra botón helper de Glasgow que abre modal', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
+    // Click the helper button (HelpCircle icon button with title)
+    const helperBtn = screen.getByTitle('Calculadora Glasgow')
+    expect(helperBtn).toBeInTheDocument()
+    fireEvent.click(helperBtn)
+    // Glasgow modal should open
+    await waitFor(() => {
+      expect(screen.getByText('Escala de Coma de Glasgow')).toBeInTheDocument()
     })
   })
 
