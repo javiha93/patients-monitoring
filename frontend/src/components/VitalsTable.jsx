@@ -35,7 +35,7 @@ const rows = [
   { key: 'respiratoryRate', label: 'FR (rpm)' },
   { key: 'painLevel', label: 'Dolor (EVA)' },
   { key: 'bloodGlucose', label: 'Glucemia (mg/dL)' },
-  { key: 'diuresis', label: 'Diuresis (mL)' },
+  { key: 'diuresis', label: 'Diuresis', special_diuresis: true },
 ]
 
 const deviceLabels = {
@@ -132,6 +132,32 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
             <tr key={r.key} className="border-t border-slate-100">
               <th className="px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10">{r.label}</th>
               {sorted.map(v => {
+                if (r.special_diuresis) {
+                  const src = v.urineSource
+                  const srcLabels = { sonda_vesical: 'SV', colector: 'Col', urostomia: 'Uro', panal: 'Pañal' }
+                  const diaperLabels = { seco: 'Seco', escaso: 'Escaso', moderado: 'Moderado', abundante: 'Abundante' }
+                  let display = '—'
+                  if (src === 'panal') {
+                    display = v.diaperAmount ? `${diaperLabels[v.diaperAmount] || v.diaperAmount}` : 'Pañal'
+                  } else if (src && v.diuresis != null) {
+                    display = `${v.diuresis}mL`
+                  } else if (v.diuresis != null) {
+                    display = `${v.diuresis}mL`
+                  }
+                  const srcTag = src && src !== 'panal' ? srcLabels[src] : null
+                  return (
+                    <td key={v.id}
+                      className={`px-3 py-2.5 text-center text-sm whitespace-nowrap text-slate-600 ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                      onClick={onEdit ? () => onEdit(v) : undefined}
+                      onMouseEnter={() => setHoveredCol(v.id)}
+                      onMouseLeave={() => setHoveredCol(null)}
+                      title={src ? (srcLabels[src] || src) : undefined}
+                    >
+                      {display}
+                      {srcTag && <span className="ml-1 text-[9px] text-slate-400">({srcTag})</span>}
+                    </td>
+                  )
+                }
                 if (r.special) {
                   // No SpO2 → show dash
                   if (v.spo2 == null) {

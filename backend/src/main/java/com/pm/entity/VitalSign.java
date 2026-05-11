@@ -48,6 +48,12 @@ public class VitalSign {
 
     private Integer diuresis;
 
+    @Column(name = "urine_source")
+    private String urineSource;
+
+    @Column(name = "diaper_amount")
+    private String diaperAmount;
+
     private String notes;
 
     @Column(name = "created_at", updatable = false)

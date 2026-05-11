@@ -104,3 +104,56 @@ describe('KAN-60: formatDeviceTooltip — tooltips por dispositivo', () => {
     expect(formatDeviceTooltip(null)).toBeUndefined()
   })
 })
+
+import { render, screen } from '@testing-library/react'
+import VitalsTable from '../components/VitalsTable'
+
+const mkVital = (overrides) => ({
+  id: 1, recordedAt: '2024-01-10T08:00:00',
+  systolicBp: null, diastolicBp: null, heartRate: null, spo2: null,
+  respiratoryRate: null, temperature: null, painLevel: null,
+  bloodGlucose: null, diuresis: null, urineSource: null, diaperAmount: null,
+  respiratorySupport: null,
+  ...overrides,
+})
+
+describe('KAN-59: Diuresis display in VitalsTable', () => {
+  it('[KAN-59] shows — when no diuresis and no urineSource', () => {
+    render(<VitalsTable vitals={[mkVital({})]} />)
+    const cells = screen.getAllByText('—')
+    expect(cells.length).toBeGreaterThan(0)
+  })
+
+  it('[KAN-59] shows mL with source tag for sonda vesical', () => {
+    render(<VitalsTable vitals={[mkVital({ diuresis: 350, urineSource: 'sonda_vesical' })]} />)
+    expect(screen.getByText('350mL')).toBeInTheDocument()
+    expect(screen.getByText('(SV)')).toBeInTheDocument()
+  })
+
+  it('[KAN-59] shows mL with source tag for colector', () => {
+    render(<VitalsTable vitals={[mkVital({ diuresis: 200, urineSource: 'colector' })]} />)
+    expect(screen.getByText('200mL')).toBeInTheDocument()
+    expect(screen.getByText('(Col)')).toBeInTheDocument()
+  })
+
+  it('[KAN-59] shows mL with source tag for urostomia', () => {
+    render(<VitalsTable vitals={[mkVital({ diuresis: 500, urineSource: 'urostomia' })]} />)
+    expect(screen.getByText('500mL')).toBeInTheDocument()
+    expect(screen.getByText('(Uro)')).toBeInTheDocument()
+  })
+
+  it('[KAN-59] shows diaper amount label for pañal', () => {
+    render(<VitalsTable vitals={[mkVital({ urineSource: 'panal', diaperAmount: 'abundante' })]} />)
+    expect(screen.getByText('Abundante')).toBeInTheDocument()
+  })
+
+  it('[KAN-59] shows "Pañal" when panal without amount', () => {
+    render(<VitalsTable vitals={[mkVital({ urineSource: 'panal', diaperAmount: null })]} />)
+    expect(screen.getByText('Pañal')).toBeInTheDocument()
+  })
+
+  it('[KAN-59] shows diuresis mL without source tag when no urineSource', () => {
+    render(<VitalsTable vitals={[mkVital({ diuresis: 400 })]} />)
+    expect(screen.getByText('400mL')).toBeInTheDocument()
+  })
+})

@@ -52,6 +52,8 @@ public class VitalSignService {
                 .painLevel(req.getPainLevel())
                 .bloodGlucose(req.getBloodGlucose())
                 .diuresis(req.getDiuresis())
+                .urineSource(req.getUrineSource())
+                .diaperAmount(req.getDiaperAmount())
                 .notes(req.getNotes())
                 .build();
 
@@ -96,6 +98,8 @@ public class VitalSignService {
         vs.setPainLevel(req.getPainLevel());
         vs.setBloodGlucose(req.getBloodGlucose());
         vs.setDiuresis(req.getDiuresis());
+        vs.setUrineSource(req.getUrineSource());
+        vs.setDiaperAmount(req.getDiaperAmount());
         vs.setNotes(req.getNotes());
 
         if (req.getConsciousnessLevel() != null && !req.getConsciousnessLevel().isBlank()) {

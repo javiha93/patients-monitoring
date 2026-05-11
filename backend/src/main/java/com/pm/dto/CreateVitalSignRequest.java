@@ -40,6 +40,8 @@ public class CreateVitalSignRequest {
 
     @Min(0) @Max(5000)
     private Integer diuresis;
+    private String urineSource;
+    private String diaperAmount;
     private String notes;
 
     // Respiratory support (optional)

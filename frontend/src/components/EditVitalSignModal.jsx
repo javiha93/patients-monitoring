@@ -37,6 +37,8 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
         painLevel: vitalSign.painLevel ?? '',
         bloodGlucose: vitalSign.bloodGlucose ?? '',
         diuresis: vitalSign.diuresis ?? '',
+        urineSource: vitalSign.urineSource || '',
+        diaperAmount: vitalSign.diaperAmount || '',
         consciousnessLevel: vitalSign.consciousnessLevel || 'alerta',
         notes: vitalSign.notes || '',
         deviceType: rs?.deviceType || '',
@@ -77,7 +79,9 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
       temperature: form.temperature ? parseFloat(form.temperature) : null,
       painLevel: form.painLevel ? parseInt(form.painLevel) : null,
       bloodGlucose: form.bloodGlucose ? parseInt(form.bloodGlucose) : null,
-      diuresis: form.diuresis ? parseInt(form.diuresis) : null,
+      diuresis: form.urineSource !== 'panal' && form.diuresis ? parseInt(form.diuresis) : null,
+      urineSource: form.urineSource || null,
+      diaperAmount: form.urineSource === 'panal' ? (form.diaperAmount || null) : null,
       consciousnessLevel: form.consciousnessLevel || null,
       notes: form.notes || null,
       deviceType: form.deviceType || null,
@@ -128,9 +132,35 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
         </div>
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Otros registros</div>
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-3">
           <VitalInput label="Glucemia capilar (mg/dL)" field="bloodGlucose" form={form} set={set} error={errors.bloodGlucose} placeholder="120" />
-          <VitalInput label="Diuresis (mL)" field="diuresis" form={form} set={set} error={errors.diuresis} placeholder="200" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-600">Origen orina</label>
+            <select value={form.urineSource} onChange={set('urineSource')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500">
+              <option value="">— Sin registro —</option>
+              <option value="sonda_vesical">Sonda vesical</option>
+              <option value="colector">Colector</option>
+              <option value="urostomia">Urostomía</option>
+              <option value="panal">Pañal</option>
+            </select>
+          </div>
+          {form.urineSource && form.urineSource !== 'panal' && (
+            <VitalInput label="Diuresis (mL)" field="diuresis" form={form} set={set} error={errors.diuresis} placeholder="200" />
+          )}
+          {form.urineSource === 'panal' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-600">Cantidad pañal</label>
+              <select value={form.diaperAmount} onChange={set('diaperAmount')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500">
+                <option value="">— Seleccionar —</option>
+                <option value="seco">Seco</option>
+                <option value="escaso">Escaso</option>
+                <option value="moderado">Moderado</option>
+                <option value="abundante">Abundante</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Soporte respiratorio</div>
