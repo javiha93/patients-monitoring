@@ -51,7 +51,8 @@ public class PatientController {
     public PatientDTO reopen(
             @PathVariable Long id,
             @RequestParam(required = false) Integer triageLevel,
-            @RequestParam(required = false) String matCategory) {
-        return patientService.reopenPatient(id, triageLevel, matCategory);
+            @RequestParam(required = false) String matCategory,
+            @RequestParam(required = false) String location) {
+        return patientService.reopenPatient(id, triageLevel, matCategory, location);
     }
 }

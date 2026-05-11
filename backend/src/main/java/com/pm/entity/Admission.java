@@ -31,6 +31,8 @@ public class Admission {
     @Column(name = "mat_category")
     private String matCategory;
 
+    private String location;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;

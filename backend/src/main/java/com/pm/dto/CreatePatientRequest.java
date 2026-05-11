@@ -25,4 +25,6 @@ public class CreatePatientRequest {
     private Integer triageLevel;
 
     private String matCategory;
+
+    private String location;
 }

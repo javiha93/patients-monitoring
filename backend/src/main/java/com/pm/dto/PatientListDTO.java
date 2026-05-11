@@ -22,5 +22,6 @@ public class PatientListDTO {
     private Integer triageLevel;
     private String matCategory;
     private LocalDateTime admissionDate;
+    private String location;
     private String status;
 }

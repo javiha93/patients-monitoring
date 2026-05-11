@@ -11,6 +11,7 @@ public class AdmissionSummaryDTO {
     private LocalDateTime dischargeDate;
     private Integer triageLevel;
     private String matCategory;
+    private String location;
     private String status;
 
     public static AdmissionSummaryDTO fromEntity(Admission a) {
@@ -20,6 +21,7 @@ public class AdmissionSummaryDTO {
                 .dischargeDate(a.getDischargeDate())
                 .triageLevel(a.getTriageLevel())
                 .matCategory(a.getMatCategory())
+                .location(a.getLocation())
                 .status(a.getStatus().name())
                 .build();
     }

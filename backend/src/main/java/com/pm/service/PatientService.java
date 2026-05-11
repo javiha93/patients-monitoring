@@ -38,6 +38,7 @@ public class PatientService {
                     .triageLevel(a.getTriageLevel())
                     .matCategory(a.getMatCategory())
                     .admissionDate(a.getAdmissionDate())
+                    .location(a.getLocation())
                     .status(a.getStatus().name())
                     .build();
         }).collect(Collectors.toList());
@@ -70,6 +71,7 @@ public class PatientService {
                             .triageLevel(a.getTriageLevel())
                             .matCategory(a.getMatCategory())
                             .admissionDate(a.getAdmissionDate())
+                            .location(a.getLocation())
                             .status(a.getStatus().name())
                             .build();
                 })
@@ -100,7 +102,7 @@ public class PatientService {
             // Patient exists — just open new admission
             Patient existing = patientRepository.findByNhc(req.getNhc())
                     .orElseThrow();
-            openAdmission(existing, req.getTriageLevel(), req.getMatCategory());
+            openAdmission(existing, req.getTriageLevel(), req.getMatCategory(), req.getLocation());
             return getPatient(existing.getId());
         }
 
@@ -113,7 +115,7 @@ public class PatientService {
                 .build();
         patient = patientRepository.save(patient);
 
-        openAdmission(patient, req.getTriageLevel(), req.getMatCategory());
+        openAdmission(patient, req.getTriageLevel(), req.getMatCategory(), req.getLocation());
         return getPatient(patient.getId());
     }
 
@@ -137,7 +139,7 @@ public class PatientService {
      * Reopen a discharged patient (create new admission).
      */
     @Transactional
-    public PatientDTO reopenPatient(Long patientId, Integer triageLevel, String matCategory) {
+    public PatientDTO reopenPatient(Long patientId, Integer triageLevel, String matCategory, String location) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
 
@@ -147,7 +149,7 @@ public class PatientService {
             throw new RuntimeException("Patient already has an active admission");
         }
 
-        openAdmission(patient, triageLevel, matCategory);
+        openAdmission(patient, triageLevel, matCategory, location);
         return getPatient(patientId);
     }
 
@@ -161,12 +163,13 @@ public class PatientService {
                 .collect(Collectors.toList());
     }
 
-    private void openAdmission(Patient patient, Integer triageLevel, String matCategory) {
+    private void openAdmission(Patient patient, Integer triageLevel, String matCategory, String location) {
         Admission admission = Admission.builder()
                 .patient(patient)
                 .admissionDate(LocalDateTime.now())
                 .triageLevel(triageLevel)
                 .matCategory(matCategory)
+                .location(location)
                 .status(Admission.Status.active)
                 .build();
         admissionRepository.save(admission);

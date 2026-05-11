@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import TriageBadge from '../components/TriageBadge'
 import NewPatientModal from '../components/NewPatientModal'
@@ -27,6 +27,7 @@ export default function PatientList() {
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedId] = useState(null)
   const navigate = useNavigate()
 
   const fetchPatients = async () => {
@@ -51,19 +52,32 @@ export default function PatientList() {
       || p.matCategory?.toLowerCase().includes(q)
   })
 
+  const selectedPatient = patients.find(p => p.id === selectedId)
+
+  const handleSelect = (id) => {
+    setSelectedId(prev => prev === id ? null : id)
+  }
+
   const handleCreate = async (data) => {
     try {
       const { data: patient } = await patientApi.create(data)
       setModalOpen(false)
       fetchPatients()
-      navigate(`/patient/${patient.id}`)
+      setSelectedId(patient.id)
     } catch (e) {
       alert(e.response?.data?.error || 'Error creating patient')
     }
   }
 
+  const actions = [
+    { key: 'registros', icon: HeartPulse, color: 'text-red-600', label: 'Registros', route: (id) => `/patient/${id}` },
+    { key: 'antecedentes', icon: Bandage, color: 'text-amber-600', label: 'Antecedentes', route: (id) => `/patient/${id}/history` },
+    { key: 'medicacion', icon: Pill, color: 'text-teal-600', label: 'Medicación', route: (id) => `/patient/${id}/medication` },
+  ]
+
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 flex-shrink-0">
         <h2 className="text-lg font-bold flex-1">Pacientes activos</h2>
         <div className="relative">
@@ -79,7 +93,8 @@ export default function PatientList() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-6 pb-24">
         {loading ? (
           <p className="text-slate-400 text-center mt-12">Cargando...</p>
         ) : filtered.length === 0 ? (
@@ -90,6 +105,7 @@ export default function PatientList() {
               <thead>
                 <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-4 py-3 w-12">Nivel</th>
+                  <th className="px-4 py-3">Ubicación</th>
                   <th className="px-4 py-3">Paciente</th>
                   <th className="px-4 py-3">NHC</th>
                   <th className="px-4 py-3">Edad</th>
@@ -98,36 +114,80 @@ export default function PatientList() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(p => (
-                  <tr key={p.admissionId} onClick={() => navigate(`/patient/${p.id}`)} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
-                    <td className="px-4 py-3"><TriageBadge level={p.triageLevel} /></td>
-                    <td className="px-4 py-3 font-medium">{p.lastName}, {p.firstName}</td>
-                    <td className="px-4 py-3 text-sm text-slate-500">{p.nhc}</td>
-                    <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
-                    <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-500">{formatDate(p.admissionDate)}</td>
-                  </tr>
-                ))}
+                {filtered.map(p => {
+                  const isSelected = selectedId === p.id
+                  return (
+                    <tr
+                      key={p.admissionId}
+                      onClick={() => handleSelect(p.id)}
+                      className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}
+                    >
+                      <td className="px-4 py-3"><TriageBadge level={p.triageLevel} /></td>
+                      <td className="px-4 py-3 text-sm font-medium text-slate-700">{p.location || '—'}</td>
+                      <td className="px-4 py-3 font-medium">{p.lastName}, {p.firstName}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500">{p.nhc}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
+                      <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500">{formatDate(p.admissionDate)}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(p => (
-              <div key={p.admissionId} onClick={() => navigate(`/patient/${p.id}`)} className="bg-white rounded-xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-3 mb-2">
-                  <TriageBadge level={p.triageLevel} />
-                  <div>
-                    <div className="font-semibold">{p.lastName}, {p.firstName}</div>
-                    <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'} años</div>
+            {filtered.map(p => {
+              const isSelected = selectedId === p.id
+              return (
+                <div
+                  key={p.admissionId}
+                  onClick={() => handleSelect(p.id)}
+                  className={`bg-white rounded-xl shadow-sm p-4 cursor-pointer transition-shadow ${isSelected ? 'ring-2 ring-blue-400 shadow-md' : 'hover:shadow-md'}`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <TriageBadge level={p.triageLevel} />
+                    <div>
+                      <div className="font-semibold">{p.lastName}, {p.firstName}</div>
+                      <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'} años</div>
+                    </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
+                    {p.location && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{p.location}</span>}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">{formatDate(p.admissionDate)}</div>
                 </div>
-                <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
-                <div className="text-xs text-slate-400 mt-1">{formatDate(p.admissionDate)}</div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
+      </div>
+
+      {/* Action Bar */}
+      <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200 px-6 py-3 flex items-center gap-5 z-50">
+        {actions.map(a => {
+          const Icon = a.icon
+          const disabled = !selectedId
+          return (
+            <button
+              key={a.key}
+              disabled={disabled}
+              onClick={() => selectedId && navigate(a.route(selectedId))}
+              className={`${a.color} ${disabled ? 'opacity-30 cursor-not-allowed' : 'opacity-70 hover:opacity-100'} transition-opacity`}
+              title={a.label}
+            >
+              <Icon size={22} />
+            </button>
+          )
+        })}
+        <div className="text-sm text-slate-500">
+          {selectedPatient ? (
+            <><strong className="text-slate-900">{selectedPatient.lastName}, {selectedPatient.firstName}</strong> · {selectedPatient.nhc}</>
+          ) : (
+            <span className="text-slate-400">Selecciona un paciente</span>
+          )}
+        </div>
       </div>
 
       <NewPatientModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleCreate} />
