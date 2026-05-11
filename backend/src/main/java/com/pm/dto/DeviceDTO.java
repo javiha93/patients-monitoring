@@ -14,6 +14,10 @@ public class DeviceDTO {
     private String location;
     private Integer lumens;
     private String material;
+    private Integer drainNumber;
+    private String region;
+    private String subRegion;
+    private String laterality;
     private LocalDateTime insertedAt;
     private LocalDateTime removedAt;
     private String notes;
@@ -28,6 +32,10 @@ public class DeviceDTO {
             .location(d.getLocation())
             .lumens(d.getLumens())
             .material(d.getMaterial())
+            .drainNumber(d.getDrainNumber())
+            .region(d.getRegion())
+            .subRegion(d.getSubRegion())
+            .laterality(d.getLaterality())
             .insertedAt(d.getInsertedAt())
             .removedAt(d.getRemovedAt())
             .notes(d.getNotes())

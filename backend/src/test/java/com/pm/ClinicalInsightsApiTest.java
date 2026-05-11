@@ -38,6 +38,7 @@ class ClinicalInsightsApiTest {
     @Autowired private NursingAssessmentRepository nursingRepo;
     @Autowired private MedicationRepository medicationRepo;
     @Autowired private DeviceRepository deviceRepo;
+    @Autowired private DrainOutputRepository drainOutputRepo;
 
     private Patient patient;
     private Admission admission;
@@ -643,6 +644,109 @@ class ClinicalInsightsApiTest {
         String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertFalse(hasInsight(body, "vvp_prolonged", null));
+    }
+
+    // ── Drain alert tests ──
+
+    @Test
+    @DisplayName("Drenaje activo >7 días genera alerta info")
+    void drainProlonged() throws Exception {
+        deviceRepo.save(Device.builder()
+                .admission(admission).category("elimination").type("redon")
+                .drainNumber(1).region("abdomen").subRegion("hipocondrio_dcho").laterality("derecha")
+                .insertedAt(LocalDateTime.now().minusDays(10)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "drain_prolonged", "info"));
+    }
+
+    @Test
+    @DisplayName("Drenaje con débito >200mL genera alerta warning")
+    void drainHighOutput() throws Exception {
+        Device drain = deviceRepo.save(Device.builder()
+                .admission(admission).category("elimination").type("redon")
+                .drainNumber(1).region("abdomen").laterality("derecha")
+                .insertedAt(LocalDateTime.now().minusDays(1)).build());
+
+        // Create a vital sign with drain output
+        VitalSign vs = vitalSignRepo.save(VitalSign.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1)).build());
+
+        drainOutputRepo.save(DrainOutput.builder()
+                .vitalSign(vs).device(drain).drainNumber(1)
+                .outputMl(350).fluidType("seroso").vacuumActive(true).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "drain_high_output", "warning"));
+    }
+
+    @Test
+    @DisplayName("Drenaje hemático genera alerta critical")
+    void drainHemorrhagic() throws Exception {
+        Device drain = deviceRepo.save(Device.builder()
+                .admission(admission).category("elimination").type("jackson_pratt")
+                .drainNumber(1).region("pelvis").laterality("medial")
+                .insertedAt(LocalDateTime.now().minusDays(1)).build());
+
+        VitalSign vs = vitalSignRepo.save(VitalSign.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1)).build());
+
+        drainOutputRepo.save(DrainOutput.builder()
+                .vitalSign(vs).device(drain).drainNumber(1)
+                .outputMl(50).fluidType("hematico").vacuumActive(true).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "drain_hemorrhagic", "critical"));
+    }
+
+    @Test
+    @DisplayName("Drenaje sin vacío genera alerta warning")
+    void drainVacuumLost() throws Exception {
+        Device drain = deviceRepo.save(Device.builder()
+                .admission(admission).category("elimination").type("redon")
+                .drainNumber(1).region("torax").laterality("izquierda")
+                .insertedAt(LocalDateTime.now().minusDays(2)).build());
+
+        VitalSign vs = vitalSignRepo.save(VitalSign.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1)).build());
+
+        drainOutputRepo.save(DrainOutput.builder()
+                .vitalSign(vs).device(drain).drainNumber(1)
+                .outputMl(30).fluidType("seroso").vacuumActive(false).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "drain_vacuum_lost", "warning"));
+    }
+
+    @Test
+    @DisplayName("Drenaje con auto-numeración secuencial")
+    void drainAutoNumber() throws Exception {
+        // Create via API to test auto-numbering
+        com.pm.dto.DeviceDTO dto1 = com.pm.dto.DeviceDTO.builder()
+                .admissionId(admission.getId()).category("elimination").type("redon")
+                .region("abdomen").laterality("derecha")
+                .insertedAt(LocalDateTime.now()).build();
+
+        mvc.perform(post("/api/devices")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(dto1)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.drainNumber").value(1));
+
+        com.pm.dto.DeviceDTO dto2 = com.pm.dto.DeviceDTO.builder()
+                .admissionId(admission.getId()).category("elimination").type("jackson_pratt")
+                .region("pelvis").laterality("medial")
+                .insertedAt(LocalDateTime.now()).build();
+
+        mvc.perform(post("/api/devices")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(dto2)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.drainNumber").value(2));
     }
 
     // Helper to check for an insight by analysisType and optionally level

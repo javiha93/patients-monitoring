@@ -178,6 +178,7 @@ export default function PatientRecord() {
             'vvp_prolonged', 'vvp_emergency_change', 'sng_pvc_change_due', 'sng_silicone_change_due',
             'sv_latex_change_due', 'sv_silicone_change_due', 'sv_itu_risk',
             'vvc_review_dressing', 'vvc_review_lines', 'picc_review_dressing', 'sng_aspiration_risk',
+            'drain_prolonged', 'drain_high_output', 'drain_hemorrhagic', 'drain_vacuum_lost',
           ]} />}
           <VitalsSummaryCards vitals={vitals} />
           <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} />

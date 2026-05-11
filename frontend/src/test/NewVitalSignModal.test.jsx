@@ -6,6 +6,7 @@ vi.mock('../services/deviceApi', () => ({
   deviceApi: {
     hasActiveByType: vi.fn(),
     create: vi.fn(() => Promise.resolve({ data: { id: 99 } })),
+    getActiveDrains: vi.fn(() => Promise.resolve({ data: [] })),
   },
 }))
 
@@ -150,6 +151,26 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
     // Test pañal
     fireEvent.change(urineSelect, { target: { value: 'panal' } })
     expect(screen.queryByTestId('sonda-vesical-alert')).not.toBeInTheDocument()
+  })
+
+  it('muestra campos de drenaje cuando hay drenajes activos', async () => {
+    const { deviceApi } = await import('../services/deviceApi')
+    deviceApi.getActiveDrains.mockResolvedValue({ data: [
+      { id: 10, type: 'redon', drainNumber: 1, region: 'abdomen', subRegion: 'hipocondrio_dcho', laterality: 'derecha' },
+      { id: 11, type: 'jackson_pratt', drainNumber: 2, region: 'pelvis', laterality: 'medial' },
+    ] })
+
+    renderModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Drenajes (2)')).toBeInTheDocument()
+      expect(screen.getByText('Redon #1')).toBeInTheDocument()
+      expect(screen.getByText('Jackson-Pratt #2')).toBeInTheDocument()
+    })
+
+    // Check drain output fields exist
+    const debitoLabels = screen.getAllByText('Débito (mL)')
+    expect(debitoLabels).toHaveLength(2)
   })
 
   it('bloquea si sonda vesical está retirada (backend devuelve false)', async () => {

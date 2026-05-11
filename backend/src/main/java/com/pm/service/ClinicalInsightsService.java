@@ -23,6 +23,7 @@ public class ClinicalInsightsService {
     private final MedicationAdministrationRepository adminRepo;
     private final NursingAssessmentRepository nursingRepo;
     private final DeviceRepository deviceRepo;
+    private final DrainOutputRepository drainOutputRepo;
 
     public List<ClinicalInsightDTO> analyze(Long patientId, Long admissionId) {
         List<ClinicalInsightDTO> insights = new ArrayList<>();
@@ -96,6 +97,13 @@ public class ClinicalInsightsService {
         checkVvcReviewLines(insights, activeDevices);
         checkPiccReviewDressing(insights, activeDevices);
         checkSngAspirationRisk(insights, activeDevices, currentAssessments);
+
+        // Drain-specific alerts
+        checkDrainProlonged(insights, activeDevices);
+        List<DrainOutput> latestDrainOutputs = drainOutputRepo.findLatestByAdmission(admissionId);
+        checkDrainHighOutput(insights, latestDrainOutputs, activeDevices);
+        checkDrainHemorrhagic(insights, latestDrainOutputs, activeDevices);
+        checkDrainVacuumLost(insights, latestDrainOutputs, activeDevices);
 
         // Sort: critical first, then warning, then info
         insights.sort(Comparator.comparingInt(i -> levelOrder(i.getLevel())));
@@ -1082,5 +1090,84 @@ public class ClinicalInsightsService {
             .reasoning("La combinación de SNG con nivel de consciencia alterado incrementa el riesgo de broncoaspiración. Elevar cabecero 30-45°, verificar residuo gástrico antes de alimentar")
             .analysisType("sng_aspiration_risk")
             .build());
+    }
+
+    // ── DRAIN ALERTS ──
+
+    private boolean isDrainType(String type) {
+        return "redon".equals(type) || "jackson_pratt".equals(type);
+    }
+
+    private String drainLabel(Device d) {
+        String name = "redon".equals(d.getType()) ? "Redon" : "Jackson-Pratt";
+        return name + (d.getDrainNumber() != null ? " #" + d.getDrainNumber() : "");
+    }
+
+    /** 12. Drain active >7 days — evaluate if still needed */
+    private void checkDrainProlonged(List<ClinicalInsightDTO> insights, List<Device> devices) {
+        for (Device d : devices) {
+            if (!isDrainType(d.getType())) continue;
+            long days = daysActive(d);
+            if (days <= 7) continue;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("info")
+                .title(drainLabel(d) + ": " + days + " días activo")
+                .detail("Drenaje activo desde hace " + days + " días. Reevaluar necesidad de mantenerlo.")
+                .reasoning("Los drenajes quirúrgicos deben retirarse lo antes posible cuando el débito disminuye. Mantenerlos más de 7 días aumenta el riesgo de infección")
+                .analysisType("drain_prolonged")
+                .build());
+        }
+    }
+
+    /** 13. Drain output >200mL in last reading */
+    private void checkDrainHighOutput(List<ClinicalInsightDTO> insights, List<DrainOutput> outputs, List<Device> devices) {
+        // Get only the most recent output per device
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        for (DrainOutput o : outputs) {
+            if (!seen.add(o.getDevice().getId())) continue; // skip older readings
+            if (o.getOutputMl() == null || o.getOutputMl() <= 200) continue;
+            Device d = o.getDevice();
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title(drainLabel(d) + ": débito elevado (" + o.getOutputMl() + " mL)")
+                .detail("Último débito registrado: " + o.getOutputMl() + " mL. Supera los 200 mL esperados.")
+                .reasoning("Un débito elevado puede indicar sangrado activo o complicación postquirúrgica. Valorar estado hemodinámico y comunicar al equipo quirúrgico")
+                .analysisType("drain_high_output")
+                .build());
+        }
+    }
+
+    /** 14. Drain with hemorrhagic fluid */
+    private void checkDrainHemorrhagic(List<ClinicalInsightDTO> insights, List<DrainOutput> outputs, List<Device> devices) {
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        for (DrainOutput o : outputs) {
+            if (!seen.add(o.getDevice().getId())) continue;
+            if (!"hematico".equals(o.getFluidType())) continue;
+            Device d = o.getDevice();
+            insights.add(ClinicalInsightDTO.builder()
+                .level("critical")
+                .title(drainLabel(d) + ": contenido hemático")
+                .detail("Último registro del drenaje muestra contenido hemático.")
+                .reasoning("Contenido hemático en drenaje quirúrgico puede indicar sangrado activo. Valorar urgentemente: constantes vitales, hemoglobina, y comunicar al cirujano")
+                .analysisType("drain_hemorrhagic")
+                .build());
+        }
+    }
+
+    /** 15. Drain without vacuum */
+    private void checkDrainVacuumLost(List<ClinicalInsightDTO> insights, List<DrainOutput> outputs, List<Device> devices) {
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        for (DrainOutput o : outputs) {
+            if (!seen.add(o.getDevice().getId())) continue;
+            if (o.getVacuumActive() == null || o.getVacuumActive()) continue;
+            Device d = o.getDevice();
+            insights.add(ClinicalInsightDTO.builder()
+                .level("warning")
+                .title(drainLabel(d) + ": sin vacío")
+                .detail("El drenaje no mantiene el vacío en el último registro.")
+                .reasoning("La pérdida de vacío reduce la eficacia del drenaje. Verificar conexiones, posibles fugas o acodamientos. Reestablecer vacío si procede")
+                .analysisType("drain_vacuum_lost")
+                .build());
+        }
     }
 }

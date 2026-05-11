@@ -3,6 +3,7 @@ import { X, AlertTriangle, Plus } from 'lucide-react'
 import VitalInput, { validateVitals } from './VitalInput'
 import { deviceApi } from '../services/deviceApi'
 import { DeviceFormModal } from './DevicesTab'
+import DrainOutputsSection from './DrainOutputsSection'
 
 const devices = [
   { value: '', label: 'Sin soporte' },
@@ -36,6 +37,7 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
     tidalVolume: '', respiratoryRateSet: '',
   })
   const [errors, setErrors] = useState({})
+  const [drainOutputs, setDrainOutputs] = useState([])
   const [hasSondaVesical, setHasSondaVesical] = useState(null) // null = not checked, true/false
   const [showDeviceModal, setShowDeviceModal] = useState(false)
   const [deviceForm, setDeviceForm] = useState({})
@@ -92,6 +94,13 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
       epap: form.epap ? parseFloat(form.epap) : null,
       tidalVolume: form.tidalVolume ? parseFloat(form.tidalVolume) : null,
       respiratoryRateSet: form.respiratoryRateSet ? parseInt(form.respiratoryRateSet) : null,
+      drainOutputs: drainOutputs.filter(d => d.outputMl).map(d => ({
+        deviceId: d.deviceId,
+        drainNumber: d.drainNumber,
+        outputMl: parseInt(d.outputMl),
+        fluidType: d.fluidType || 'seroso',
+        vacuumActive: d.vacuumActive ?? true,
+      })),
     }
     onSubmit(data)
   }
@@ -263,6 +272,12 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
             </div>
           </div>
         )}
+
+        <DrainOutputsSection
+          admissionId={admissionId}
+          drainOutputs={drainOutputs}
+          onChange={setDrainOutputs}
+        />
 
         <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
           <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Cancelar</button>

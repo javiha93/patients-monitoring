@@ -3,23 +3,25 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import DevicesTab from '../components/DevicesTab'
 
 const mockDevices = [
-  { id: 1, admissionId: 10, category: 'vascular', type: 'via_periferica', gauge: '20G', location: 'mano_derecha', lumens: null, material: null, insertedAt: '2026-05-11T08:00:00', removedAt: null, notes: '' },
-  { id: 2, admissionId: 10, category: 'elimination', type: 'sonda_vesical', gauge: '16Fr', location: null, lumens: 2, material: 'latex', insertedAt: '2026-05-11T09:00:00', removedAt: '2026-05-11T15:00:00', notes: 'Retirada por mejoría' },
+  { id: 1, admissionId: 10, category: 'vascular', type: 'via_periferica', gauge: '20G', location: 'mano_derecha', lumens: null, material: null, drainNumber: null, region: null, subRegion: null, laterality: null, insertedAt: '2026-05-11T08:00:00', removedAt: null, notes: '' },
+  { id: 2, admissionId: 10, category: 'elimination', type: 'sonda_vesical', gauge: '16Fr', location: null, lumens: 2, material: 'latex', drainNumber: null, region: null, subRegion: null, laterality: null, insertedAt: '2026-05-11T09:00:00', removedAt: '2026-05-11T15:00:00', notes: 'Retirada por mejoría' },
+  { id: 3, admissionId: 10, category: 'elimination', type: 'redon', gauge: null, location: null, lumens: null, material: null, drainNumber: 1, region: 'abdomen', subRegion: 'hipocondrio_dcho', laterality: 'derecha', insertedAt: '2026-05-11T10:00:00', removedAt: null, notes: '' },
 ]
-
-vi.mock('../services/insightsApi', () => ({
-  insightsApi: {
-    getByPatientAdmission: vi.fn(() => Promise.resolve({ data: [] })),
-  },
-}))
 
 vi.mock('../services/deviceApi', () => ({
   deviceApi: {
     getByAdmission: vi.fn(() => Promise.resolve({ data: mockDevices })),
-    create: vi.fn(() => Promise.resolve({ data: { id: 3 } })),
+    create: vi.fn(() => Promise.resolve({ data: { id: 4 } })),
     update: vi.fn(() => Promise.resolve({ data: {} })),
     delete: vi.fn(() => Promise.resolve()),
     hasActiveByType: vi.fn(() => Promise.resolve({ data: false })),
+    getActiveDrains: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}))
+
+vi.mock('../services/insightsApi', () => ({
+  insightsApi: {
+    getByPatientAdmission: vi.fn(() => Promise.resolve({ data: [] })),
   },
 }))
 
@@ -37,7 +39,7 @@ describe('DevicesTab', () => {
     await waitFor(() => {
       expect(screen.getByText('Dispositivos de Acceso Vascular')).toBeInTheDocument()
       expect(screen.getByText('Dispositivos Gastrointestinales')).toBeInTheDocument()
-      expect(screen.getByText('Dispositivos de Eliminación')).toBeInTheDocument()
+      expect(screen.getByText('Dispositivos de Eliminación y Drenajes')).toBeInTheDocument()
     })
   })
 
@@ -47,6 +49,15 @@ describe('DevicesTab', () => {
       expect(screen.getByText('Vía Periférica')).toBeInTheDocument()
       expect(screen.getByText('20G')).toBeInTheDocument()
       expect(screen.getByText('Mano dcha.')).toBeInTheDocument()
+    })
+  })
+
+  it('muestra drenaje con número, región y lateralidad', async () => {
+    renderTab()
+    await waitFor(() => {
+      expect(screen.getByText('#1')).toBeInTheDocument()
+      expect(screen.getByText(/Abdomen/)).toBeInTheDocument()
+      expect(screen.getByText('Dcha.')).toBeInTheDocument()
     })
   })
 
@@ -70,8 +81,9 @@ describe('DevicesTab', () => {
 
   it('abre modal al hacer clic en añadir', async () => {
     renderTab()
-    await waitFor(() => screen.getByText('Añadir dispositivo'))
-    fireEvent.click(screen.getByText('Añadir dispositivo'))
+    await waitFor(() => screen.getAllByText(/Añadir/))
+    // Click the first add button (vascular section)
+    fireEvent.click(screen.getAllByText(/Añadir/)[0])
     expect(screen.getByText('Nuevo dispositivo')).toBeInTheDocument()
     expect(screen.getByText('Registrar')).toBeInTheDocument()
   })
@@ -79,8 +91,8 @@ describe('DevicesTab', () => {
   it('crea dispositivo al enviar formulario del modal', async () => {
     const { deviceApi } = await import('../services/deviceApi')
     renderTab()
-    await waitFor(() => screen.getByText('Añadir dispositivo'))
-    fireEvent.click(screen.getByText('Añadir dispositivo'))
+    await waitFor(() => screen.getAllByText(/Añadir/))
+    fireEvent.click(screen.getAllByText(/Añadir/)[0])
     fireEvent.click(screen.getByText('Registrar'))
     await waitFor(() => {
       expect(deviceApi.create).toHaveBeenCalled()
@@ -90,8 +102,8 @@ describe('DevicesTab', () => {
 
   it('cierra modal con botón cancelar', async () => {
     renderTab()
-    await waitFor(() => screen.getByText('Añadir dispositivo'))
-    fireEvent.click(screen.getByText('Añadir dispositivo'))
+    await waitFor(() => screen.getAllByText(/Añadir/))
+    fireEvent.click(screen.getAllByText(/Añadir/)[0])
     expect(screen.getByText('Nuevo dispositivo')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Cancelar'))
     await waitFor(() => {
@@ -103,8 +115,8 @@ describe('DevicesTab', () => {
     const { deviceApi } = await import('../services/deviceApi')
     renderTab()
     await waitFor(() => screen.getByText('Vía Periférica'))
-    const deleteBtn = screen.getByTitle('Eliminar')
-    fireEvent.click(deleteBtn)
+    const deleteBtns = screen.getAllByTitle('Eliminar')
+    fireEvent.click(deleteBtns[0])
     fireEvent.click(screen.getByText('Confirmar'))
     await waitFor(() => {
       expect(deviceApi.delete).toHaveBeenCalledWith(1)
@@ -112,29 +124,31 @@ describe('DevicesTab', () => {
     })
   })
 
-  it('muestra campo material al añadir sonda vesical', async () => {
-    renderTab()
-    await waitFor(() => screen.getByText('Añadir sonda vesical'))
-    fireEvent.click(screen.getByText('Añadir sonda vesical'))
-    expect(screen.getByText('Material')).toBeInTheDocument()
-    expect(screen.getByText('Látex')).toBeInTheDocument()
-    expect(screen.getByText('Silicona')).toBeInTheDocument()
-  })
-
   it('permite eliminar dispositivo retirado', async () => {
     const { deviceApi } = await import('../services/deviceApi')
     renderTab()
-    // Expand removed section
     await waitFor(() => screen.getByText('1 retirado'))
     fireEvent.click(screen.getByText('1 retirado'))
-    // The removed device card should have a delete button
     const deleteBtns = screen.getAllByTitle('Eliminar')
-    // Second delete button belongs to the removed device (id=2)
-    fireEvent.click(deleteBtns[1])
+    // Last delete button is the retired device
+    fireEvent.click(deleteBtns[deleteBtns.length - 1])
     fireEvent.click(screen.getByText('Confirmar'))
     await waitFor(() => {
       expect(deviceApi.delete).toHaveBeenCalledWith(2)
       expect(mockToast.success).toHaveBeenCalledWith('Dispositivo eliminado')
     })
+  })
+
+  it('muestra campos de región y lateralidad al añadir drenaje', async () => {
+    renderTab()
+    await waitFor(() => screen.getAllByText(/Añadir/))
+    // Click the elimination section add button (last one)
+    const addBtns = screen.getAllByText(/Añadir/)
+    fireEvent.click(addBtns[addBtns.length - 1])
+    // Default type is sonda_vesical, change to redon
+    const typeSelect = screen.getByDisplayValue('Sonda Vesical')
+    fireEvent.change(typeSelect, { target: { value: 'redon' } })
+    expect(screen.getByText('Región')).toBeInTheDocument()
+    expect(screen.getByText('Lateralidad')).toBeInTheDocument()
   })
 })

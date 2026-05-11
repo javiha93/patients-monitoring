@@ -37,10 +37,20 @@ public class DeviceService {
             .location(dto.getLocation())
             .lumens(dto.getLumens())
             .material(dto.getMaterial())
+            .region(dto.getRegion())
+            .subRegion(dto.getSubRegion())
+            .laterality(dto.getLaterality())
             .insertedAt(dto.getInsertedAt())
             .removedAt(dto.getRemovedAt())
             .notes(dto.getNotes())
             .build();
+
+        // Auto-assign drain number for drain types
+        if (isDrainType(dto.getType())) {
+            int nextNumber = getNextDrainNumber(dto.getAdmissionId());
+            device.setDrainNumber(nextNumber);
+        }
+
         return DeviceDTO.fromEntity(deviceRepo.save(device));
     }
 
@@ -52,6 +62,9 @@ public class DeviceService {
         device.setLocation(dto.getLocation());
         device.setLumens(dto.getLumens());
         device.setMaterial(dto.getMaterial());
+        device.setRegion(dto.getRegion());
+        device.setSubRegion(dto.getSubRegion());
+        device.setLaterality(dto.getLaterality());
         device.setInsertedAt(dto.getInsertedAt());
         device.setRemovedAt(dto.getRemovedAt());
         device.setNotes(dto.getNotes());
@@ -61,6 +74,29 @@ public class DeviceService {
     @Transactional
     public void delete(Long id) {
         deviceRepo.deleteById(id);
+    }
+
+    private boolean isDrainType(String type) {
+        return "redon".equals(type) || "jackson_pratt".equals(type);
+    }
+
+    private int getNextDrainNumber(Long admissionId) {
+        List<Device> allDevices = deviceRepo.findByAdmissionIdOrderByInsertedAtDesc(admissionId);
+        return allDevices.stream()
+            .filter(d -> isDrainType(d.getType()) && d.getDrainNumber() != null)
+            .mapToInt(Device::getDrainNumber)
+            .max()
+            .orElse(0) + 1;
+    }
+
+    public List<DeviceDTO> getActiveDrains(Long admissionId) {
+        return deviceRepo.findByAdmissionIdAndRemovedAtIsNull(admissionId).stream()
+            .filter(d -> isDrainType(d.getType()))
+            .sorted((a, b) -> Integer.compare(
+                a.getDrainNumber() != null ? a.getDrainNumber() : 0,
+                b.getDrainNumber() != null ? b.getDrainNumber() : 0))
+            .map(DeviceDTO::fromEntity)
+            .collect(Collectors.toList());
     }
 
     public boolean hasActiveByType(Long admissionId, String type) {

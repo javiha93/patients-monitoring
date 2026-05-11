@@ -3,6 +3,7 @@ package com.pm.dto;
 import com.pm.entity.VitalSign;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class VitalSignDTO {
@@ -23,6 +24,7 @@ public class VitalSignDTO {
     private String diaperAmount;
     private String notes;
     private RespiratorySupportDTO respiratorySupport;
+    private List<DrainOutputDTO> drainOutputs;
 
     public static VitalSignDTO fromEntity(VitalSign v) {
         VitalSignDTO dto = VitalSignDTO.builder()
@@ -45,6 +47,11 @@ public class VitalSignDTO {
                 .build();
         if (v.getRespiratorySupport() != null) {
             dto.setRespiratorySupport(RespiratorySupportDTO.fromEntity(v.getRespiratorySupport()));
+        }
+        if (v.getDrainOutputs() != null && !v.getDrainOutputs().isEmpty()) {
+            dto.setDrainOutputs(v.getDrainOutputs().stream()
+                .map(DrainOutputDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList()));
         }
         return dto;
     }

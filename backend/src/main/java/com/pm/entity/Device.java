@@ -31,6 +31,17 @@ public class Device {
 
     private String material; // SNG: pvc, poliuretano, silicona | SV: latex, silicona
 
+    // Drain-specific fields (redon, jackson_pratt)
+    @Column(name = "drain_number")
+    private Integer drainNumber; // auto-assigned sequential number
+
+    private String region; // cabeza, cuello, torax, abdomen, pelvis, extremidades
+
+    @Column(name = "sub_region")
+    private String subRegion; // for abdomen: hipocondrio_dcho, epigastrio, etc.
+
+    private String laterality; // izquierda, derecha, bilateral, medial
+
     @Column(name = "inserted_at", nullable = false)
     private LocalDateTime insertedAt;
 

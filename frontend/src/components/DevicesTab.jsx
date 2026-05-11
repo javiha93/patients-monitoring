@@ -10,6 +10,7 @@ const deviceInsightTypes = [
   'sv_latex_change_due', 'sv_silicone_change_due', 'sv_itu_risk',
   'vvc_review_dressing', 'vvc_review_lines', 'picc_review_dressing',
   'sng_aspiration_risk',
+  'drain_prolonged', 'drain_high_output', 'drain_hemorrhagic', 'drain_vacuum_lost',
 ]
 
 /* ── Constants ── */
@@ -33,10 +34,12 @@ export const CATEGORIES = {
     ],
   },
   elimination: {
-    label: 'Dispositivos de Eliminación',
+    label: 'Dispositivos de Eliminación y Drenajes',
     color: 'sky',
     types: [
       { value: 'sonda_vesical', label: 'Sonda Vesical' },
+      { value: 'redon', label: 'Drenaje Redon' },
+      { value: 'jackson_pratt', label: 'Drenaje Jackson-Pratt' },
     ],
   },
 }
@@ -66,6 +69,51 @@ export const SV_MATERIALS = [
   { value: 'silicona', label: 'Silicona' },
 ]
 
+export const DRAIN_REGIONS = [
+  { value: 'cabeza', label: 'Cabeza' },
+  { value: 'cuello', label: 'Cuello' },
+  { value: 'torax', label: 'Tórax' },
+  { value: 'abdomen', label: 'Abdomen' },
+  { value: 'pelvis', label: 'Pelvis' },
+  { value: 'extremidades', label: 'Extremidades' },
+]
+
+export const ABDOMEN_SUBREGIONS = [
+  { value: 'hipocondrio_dcho', label: 'Hipocondrio derecho' },
+  { value: 'epigastrio', label: 'Epigastrio' },
+  { value: 'hipocondrio_izq', label: 'Hipocondrio izquierdo' },
+  { value: 'flanco_dcho', label: 'Flanco derecho' },
+  { value: 'mesogastrio', label: 'Mesogastrio' },
+  { value: 'flanco_izq', label: 'Flanco izquierdo' },
+  { value: 'fosa_iliaca_dcha', label: 'Fosa ilíaca derecha' },
+  { value: 'hipogastrio', label: 'Hipogastrio' },
+  { value: 'fosa_iliaca_izq', label: 'Fosa ilíaca izquierda' },
+]
+
+export const LATERALITIES = [
+  { value: 'izquierda', label: 'Izquierda' },
+  { value: 'derecha', label: 'Derecha' },
+  { value: 'bilateral', label: 'Bilateral' },
+  { value: 'medial', label: 'Medial' },
+]
+
+const REGION_LABELS = {
+  cabeza: 'Cabeza', cuello: 'Cuello', torax: 'Tórax',
+  abdomen: 'Abdomen', pelvis: 'Pelvis', extremidades: 'Extremidades',
+}
+
+const SUBREGION_LABELS = {
+  hipocondrio_dcho: 'Hipocondrio dcho.', epigastrio: 'Epigastrio',
+  hipocondrio_izq: 'Hipocondrio izq.', flanco_dcho: 'Flanco dcho.',
+  mesogastrio: 'Mesogastrio', flanco_izq: 'Flanco izq.',
+  fosa_iliaca_dcha: 'Fosa ilíaca dcha.', hipogastrio: 'Hipogastrio',
+  fosa_iliaca_izq: 'Fosa ilíaca izq.',
+}
+
+const LATERALITY_LABELS = {
+  izquierda: 'Izq.', derecha: 'Dcha.', bilateral: 'Bilateral', medial: 'Medial',
+}
+
 const MATERIAL_LABELS = {
   pvc: 'PVC',
   poliuretano: 'Poliuretano',
@@ -93,6 +141,7 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
   const cat = CATEGORIES[category]
   const showTypeSelect = cat.types.length > 1
 
+  const isDrain = ['redon', 'jackson_pratt'].includes(form.type)
   const showGauge = ['via_periferica', 'sng', 'sonda_vesical'].includes(form.type)
   const showLocation = form.type === 'via_periferica'
   const showLumens = form.type === 'sonda_vesical'
@@ -169,6 +218,39 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
               </div>
             )}
           </div>
+
+          {isDrain && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-medium text-slate-600">Región</label>
+                <select value={form.region || ''} onChange={e => { set('region', e.target.value); if (e.target.value !== 'abdomen') set('subRegion', '') }}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+                  <option value="">Seleccionar...</option>
+                  {DRAIN_REGIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </div>
+
+              {form.region === 'abdomen' && (
+                <div>
+                  <label className="text-[11px] font-medium text-slate-600">Sub-región</label>
+                  <select value={form.subRegion || ''} onChange={e => set('subRegion', e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+                    <option value="">Seleccionar...</option>
+                    {ABDOMEN_SUBREGIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[11px] font-medium text-slate-600">Lateralidad</label>
+                <select value={form.laterality || ''} onChange={e => set('laterality', e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+                  <option value="">Seleccionar...</option>
+                  {LATERALITIES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-[11px] font-medium text-slate-600">Observaciones</label>
@@ -375,6 +457,8 @@ const TYPE_LABELS = {
   linea_arterial: 'Línea Arterial',
   sng: 'Sonda Nasogástrica',
   sonda_vesical: 'Sonda Vesical',
+  redon: 'Drenaje Redon',
+  jackson_pratt: 'Drenaje Jackson-Pratt',
 }
 
 const LOCATION_LABELS = {
@@ -395,11 +479,16 @@ function DeviceCard({ device, onEdit, onRemove, onDelete }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-slate-300'}`} />
-          <span className="text-sm font-semibold text-slate-800">{TYPE_LABELS[d.type] || d.type}</span>
+          <span className="text-sm font-semibold text-slate-800">
+            {TYPE_LABELS[d.type] || d.type}
+            {d.drainNumber != null && <span className="ml-1 text-sky-600">#{d.drainNumber}</span>}
+          </span>
           {d.gauge && <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{d.gauge}</span>}
           {d.location && <span className="text-xs text-slate-500">{LOCATION_LABELS[d.location] || d.location}</span>}
           {d.lumens && <span className="text-xs text-slate-500">{d.lumens} {d.lumens === 1 ? 'luz' : 'luces'}</span>}
           {d.material && <span className="text-xs bg-violet-50 text-violet-600 px-1.5 py-0.5 rounded">{MATERIAL_LABELS[d.material] || d.material}</span>}
+          {d.region && <span className="text-xs text-slate-500">{REGION_LABELS[d.region] || d.region}{d.subRegion ? ` · ${SUBREGION_LABELS[d.subRegion] || d.subRegion}` : ''}</span>}
+          {d.laterality && <span className="text-xs text-slate-500">{LATERALITY_LABELS[d.laterality] || d.laterality}</span>}
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {isActive && (

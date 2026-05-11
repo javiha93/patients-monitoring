@@ -41,4 +41,9 @@ public class DeviceController {
     public boolean hasActiveByType(@PathVariable Long admissionId, @RequestParam String type) {
         return service.hasActiveByType(admissionId, type);
     }
+
+    @GetMapping("/admission/{admissionId}/active-drains")
+    public java.util.List<DeviceDTO> getActiveDrains(@PathVariable Long admissionId) {
+        return service.getActiveDrains(admissionId);
+    }
 }

@@ -3,6 +3,7 @@ package com.pm.service;
 import com.pm.dto.*;
 import com.pm.entity.*;
 import com.pm.repository.*;
+import com.pm.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,7 @@ public class VitalSignService {
 
     private final VitalSignRepository vitalSignRepository;
     private final AdmissionRepository admissionRepository;
+    private final DeviceRepository deviceRepository;
 
     public List<VitalSignDTO> getByAdmission(Long admissionId) {
         return vitalSignRepository.findByAdmissionIdOrderByRecordedAtAsc(admissionId)
@@ -95,6 +97,9 @@ public class VitalSignService {
             vitalSignRepository.save(vs);
         }
 
+        // Drain outputs
+        saveDrainOutputs(vs, req.getDrainOutputs());
+
         return VitalSignDTO.fromEntity(vs);
     }
 
@@ -143,7 +148,34 @@ public class VitalSignService {
         }
 
         vs = vitalSignRepository.save(vs);
+
+        // Drain outputs
+        saveDrainOutputs(vs, req.getDrainOutputs());
+
         return VitalSignDTO.fromEntity(vs);
+    }
+
+    private void saveDrainOutputs(VitalSign vs, java.util.List<DrainOutputDTO> dtos) {
+        if (vs.getDrainOutputs() == null) {
+            vs.setDrainOutputs(new java.util.ArrayList<>());
+        }
+        vs.getDrainOutputs().clear();
+        if (dtos != null) {
+            for (DrainOutputDTO dto : dtos) {
+                Device device = deviceRepository.findById(dto.getDeviceId())
+                    .orElseThrow(() -> new RuntimeException("Device not found: " + dto.getDeviceId()));
+                DrainOutput output = DrainOutput.builder()
+                    .vitalSign(vs)
+                    .device(device)
+                    .drainNumber(dto.getDrainNumber())
+                    .outputMl(dto.getOutputMl())
+                    .fluidType(dto.getFluidType())
+                    .vacuumActive(dto.getVacuumActive() != null ? dto.getVacuumActive() : true)
+                    .build();
+                vs.getDrainOutputs().add(output);
+            }
+            vitalSignRepository.save(vs);
+        }
     }
 
     @Transactional

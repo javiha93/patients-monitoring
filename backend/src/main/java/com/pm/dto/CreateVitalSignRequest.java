@@ -3,6 +3,7 @@ package com.pm.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class CreateVitalSignRequest {
@@ -53,4 +54,7 @@ public class CreateVitalSignRequest {
     private Double epap;
     private Double tidalVolume;
     private Integer respiratoryRateSet;
+
+    // Drain outputs (optional)
+    private List<DrainOutputDTO> drainOutputs;
 }

@@ -62,6 +62,9 @@ public class VitalSign {
     @OneToOne(mappedBy = "vitalSign", cascade = CascadeType.ALL)
     private RespiratorySupport respiratorySupport;
 
+    @OneToMany(mappedBy = "vitalSign", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<DrainOutput> drainOutputs;
+
     @PrePersist
     protected void onCreate() { createdAt = LocalDateTime.now(); }
 
