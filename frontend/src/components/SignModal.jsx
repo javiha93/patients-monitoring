@@ -1,15 +1,75 @@
-import { useState } from 'react'
-import { X } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { X, AlertTriangle } from 'lucide-react'
+
+/**
+ * Calculate dose from insulin scale based on glycemia value.
+ * Returns the matching doseUi or null if no match.
+ */
+function calcDoseFromScale(insulinScales, glycemia) {
+  if (!insulinScales || !glycemia) return null
+  const g = parseInt(glycemia)
+  if (isNaN(g)) return null
+  const sorted = [...insulinScales].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+  for (const s of sorted) {
+    const min = s.glycemiaMin ?? -Infinity
+    const max = s.glycemiaMax ?? Infinity
+    if (g >= min && g <= max) return String(s.doseUi)
+  }
+  return null
+}
+
+/**
+ * Find the most recent glucose reading from vitals.
+ * Returns { value, recordedAt, isStale } or null.
+ */
+function getLatestGlucose(vitals) {
+  if (!vitals || vitals.length === 0) return null
+  const withGlucose = vitals
+    .filter(v => v.bloodGlucose != null)
+    .sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt))
+  if (withGlucose.length === 0) return null
+  const latest = withGlucose[0]
+  const ageMs = Date.now() - new Date(latest.recordedAt).getTime()
+  const isStale = ageMs > 2 * 60 * 60 * 1000 // > 2 hours
+  return { value: latest.bloodGlucose, recordedAt: latest.recordedAt, isStale }
+}
 
 /**
  * InsulinSignModal — Only used for insulin prescriptions.
- * Regular medication is signed with a direct click (no modal).
+ * Auto-reads glucose from vitals, auto-calculates dose from scale,
+ * auto-fills current user. All fields remain editable.
  */
-export function InsulinSignModal({ open, prescription, slot, onConfirm, onClose }) {
+export function InsulinSignModal({ open, prescription, slot, vitals, currentUser, onConfirm, onClose }) {
+  const latestGlucose = useMemo(() => getLatestGlucose(vitals), [vitals])
+
   const [glycemia, setGlycemia] = useState('')
   const [doseUI, setDoseUI] = useState('')
   const [signedBy, setSignedBy] = useState('')
   const [note, setNote] = useState('')
+
+  // Reset fields when modal opens with new data
+  useEffect(() => {
+    if (open) {
+      const g = latestGlucose?.value ?? ''
+      setGlycemia(String(g))
+      setSignedBy(currentUser || '')
+      setNote('')
+      // Auto-calc dose from scale
+      if (g && prescription?.insulinScales) {
+        setDoseUI(calcDoseFromScale(prescription.insulinScales, g) || '')
+      } else {
+        setDoseUI('')
+      }
+    }
+  }, [open, latestGlucose, prescription, currentUser])
+
+  // Recalculate dose when glycemia changes
+  useEffect(() => {
+    if (glycemia && prescription?.insulinScales) {
+      const dose = calcDoseFromScale(prescription.insulinScales, glycemia)
+      if (dose !== null) setDoseUI(dose)
+    }
+  }, [glycemia, prescription])
 
   if (!open || !prescription) return null
 
@@ -22,6 +82,12 @@ export function InsulinSignModal({ open, prescription, slot, onConfirm, onClose 
       signedBy,
       note: `Glucemia: ${glycemia} mg/dL. ${note}`.trim(),
     })
+  }
+
+  const fmtTime = (dt) => {
+    if (!dt) return ''
+    const d = new Date(dt)
+    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
@@ -42,16 +108,37 @@ export function InsulinSignModal({ open, prescription, slot, onConfirm, onClose 
             <label className="text-[11px] font-medium text-slate-600">Glucemia capilar (mg/dL)</label>
             <input type="number" value={glycemia} onChange={e => setGlycemia(e.target.value)}
               required autoFocus className="w-full border rounded-lg px-2.5 py-1.5 text-sm mt-0.5" placeholder="250" />
+            {latestGlucose && !latestGlucose.isStale && (
+              <div className="text-[10px] text-green-600 mt-0.5" data-testid="glucose-fresh">
+                Lectura de las {fmtTime(latestGlucose.recordedAt)}
+              </div>
+            )}
+            {latestGlucose?.isStale && (
+              <div className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1" data-testid="glucose-stale">
+                <AlertTriangle size={10} />
+                Lectura de hace más de 2h ({fmtTime(latestGlucose.recordedAt)}) — considere tomar nueva glucemia
+              </div>
+            )}
+            {!latestGlucose && (
+              <div className="text-[10px] text-slate-400 mt-0.5" data-testid="glucose-none">
+                Sin registro de glucemia — introduzca manualmente
+              </div>
+            )}
           </div>
           <div>
             <label className="text-[11px] font-medium text-slate-600">Dosis (UI)</label>
             <input type="number" value={doseUI} onChange={e => setDoseUI(e.target.value)}
               required className="w-full border rounded-lg px-2.5 py-1.5 text-sm mt-0.5" placeholder="4" />
+            {glycemia && prescription.insulinScales?.length > 0 && (
+              <div className="text-[10px] text-slate-500 mt-0.5" data-testid="dose-suggestion">
+                Según pauta: {calcDoseFromScale(prescription.insulinScales, glycemia) ?? '—'} UI
+              </div>
+            )}
           </div>
           <div>
             <label className="text-[11px] font-medium text-slate-600">Firmado por</label>
             <input value={signedBy} onChange={e => setSignedBy(e.target.value)}
-              required className="w-full border rounded-lg px-2.5 py-1.5 text-sm mt-0.5" placeholder="Nombre" />
+              required className="w-full border rounded-lg px-2.5 py-1.5 text-sm mt-0.5 bg-slate-50" readOnly />
           </div>
           <div>
             <label className="text-[11px] font-medium text-slate-600">Observaciones</label>

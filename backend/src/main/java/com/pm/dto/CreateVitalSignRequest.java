@@ -28,6 +28,7 @@ public class CreateVitalSignRequest {
     private Double temperature;
     private Integer painLevel;
     private String consciousnessLevel;
+    private Integer bloodGlucose;
     private String notes;
 
     // Respiratory support (optional)

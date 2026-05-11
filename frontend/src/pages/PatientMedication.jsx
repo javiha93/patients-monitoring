@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ChevronLeft, Plus, Clock } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { prescriptionApi } from '../services/prescriptionApi'
+import { vitalsApi } from '../services/vitalsApi'
 import ActionBar from '../components/ActionBar'
 import MedicationGrid from '../components/MedicationGrid'
 import { InsulinSignModal, EditAdminModal } from '../components/SignModal'
@@ -39,7 +40,11 @@ export default function PatientMedication() {
   const gridRef = useRef(null)
   const [patient, setPatient] = useState(null)
   const [prescriptions, setPrescriptions] = useState([])
+  const [vitals, setVitals] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // TODO: replace with real auth context
+  const currentUser = 'Enf. Usuario Actual'
   const [showNewRx, setShowNewRx] = useState(false)
   const [newRx, setNewRx] = useState({
     name: '', amount: '', unit: 'mg', route: 'VO', frequency: 'c/8h',
@@ -53,8 +58,12 @@ export default function PatientMedication() {
       const { data: p } = await patientApi.getPatient(id)
       setPatient(p)
       if (p.activeAdmission) {
-        const { data: rx } = await prescriptionApi.getByAdmission(p.activeAdmission.id)
-        setPrescriptions(rx)
+        const [rxRes, vitalsRes] = await Promise.all([
+          prescriptionApi.getByAdmission(p.activeAdmission.id),
+          vitalsApi.getByAdmission(p.activeAdmission.id),
+        ])
+        setPrescriptions(rxRes.data)
+        setVitals(vitalsRes.data)
       }
     } catch {
       navigate('/')
@@ -176,6 +185,8 @@ export default function PatientMedication() {
         open={insulinModal.open}
         prescription={insulinModal.prescription}
         slot={insulinModal.slot}
+        vitals={vitals}
+        currentUser={currentUser}
         onConfirm={handleInsulinConfirm}
         onClose={() => setInsulinModal({ open: false, prescription: null, slot: null })}
       />

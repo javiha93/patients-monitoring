@@ -50,6 +50,7 @@ public class VitalSignService {
                 .respiratoryRate(req.getRespiratoryRate())
                 .temperature(req.getTemperature())
                 .painLevel(req.getPainLevel())
+                .bloodGlucose(req.getBloodGlucose())
                 .notes(req.getNotes())
                 .build();
 
