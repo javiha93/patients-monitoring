@@ -327,11 +327,10 @@ describe('EditAdminModal', () => {
   })
 
   it('calls onUnsign on unsign', () => {
-    window.confirm = vi.fn(() => true)
     const onUnsign = vi.fn()
     render(<EditAdminModal open={true} admin={admin} prescription={fixedPrescription} onUpdate={vi.fn()} onUnsign={onUnsign} onClose={vi.fn()} />)
     fireEvent.click(screen.getByText('Desfirmar'))
+    fireEvent.click(screen.getByText('Confirmar'))
     expect(onUnsign).toHaveBeenCalledWith(100)
-    window.confirm = vi.fn()
   })
 })
