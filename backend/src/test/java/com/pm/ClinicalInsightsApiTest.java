@@ -338,6 +338,31 @@ class ClinicalInsightsApiTest {
     }
 
     @Test
+    @DisplayName("Antecedente de agitación en ingresos previos")
+    void priorAgitationHistory() throws Exception {
+        Admission prior = admissionRepo.save(Admission.builder()
+                .patient(patient).admissionDate(LocalDateTime.now().minusMonths(2))
+                .dischargeDate(LocalDateTime.now().minusMonths(1))
+                .triageLevel(3).status(Admission.Status.discharged).build());
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(prior).recordedAt(LocalDateTime.now().minusMonths(2))
+                .assessmentType("sucesiva").mood("agitado").consciousness("alerta").glasgowScore(15)
+                .build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("prior_agitation_history".equals(node.get("analysisType").asText())) {
+                assertEquals("info", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected prior_agitation_history insight");
+    }
+
+    @Test
     @DisplayName("Deterioro del patrón respiratorio en valoraciones")
     void respiratoryPatternDeterioration() throws Exception {
         nursingRepo.save(NursingAssessment.builder()

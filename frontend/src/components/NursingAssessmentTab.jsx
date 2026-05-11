@@ -221,7 +221,7 @@ export default function NursingAssessmentTab({ admissionId, patientId, toast }) 
     } catch { toast.error('Error eliminando valoración') }
   }
 
-  const nursingInsightTypes = ['new_cognitive_decline', 'progressive_cognitive_decline', 'glasgow_drop', 'fall_risk_mobility', 'agitation_no_restraint', 'respiratory_pattern_deterioration']
+  const nursingInsightTypes = ['new_cognitive_decline', 'progressive_cognitive_decline', 'glasgow_drop', 'fall_risk_mobility', 'agitation_no_restraint', 'respiratory_pattern_deterioration', 'prior_agitation_history']
 
   return (
     <div className="space-y-4">

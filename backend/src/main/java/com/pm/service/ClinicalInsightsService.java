@@ -68,6 +68,7 @@ public class ClinicalInsightsService {
         checkFallRiskWithMobilityImpairment(insights, currentAssessments);
         checkAgitationWithoutRestraint(insights, currentAssessments);
         checkRespiratoryPatternDeterioration(insights, currentAssessments);
+        checkPriorAgitationHistory(insights, priorAssessments);
 
         // Sort: critical first, then warning, then info
         insights.sort(Comparator.comparingInt(i -> levelOrder(i.getLevel())));
@@ -558,6 +559,32 @@ public class ClinicalInsightsService {
             .detail(detail)
             .reasoning("El patrón respiratorio ha empeorado respecto a valoraciones previas. Correlacionar con constantes vitales (SpO2, FR) y valorar soporte")
             .analysisType("respiratory_pattern_deterioration")
+            .build());
+    }
+
+    /**
+     * Patient had agitation or aggression episodes in prior admissions.
+     */
+    private void checkPriorAgitationHistory(List<ClinicalInsightDTO> insights, List<NursingAssessment> prior) {
+        if (prior.isEmpty()) return;
+        List<String> episodes = prior.stream()
+            .filter(a -> "agitado".equals(a.getMood()) || "agresivo".equals(a.getMood()))
+            .map(a -> a.getMood())
+            .toList();
+        if (episodes.isEmpty()) return;
+
+        long agitado = episodes.stream().filter("agitado"::equals).count();
+        long agresivo = episodes.stream().filter("agresivo"::equals).count();
+        List<String> parts = new ArrayList<>();
+        if (agitado > 0) parts.add(agitado + " agitación");
+        if (agresivo > 0) parts.add(agresivo + " agresividad");
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("info")
+            .title("Antecedente de " + (agresivo > 0 ? "agresividad" : "agitación") + " en ingresos previos")
+            .detail("Episodios registrados en ingresos anteriores: " + String.join(", ", parts))
+            .reasoning("Paciente con historial de alteración conductual. Anticipar medidas preventivas y plan de contención si precisa")
+            .analysisType("prior_agitation_history")
             .build());
     }
 }
