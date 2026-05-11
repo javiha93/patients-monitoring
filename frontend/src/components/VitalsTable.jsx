@@ -92,9 +92,27 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
               <th className="px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10">{r.label}</th>
               {sorted.map(v => {
                 if (r.special) {
+                  // No SpO2 → show dash
+                  if (v.spo2 == null) {
+                    return (
+                      <td key={v.id} className={`px-3 py-2.5 text-center text-xs whitespace-nowrap text-slate-300 ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                        onClick={onEdit ? () => onEdit(v) : undefined}
+                        onMouseEnter={() => setHoveredCol(v.id)}
+                        onMouseLeave={() => setHoveredCol(null)}
+                      >—</td>
+                    )
+                  }
                   const rs = v.respiratorySupport
                   const label = rs ? deviceLabels[rs.deviceType] || rs.deviceType : 'Aire ambiente'
-                  const detail = rs && rs.flowRate ? ` ${rs.flowRate}L` : ''
+                  let detail = ''
+                  if (rs) {
+                    if (rs.flowRate) detail += ` ${rs.flowRate}L`
+                    if (rs.fio2) detail += ` FiO₂${rs.fio2}%`
+                  }
+                  // BiPAP tooltip with IPAP/EPAP
+                  const tooltip = rs && rs.deviceType === 'bipap'
+                    ? `IPAP: ${rs.ipap ?? '—'} / EPAP: ${rs.epap ?? '—'} cmH₂O`
+                    : undefined
                   return (
                     <td
                       key={v.id}
@@ -102,8 +120,10 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
                       onClick={onEdit ? () => onEdit(v) : undefined}
                       onMouseEnter={() => setHoveredCol(v.id)}
                       onMouseLeave={() => setHoveredCol(null)}
+                      title={tooltip}
                     >
                       {label}{detail}
+                      {tooltip && <span className="ml-0.5 text-blue-400 text-[9px]">ⓘ</span>}
                     </td>
                   )
                 }
