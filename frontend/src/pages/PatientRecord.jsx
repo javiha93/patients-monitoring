@@ -8,6 +8,7 @@ import VitalsSummaryCards from '../components/VitalsSummaryCards'
 import VitalsTable from '../components/VitalsTable'
 import NewVitalSignModal from '../components/NewVitalSignModal'
 import EditVitalSignModal from '../components/EditVitalSignModal'
+import { useToast, ToastContainer } from '../components/Toast'
 import InsightsPanel from '../components/InsightsPanel'
 
 function calcAge(birthDate) {
@@ -32,6 +33,7 @@ export default function PatientRecord() {
   const [vitals, setVitals] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const { toasts, removeToast, toast } = useToast()
   const [editVital, setEditVital] = useState(null)
 
   const fetchData = async () => {
@@ -63,7 +65,7 @@ export default function PatientRecord() {
       await patientApi.discharge(patient.id, { dischargeDate: new Date().toISOString() })
       navigate('/')
     } catch (e) {
-      alert(e.response?.data?.error || 'Error')
+      toast.error(e.response?.data?.error || 'Error')
     }
   }
 
@@ -73,7 +75,7 @@ export default function PatientRecord() {
       setModalOpen(false)
       fetchData()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error guardando registro')
+      toast.error(e.response?.data?.error || 'Error guardando registro')
     }
   }
 
@@ -83,7 +85,7 @@ export default function PatientRecord() {
       setEditVital(null)
       fetchData()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error actualizando registro')
+      toast.error(e.response?.data?.error || 'Error actualizando registro')
     }
   }
 
@@ -93,7 +95,7 @@ export default function PatientRecord() {
       await vitalsApi.delete(id)
       fetchData()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error eliminando registro')
+      toast.error(e.response?.data?.error || 'Error eliminando registro')
     }
   }
 
@@ -142,6 +144,8 @@ export default function PatientRecord() {
         vitalSign={editVital}
         patientName={`${patient.lastName}, ${patient.firstName} · ${age || ''}`}
       />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

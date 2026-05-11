@@ -7,6 +7,7 @@ import { vitalsApi } from '../services/vitalsApi'
 import ActionBar from '../components/ActionBar'
 import MedicationGrid from '../components/MedicationGrid'
 import { InsulinSignModal, EditAdminModal } from '../components/SignModal'
+import { useToast, ToastContainer } from '../components/Toast'
 
 function calcAge(birthDate) {
   if (!birthDate) return null
@@ -39,6 +40,7 @@ export default function PatientMedication() {
   const navigate = useNavigate()
   const gridRef = useRef(null)
   const [patient, setPatient] = useState(null)
+  const { toasts, removeToast, toast } = useToast()
   const [prescriptions, setPrescriptions] = useState([])
   const [vitals, setVitals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -80,7 +82,7 @@ export default function PatientMedication() {
       await prescriptionApi.sign(data)
       fetchData()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al firmar')
+      toast.error(e.response?.data?.error || 'Error al firmar')
     }
   }
 
@@ -90,7 +92,7 @@ export default function PatientMedication() {
       await prescriptionApi.unsign(adminId)
       fetchData()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al desfirmar')
+      toast.error(e.response?.data?.error || 'Error al desfirmar')
     }
   }
 
@@ -106,7 +108,7 @@ export default function PatientMedication() {
       setInsulinModal({ open: false, prescription: null, slot: null })
       fetchData()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al firmar insulina')
+      toast.error(e.response?.data?.error || 'Error al firmar insulina')
     }
   }
 
@@ -123,7 +125,7 @@ export default function PatientMedication() {
       setNewRx({ name: '', amount: '', unit: 'mg', route: 'VO', frequency: 'c/8h', category: 'fixed', scheduledHours: '8,16,0', conditionText: '', prescribedBy: '' })
       fetchData()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error al crear prescripción')
+      toast.error(e.response?.data?.error || 'Error al crear prescripción')
     }
   }
 
@@ -202,7 +204,7 @@ export default function PatientMedication() {
             setEditModal({ open: false, admin: null, prescription: null })
             fetchData()
           } catch (e) {
-            alert(e.response?.data?.error || 'Error al actualizar')
+            toast.error(e.response?.data?.error || 'Error al actualizar')
           }
         }}
         onUnsign={async (adminId) => {
@@ -284,6 +286,8 @@ export default function PatientMedication() {
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

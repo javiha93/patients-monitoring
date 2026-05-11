@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import TriageBadge from '../components/TriageBadge'
+import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
 
 function calcAge(birthDate) {
@@ -40,6 +41,7 @@ function formatDate(dateStr) {
 export default function PatientList() {
   const [patients, setPatients] = useState([])
   const [view, setView] = useState('table')
+  const { toasts, removeToast, toast } = useToast()
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -112,7 +114,7 @@ export default function PatientList() {
       fetchPatients()
       setSelectedId(patient.id)
     } catch (e) {
-      alert(e.response?.data?.error || 'Error creating patient')
+      toast.error(e.response?.data?.error || 'Error creating patient')
     }
   }
 
@@ -182,7 +184,7 @@ export default function PatientList() {
                                 pt.admissionId === p.admissionId ? { ...pt, location: newLoc } : pt
                               ))
                             } catch (err) {
-                              alert('Error al cambiar ubicación')
+                              toast.error('Error al cambiar ubicación')
                             }
                           }}
                         >
@@ -259,6 +261,7 @@ export default function PatientList() {
       </div>
 
       <NewPatientModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleCreate} />
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

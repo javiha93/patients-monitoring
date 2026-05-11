@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, RotateCcw } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
+import { useToast, ToastContainer } from '../components/Toast'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -10,6 +11,7 @@ function formatDate(dateStr) {
 }
 
 export default function DischargedSearch() {
+  const { toasts, removeToast, toast } = useToast()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searched, setSearched] = useState(false)
@@ -31,7 +33,7 @@ export default function DischargedSearch() {
       await patientApi.reopen(patientId, 3, null)
       navigate(`/patient/${patientId}`)
     } catch (e) {
-      alert(e.response?.data?.error || 'Error')
+      toast.error(e.response?.data?.error || 'Error')
     }
   }
 
@@ -92,6 +94,7 @@ export default function DischargedSearch() {
           </div>
         )}
       </div>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }
