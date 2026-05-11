@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
+
 const ranges = {
   systolicBp: { low: 90, high: 140 },
   diastolicBp: { low: 60, high: 90 },
@@ -46,9 +49,14 @@ const deviceLabels = {
 }
 
 export default function VitalsTable({ vitals, onEdit, onDelete }) {
+  const [hoveredCol, setHoveredCol] = useState(null)
+
   if (!vitals || vitals.length === 0) {
     return <p className="text-slate-400 text-center py-8">No hay registros de constantes</p>
   }
+
+  // Most recent first
+  const sorted = [...vitals].reverse()
 
   return (
     <div className="overflow-x-auto">
@@ -56,9 +64,23 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
         <thead>
           <tr className="bg-slate-50">
             <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 sticky left-0 bg-slate-50 z-10 min-w-[140px]">Constante</th>
-            {vitals.map(v => (
-              <th key={v.id} className="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 whitespace-nowrap">
-                {formatTime(v.recordedAt)}
+            {sorted.map(v => (
+              <th
+                key={v.id}
+                className="px-3 py-2.5 text-center text-xs font-semibold text-slate-500 whitespace-nowrap relative"
+                onMouseEnter={() => setHoveredCol(v.id)}
+                onMouseLeave={() => setHoveredCol(null)}
+              >
+                <span>{formatTime(v.recordedAt)}</span>
+                {onDelete && hoveredCol === v.id && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(v.id) }}
+                    className="absolute -top-1 -right-1 bg-white border border-red-200 rounded-full p-0.5 shadow-sm text-red-400 hover:text-red-600 hover:bg-red-50"
+                    title="Borrar registro"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </th>
             ))}
           </tr>
@@ -67,10 +89,16 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
           {rows.map(r => (
             <tr key={r.key} className="border-t border-slate-100">
               <th className="px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10">{r.label}</th>
-              {vitals.map(v => {
+              {sorted.map(v => {
                 const val = v[r.key]
                 return (
-                  <td key={v.id} className={`px-3 py-2.5 text-center text-sm whitespace-nowrap ${cellClass(r.key, val)}`}>
+                  <td
+                    key={v.id}
+                    className={`px-3 py-2.5 text-center text-sm whitespace-nowrap ${cellClass(r.key, val)} ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                    onClick={onEdit ? () => onEdit(v) : undefined}
+                    onMouseEnter={() => setHoveredCol(v.id)}
+                    onMouseLeave={() => setHoveredCol(null)}
+                  >
                     {val != null ? val : '—'}
                   </td>
                 )
@@ -80,39 +108,23 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
           {/* Respiratory support row */}
           <tr className="border-t border-slate-100">
             <th className="px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10">Soporte resp.</th>
-            {vitals.map(v => {
+            {sorted.map(v => {
               const rs = v.respiratorySupport
               const label = rs ? deviceLabels[rs.deviceType] || rs.deviceType : 'Aire ambiente'
               const detail = rs && rs.flowRate ? ` ${rs.flowRate}L` : ''
               return (
-                <td key={v.id} className="px-3 py-2.5 text-center text-xs whitespace-nowrap text-slate-500">
+                <td
+                  key={v.id}
+                  className={`px-3 py-2.5 text-center text-xs whitespace-nowrap text-slate-500 ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                  onClick={onEdit ? () => onEdit(v) : undefined}
+                  onMouseEnter={() => setHoveredCol(v.id)}
+                  onMouseLeave={() => setHoveredCol(null)}
+                >
                   {label}{detail}
                 </td>
               )
             })}
           </tr>
-          {/* Actions row */}
-          {(onEdit || onDelete) && (
-            <tr className="border-t border-slate-200 bg-slate-50">
-              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 sticky left-0 bg-slate-50 z-10">Acciones</th>
-              {vitals.map(v => (
-                <td key={v.id} className="px-3 py-2 text-center whitespace-nowrap">
-                  <div className="flex items-center justify-center gap-1">
-                    {onEdit && (
-                      <button onClick={() => onEdit(v)} className="text-blue-500 hover:text-blue-700 text-[11px] font-medium px-1.5 py-0.5 rounded hover:bg-blue-50" title="Editar">
-                        Editar
-                      </button>
-                    )}
-                    {onDelete && (
-                      <button onClick={() => onDelete(v.id)} className="text-red-400 hover:text-red-600 text-[11px] font-medium px-1.5 py-0.5 rounded hover:bg-red-50" title="Borrar">
-                        Borrar
-                      </button>
-                    )}
-                  </div>
-                </td>
-              ))}
-            </tr>
-          )}
         </tbody>
       </table>
     </div>
