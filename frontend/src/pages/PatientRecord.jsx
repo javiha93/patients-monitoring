@@ -59,14 +59,6 @@ export default function PatientRecord() {
     }
   }
 
-  useEffect(() => { fetchData() }, [id])
-
-  if (loading) return <p className="p-6 text-slate-400">Cargando...</p>
-  if (!patient) return null
-
-  const age = calcAge(patient.birthDate)
-  const admission = patient.activeAdmission
-
   const loadMoreVitals = useCallback(async () => {
     if (!patient?.activeAdmission || loadingHistorical) return
     setLoadingHistorical(true)
@@ -81,6 +73,14 @@ export default function PatientRecord() {
       setLoadingHistorical(false)
     }
   }, [patient, historicalVitalsPage, loadingHistorical])
+
+  useEffect(() => { fetchData() }, [id])
+
+  if (loading) return <p className="p-6 text-slate-400">Cargando...</p>
+  if (!patient) return null
+
+  const age = calcAge(patient.birthDate)
+  const admission = patient.activeAdmission
 
   const handleDischarge = async () => {
     try {
