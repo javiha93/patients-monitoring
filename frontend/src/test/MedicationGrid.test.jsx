@@ -87,7 +87,7 @@ describe('KAN-52: Grid — Secciones por categoría', () => {
 
   it('[KAN-52] muestra sección Insulina', () => {
     render(<MedicationGrid prescriptions={allMeds} {...defaultProps} />)
-    expect(screen.getByText(/Insulina/)).toBeInTheDocument()
+    expect(screen.getByText(/^Insulina \(\d+\)$/)).toBeInTheDocument()
   })
 
   it('[KAN-52] no muestra secciones vacías', () => {
