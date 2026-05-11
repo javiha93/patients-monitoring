@@ -68,10 +68,11 @@ describe('KAN-58: InsulinSignModal — Estructura básica', () => {
   })
 })
 
-describe('KAN-58: Glucemia auto-leída de vitals', () => {
-  it('[KAN-58] pre-rellena glucemia desde la última lectura', () => {
+describe('KAN-58: Glucemia auto-leída de vitals (solo lectura)', () => {
+  it('[KAN-58] muestra glucemia como valor de solo lectura', () => {
     render(<InsulinSignModal {...defaultProps} vitals={freshVitals} />)
-    expect(screen.getByPlaceholderText('250').value).toBe('220')
+    const glucoseDisplay = screen.getByTestId('glucose-value')
+    expect(glucoseDisplay.textContent).toBe('220')
   })
 
   it('[KAN-58] muestra indicador "lectura reciente" si < 2h', () => {
@@ -79,28 +80,39 @@ describe('KAN-58: Glucemia auto-leída de vitals', () => {
     expect(screen.getByTestId('glucose-fresh').textContent).toContain('Lectura de las')
   })
 
-  it('[KAN-58] muestra aviso si glucemia > 2h', () => {
+  it('[KAN-58] muestra aviso si glucemia > 2h pero permite firmar', () => {
     render(<InsulinSignModal {...defaultProps} vitals={staleVitals} />)
     const warning = screen.getByTestId('glucose-stale')
     expect(warning.textContent).toContain('más de 2h')
-    expect(warning.textContent).toContain('considere tomar nueva glucemia')
+    const btn = screen.getByText('Firmar')
+    expect(btn).not.toBeDisabled()
   })
 
-  it('[KAN-58] muestra mensaje si no hay glucemia en vitals', () => {
+  it('[KAN-58] muestra alerta bloqueante si no hay glucemia en vitals', () => {
     render(<InsulinSignModal {...defaultProps} vitals={noGlucoseVitals} />)
-    expect(screen.getByTestId('glucose-none').textContent).toContain('Sin registro de glucemia')
+    const alert = screen.getByTestId('glucose-alert')
+    expect(alert.textContent).toContain('No hay registro de glucemia')
+    expect(alert.textContent).toContain('Registros')
+    expect(screen.getByTestId('glucose-missing').textContent).toContain('Sin registro')
   })
 
-  it('[KAN-58] muestra mensaje si no hay vitals', () => {
+  it('[KAN-58] muestra alerta bloqueante si no hay vitals', () => {
     render(<InsulinSignModal {...defaultProps} vitals={[]} />)
-    expect(screen.getByTestId('glucose-none')).toBeInTheDocument()
+    expect(screen.getByTestId('glucose-alert')).toBeInTheDocument()
+    expect(screen.getByTestId('glucose-missing')).toBeInTheDocument()
   })
 
-  it('[KAN-58] permite editar glucemia manualmente', () => {
-    render(<InsulinSignModal {...defaultProps} />)
-    const input = screen.getByPlaceholderText('250')
-    fireEvent.change(input, { target: { value: '300' } })
-    expect(input.value).toBe('300')
+  it('[KAN-58] botón Firmar deshabilitado sin glucemia', () => {
+    render(<InsulinSignModal {...defaultProps} vitals={[]} />)
+    const btn = screen.getByText('Firmar')
+    expect(btn).toBeDisabled()
+  })
+
+  it('[KAN-58] no llama onConfirm al intentar submit sin glucemia', () => {
+    const onConfirm = vi.fn()
+    render(<InsulinSignModal {...defaultProps} vitals={[]} onConfirm={onConfirm} />)
+    fireEvent.click(screen.getByText('Firmar'))
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 })
 
@@ -110,22 +122,9 @@ describe('KAN-58: Dosis auto-calculada según pauta', () => {
     expect(screen.getByPlaceholderText('4').value).toBe('2')
   })
 
-  it('[KAN-58] recalcula al cambiar glucemia (300 → 4UI)', () => {
-    render(<InsulinSignModal {...defaultProps} vitals={freshVitals} />)
-    fireEvent.change(screen.getByPlaceholderText('250'), { target: { value: '300' } })
-    expect(screen.getByPlaceholderText('4').value).toBe('4')
-  })
-
-  it('[KAN-58] recalcula para glucemia alta (400 → 6UI)', () => {
-    render(<InsulinSignModal {...defaultProps} vitals={freshVitals} />)
-    fireEvent.change(screen.getByPlaceholderText('250'), { target: { value: '400' } })
-    expect(screen.getByPlaceholderText('4').value).toBe('6')
-  })
-
-  it('[KAN-58] recalcula para glucemia baja (100 → 0UI)', () => {
-    render(<InsulinSignModal {...defaultProps} vitals={freshVitals} />)
-    fireEvent.change(screen.getByPlaceholderText('250'), { target: { value: '100' } })
-    expect(screen.getByPlaceholderText('4').value).toBe('0')
+  it('[KAN-58] calcula dosis para stale vitals (180 → 2UI)', () => {
+    render(<InsulinSignModal {...defaultProps} vitals={staleVitals} />)
+    expect(screen.getByPlaceholderText('4').value).toBe('2')
   })
 
   it('[KAN-58] muestra sugerencia de dosis según pauta', () => {
@@ -138,6 +137,11 @@ describe('KAN-58: Dosis auto-calculada según pauta', () => {
     const input = screen.getByPlaceholderText('4')
     fireEvent.change(input, { target: { value: '5' } })
     expect(input.value).toBe('5')
+  })
+
+  it('[KAN-58] dosis vacía si no hay glucemia', () => {
+    render(<InsulinSignModal {...defaultProps} vitals={[]} />)
+    expect(screen.getByPlaceholderText('4').value).toBe('')
   })
 })
 
@@ -163,6 +167,15 @@ describe('KAN-58: Envío del formulario', () => {
       doseGiven: '2',
       signedBy: 'Enf. María Torres',
       note: expect.stringContaining('Glucemia: 220'),
+    }))
+  })
+
+  it('[KAN-58] llama onConfirm con glucemia stale (permitido)', () => {
+    const onConfirm = vi.fn()
+    render(<InsulinSignModal {...defaultProps} vitals={staleVitals} onConfirm={onConfirm} />)
+    fireEvent.click(screen.getByText('Firmar'))
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
+      note: expect.stringContaining('Glucemia: 180'),
     }))
   })
 })

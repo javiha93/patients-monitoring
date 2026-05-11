@@ -42,39 +42,31 @@ function getLatestGlucose(vitals) {
 export function InsulinSignModal({ open, prescription, slot, vitals, currentUser, onConfirm, onClose }) {
   const latestGlucose = useMemo(() => getLatestGlucose(vitals), [vitals])
 
-  const [glycemia, setGlycemia] = useState('')
   const [doseUI, setDoseUI] = useState('')
   const [signedBy, setSignedBy] = useState('')
   const [note, setNote] = useState('')
 
+  const hasGlucose = latestGlucose != null
+  const glycemia = latestGlucose?.value ?? null
+
   // Reset fields when modal opens with new data
   useEffect(() => {
     if (open) {
-      const g = latestGlucose?.value ?? ''
-      setGlycemia(String(g))
       setSignedBy(currentUser || '')
       setNote('')
-      // Auto-calc dose from scale
-      if (g && prescription?.insulinScales) {
-        setDoseUI(calcDoseFromScale(prescription.insulinScales, g) || '')
+      if (glycemia && prescription?.insulinScales) {
+        setDoseUI(calcDoseFromScale(prescription.insulinScales, glycemia) || '')
       } else {
         setDoseUI('')
       }
     }
   }, [open, latestGlucose, prescription, currentUser])
 
-  // Recalculate dose when glycemia changes
-  useEffect(() => {
-    if (glycemia && prescription?.insulinScales) {
-      const dose = calcDoseFromScale(prescription.insulinScales, glycemia)
-      if (dose !== null) setDoseUI(dose)
-    }
-  }, [glycemia, prescription])
-
   if (!open || !prescription) return null
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    if (!hasGlucose) return
     onConfirm({
       prescriptionId: prescription.id,
       administeredAt: slot,
@@ -103,25 +95,41 @@ export function InsulinSignModal({ open, prescription, slot, vitals, currentUser
           <div className="text-[11px] text-purple-600">{prescription.route} · {prescription.frequency}</div>
         </div>
 
+        {!hasGlucose && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-1 flex items-start gap-2" data-testid="glucose-alert">
+            <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+            <div>
+              <div className="text-xs font-semibold text-red-700">No hay registro de glucemia</div>
+              <div className="text-[11px] text-red-600 mt-0.5">
+                Debe registrar la glucemia capilar en la sección de <span className="font-semibold">Registros</span> antes de administrar insulina.
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-2.5">
           <div>
             <label className="text-[11px] font-medium text-slate-600">Glucemia capilar (mg/dL)</label>
-            <input type="number" value={glycemia} onChange={e => setGlycemia(e.target.value)}
-              required autoFocus className="w-full border rounded-lg px-2.5 py-1.5 text-sm mt-0.5" placeholder="250" />
-            {latestGlucose && !latestGlucose.isStale && (
-              <div className="text-[10px] text-green-600 mt-0.5" data-testid="glucose-fresh">
-                Lectura de las {fmtTime(latestGlucose.recordedAt)}
-              </div>
-            )}
-            {latestGlucose?.isStale && (
-              <div className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1" data-testid="glucose-stale">
-                <AlertTriangle size={10} />
-                Lectura de hace más de 2h ({fmtTime(latestGlucose.recordedAt)}) — considere tomar nueva glucemia
-              </div>
-            )}
-            {!latestGlucose && (
-              <div className="text-[10px] text-slate-400 mt-0.5" data-testid="glucose-none">
-                Sin registro de glucemia — introduzca manualmente
+            {hasGlucose ? (
+              <>
+                <div className="w-full border rounded-lg px-2.5 py-1.5 text-sm mt-0.5 bg-slate-50 text-slate-700" data-testid="glucose-value">
+                  {glycemia}
+                </div>
+                {!latestGlucose.isStale && (
+                  <div className="text-[10px] text-green-600 mt-0.5" data-testid="glucose-fresh">
+                    Lectura de las {fmtTime(latestGlucose.recordedAt)}
+                  </div>
+                )}
+                {latestGlucose.isStale && (
+                  <div className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1" data-testid="glucose-stale">
+                    <AlertTriangle size={10} />
+                    Lectura de hace más de 2h ({fmtTime(latestGlucose.recordedAt)}) — considere tomar nueva glucemia
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="w-full border border-red-200 rounded-lg px-2.5 py-1.5 text-sm mt-0.5 bg-red-50 text-red-400" data-testid="glucose-missing">
+                — Sin registro —
               </div>
             )}
           </div>
@@ -147,7 +155,10 @@ export function InsulinSignModal({ open, prescription, slot, vitals, currentUser
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs text-slate-500">Cancelar</button>
-            <button type="submit" className="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-purple-700">Firmar</button>
+            <button type="submit" disabled={!hasGlucose}
+              className={`px-4 py-1.5 rounded-lg text-xs font-medium ${hasGlucose ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+              Firmar
+            </button>
           </div>
         </form>
       </div>
