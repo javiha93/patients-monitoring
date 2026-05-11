@@ -26,17 +26,25 @@ function formatTime(dateStr) {
 }
 
 const rows = [
-  { key: 'systolicBp', label: 'TAS (mmHg)' },
-  { key: 'diastolicBp', label: 'TAD (mmHg)' },
-  { key: 'heartRate', label: 'FC (bpm)' },
-  { key: 'temperature', label: 'Tª (°C)' },
-  { key: 'spo2', label: 'SpO2 (%)' },
-  { key: 'respiratorySupport', label: 'Soporte resp.', special: true },
-  { key: 'respiratoryRate', label: 'FR (rpm)' },
-  { key: 'painLevel', label: 'Dolor (EVA)' },
-  { key: 'bloodGlucose', label: 'Glucemia (mg/dL)' },
-  { key: 'diuresis', label: 'Diuresis', special_diuresis: true },
+  { key: 'systolicBp', label: 'TAS (mmHg)', group: 'Hemodinámica', groupFirst: true },
+  { key: 'diastolicBp', label: 'TAD (mmHg)', group: 'Hemodinámica' },
+  { key: 'heartRate', label: 'FC (bpm)', group: 'Hemodinámica' },
+  { key: 'temperature', label: 'Tª (°C)', group: 'Temperatura', groupFirst: true },
+  { key: 'spo2', label: 'SpO2 (%)', group: 'Respiratorio', groupFirst: true },
+  { key: 'respiratorySupport', label: 'Soporte resp.', special: true, group: 'Respiratorio' },
+  { key: 'respiratoryRate', label: 'FR (rpm)', group: 'Respiratorio' },
+  { key: 'painLevel', label: 'Dolor (EVA)', group: 'Dolor', groupFirst: true },
+  { key: 'bloodGlucose', label: 'Glucemia (mg/dL)', group: 'Metabólico', groupFirst: true },
+  { key: 'diuresis', label: 'Diuresis', special_diuresis: true, group: 'Metabólico' },
 ]
+
+const groupColors = {
+  'Hemodinámica': 'border-l-red-300',
+  'Temperatura': 'border-l-orange-300',
+  'Respiratorio': 'border-l-sky-300',
+  'Dolor': 'border-l-amber-300',
+  'Metabólico': 'border-l-emerald-300',
+}
 
 const deviceLabels = {
   none: 'Aire ambiente',
@@ -129,8 +137,8 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
         </thead>
         <tbody>
           {rows.map(r => (
-            <tr key={r.key} className="border-t border-slate-100">
-              <th className="px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10">{r.label}</th>
+            <tr key={r.key} className={r.groupFirst ? 'border-t-2 border-t-slate-200' : 'border-t border-slate-100'}>
+              <th className={`px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10 border-l-3 ${groupColors[r.group] || ''}`}>{r.label}</th>
               {sorted.map(v => {
                 if (r.special_diuresis) {
                   const src = v.urineSource
