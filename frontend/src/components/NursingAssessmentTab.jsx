@@ -118,6 +118,11 @@ export default function NursingAssessmentTab({ admissionId, patientId, toast }) 
     try {
       const { data } = await nursingApi.getByAdmission(admissionId)
       setAssessments(data)
+      // Check if historical assessments exist
+      if (patientId) {
+        const { data: hist } = await nursingApi.getHistorical(patientId, admissionId, 0, 1)
+        setHistoricalHasMore(hist.content.length > 0)
+      }
     } catch { /* ignore */ }
   }
 

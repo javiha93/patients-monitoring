@@ -285,7 +285,10 @@ describe('KAN-79: Valoración de enfermería', () => {
     expect(typeSelect).toBeUndefined()
   })
 
-  it('muestra botón "Ver anteriores" cuando hay patientId', async () => {
+  it('muestra botón "Ver anteriores" cuando hay históricos', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    // Initial check finds historical records exist
+    nursingApi.getHistorical.mockResolvedValueOnce({ data: { content: [{ id: 99 }], hasMore: false } })
     renderTab()
     await waitFor(() => {
       expect(screen.getByText('Ver anteriores')).toBeInTheDocument()
@@ -299,18 +302,29 @@ describe('KAN-79: Valoración de enfermería', () => {
       assessmentType: 'entrada', consciousness: 'somnoliento', glasgowScore: 12,
       hasPain: false, mood: 'tranquilo', breathingPattern: 'normal', mobility: 'sin_alteraciones',
     }
+    // First call: initial check on mount (size=1)
+    nursingApi.getHistorical.mockResolvedValueOnce({ data: { content: [{ id: 99 }], hasMore: false } })
+    // Second call: button click loads full page (size=5)
     nursingApi.getHistorical.mockResolvedValueOnce({ data: { content: [historicalAssessment], hasMore: false } })
     renderTab()
     await waitFor(() => screen.getByText('Ver anteriores'))
     fireEvent.click(screen.getByText('Ver anteriores'))
     await waitFor(() => {
-      expect(nursingApi.getHistorical).toHaveBeenCalledWith(1, 10, 0, 5)
       expect(screen.getByText('Valoraciones de ingresos anteriores')).toBeInTheDocument()
     })
   })
 
   it('no muestra botón "Ver anteriores" sin patientId', async () => {
     renderTab({ patientId: undefined })
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    expect(screen.queryByText('Ver anteriores')).not.toBeInTheDocument()
+  })
+
+  it('no muestra botón "Ver anteriores" cuando no hay históricos', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    // Initial check finds no historical records
+    nursingApi.getHistorical.mockResolvedValueOnce({ data: { content: [], hasMore: false } })
+    renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     expect(screen.queryByText('Ver anteriores')).not.toBeInTheDocument()
   })

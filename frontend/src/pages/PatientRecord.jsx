@@ -51,6 +51,9 @@ export default function PatientRecord() {
       if (p.activeAdmission) {
         const { data: v } = await vitalsApi.getByAdmission(p.activeAdmission.id)
         setVitals(v)
+        // Check if historical vitals exist
+        const { data: hist } = await vitalsApi.getHistorical(p.id, p.activeAdmission.id, 0, 1)
+        setHistoricalVitalsHasMore(hist.content.length > 0)
       }
     } catch {
       navigate('/')
