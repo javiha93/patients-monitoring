@@ -17,25 +17,23 @@ describe('KAN-79: GlasgowModal', () => {
     expect(screen.getByText('Respuesta motora')).toBeInTheDocument()
   })
 
-  it('muestra todas las opciones oculares', () => {
+  it('muestra todas las opciones de las tres columnas', () => {
     renderModal()
-    GLASGOW_AXES.OCULAR.forEach(o => {
-      expect(screen.getByText(o.label)).toBeInTheDocument()
-    })
-  })
-
-  it('muestra todas las opciones verbales', () => {
-    renderModal()
-    GLASGOW_AXES.VERBAL.forEach(v => {
-      expect(screen.getByText(v.label)).toBeInTheDocument()
-    })
-  })
-
-  it('muestra todas las opciones motoras', () => {
-    renderModal()
-    GLASGOW_AXES.MOTOR.forEach(m => {
-      expect(screen.getByText(m.label)).toBeInTheDocument()
-    })
+    // Unique labels per column
+    expect(screen.getByText('Espontánea')).toBeInTheDocument()
+    expect(screen.getByText('Al llamado')).toBeInTheDocument()
+    expect(screen.getByText('Al dolor')).toBeInTheDocument()
+    expect(screen.getByText('Orientado')).toBeInTheDocument()
+    expect(screen.getByText('Confuso')).toBeInTheDocument()
+    expect(screen.getByText('Palabras')).toBeInTheDocument()
+    expect(screen.getByText('Sonidos')).toBeInTheDocument()
+    expect(screen.getByText('Obedece')).toBeInTheDocument()
+    expect(screen.getByText('Localiza')).toBeInTheDocument()
+    expect(screen.getByText('Flexión normal')).toBeInTheDocument()
+    expect(screen.getByText('Flexión anormal')).toBeInTheDocument()
+    expect(screen.getByText('Extensión')).toBeInTheDocument()
+    // "Ausente" appears in all 3 columns
+    expect(screen.getAllByText('Ausente')).toHaveLength(3)
   })
 
   it('botón Aplicar deshabilitado hasta seleccionar las 3 respuestas', () => {
