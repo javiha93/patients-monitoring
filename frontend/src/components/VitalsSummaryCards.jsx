@@ -25,24 +25,40 @@ function valColor(key, val) {
   return 'text-slate-900'
 }
 
+const MAX_AGE_MS = 10 * 60 * 60 * 1000 // 10 hours
+
+/** Find the most recent value for a field within the last 10h. */
+function latestValue(vitals, key) {
+  const now = new Date(vitals[vitals.length - 1].recordedAt).getTime()
+  for (let i = vitals.length - 1; i >= 0; i--) {
+    if (vitals[i][key] != null) {
+      const age = now - new Date(vitals[i].recordedAt).getTime()
+      if (age <= MAX_AGE_MS) return vitals[i][key]
+      return null
+    }
+  }
+  return null
+}
+
 export default function VitalsSummaryCards({ vitals }) {
   if (!vitals || vitals.length === 0) return null
 
-  const last = vitals[vitals.length - 1]
+  const sys = latestValue(vitals, 'systolicBp')
+  const dia = latestValue(vitals, 'diastolicBp')
 
   const cards = [
-    { key: 'systolicBp', label: 'TA', value: `${last.systolicBp || '—'}/${last.diastolicBp || '—'}`, checkKey: 'systolicBp' },
-    { key: 'heartRate', label: 'FC', value: last.heartRate, checkKey: 'heartRate' },
-    { key: 'temperature', label: 'Tª', value: last.temperature, checkKey: 'temperature' },
-    { key: 'spo2', label: 'SpO2', value: last.spo2, checkKey: 'spo2' },
-    { key: 'respiratoryRate', label: 'FR', value: last.respiratoryRate, checkKey: 'respiratoryRate' },
-    { key: 'painLevel', label: 'Dolor', value: last.painLevel, checkKey: 'painLevel' },
+    { key: 'systolicBp', label: 'TA', value: `${sys ?? '—'}/${dia ?? '—'}`, checkKey: 'systolicBp', checkVal: sys },
+    { key: 'heartRate', label: 'FC', value: latestValue(vitals, 'heartRate'), checkKey: 'heartRate' },
+    { key: 'temperature', label: 'Tª', value: latestValue(vitals, 'temperature'), checkKey: 'temperature' },
+    { key: 'spo2', label: 'SpO2', value: latestValue(vitals, 'spo2'), checkKey: 'spo2' },
+    { key: 'respiratoryRate', label: 'FR', value: latestValue(vitals, 'respiratoryRate'), checkKey: 'respiratoryRate' },
+    { key: 'painLevel', label: 'Dolor', value: latestValue(vitals, 'painLevel'), checkKey: 'painLevel' },
   ]
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-1">
       {cards.map(c => {
-        const val = last[c.checkKey]
+        const val = c.checkVal ?? c.value
         return (
           <div key={c.key} className={`bg-white rounded-lg p-3 min-w-[110px] shadow-sm ${cardStyle(c.checkKey, val)}`}>
             <div className="text-[11px] text-slate-500 uppercase tracking-wider mb-1">{c.label}</div>
