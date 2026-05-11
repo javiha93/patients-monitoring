@@ -70,6 +70,17 @@ public class ClinicalInsightsService {
         checkRespiratoryPatternDeterioration(insights, currentAssessments);
         checkPriorAgitationHistory(insights, priorAssessments);
 
+        // Cross-domain analyses
+        checkSedativeSomnolence(insights, currentAssessments, habitual);
+        checkDysphagiaOralMeds(insights, currentAssessments, prescriptions);
+        checkAspirationRiskOralMeds(insights, currentAssessments, prescriptions);
+        checkAgitationNoSedative(insights, currentAssessments, prescriptions);
+        checkDesaturationWithRespiratoryPattern(insights, vitals, currentAssessments);
+        checkTachycardiaAgitation(insights, vitals, currentAssessments);
+        checkOpioidRespiratoryDepression(insights, vitals, prescriptions);
+        checkAnticoagulantFallRisk(insights, currentAssessments, habitual, prescriptions);
+        checkHabitualAnalgesicNotPrescribed(insights, habitual, prescriptions);
+
         // Sort: critical first, then warning, then info
         insights.sort(Comparator.comparingInt(i -> levelOrder(i.getLevel())));
         return insights;
@@ -497,14 +508,14 @@ public class ClinicalInsightsService {
         NursingAssessment latest = current.get(0);
         boolean fallRisk = Boolean.TRUE.equals(latest.getFallRisk());
         boolean acuteMobility = "alteracion_aguda".equals(latest.getMobility());
-        if (!fallRisk || !acuteMobility) return;
-
         boolean hasBedRails = Boolean.TRUE.equals(latest.getBedRails());
+        if (!fallRisk || !acuteMobility || hasBedRails) return;
+
         insights.add(ClinicalInsightDTO.builder()
             .level("warning")
             .title("Riesgo de caída con alteración aguda de movilidad")
-            .detail("Paciente con riesgo de caída y alteración aguda de movilidad." + (hasBedRails ? " Barandillas activas." : " Sin barandillas."))
-            .reasoning("Combinación de alto riesgo. Asegurar medidas preventivas: barandillas, timbre accesible, calzado adecuado, acompañamiento en deambulación")
+            .detail("Paciente con riesgo de caída y alteración aguda de movilidad. Sin barandillas activas.")
+            .reasoning("Combinación de alto riesgo. Activar barandillas, asegurar timbre accesible, calzado adecuado, acompañamiento en deambulación")
             .analysisType("fall_risk_mobility")
             .build());
     }
@@ -559,6 +570,276 @@ public class ClinicalInsightsService {
             .detail(detail)
             .reasoning("El patrón respiratorio ha empeorado respecto a valoraciones previas. Correlacionar con constantes vitales (SpO2, FR) y valorar soporte")
             .analysisType("respiratory_pattern_deterioration")
+            .build());
+    }
+
+    // ── DRUG KEYWORD LISTS ──
+
+    private static final List<String> SEDATIVES = List.of(
+        "lorazepam", "diazepam", "midazolam", "alprazolam", "clonazepam", "bromazepam",
+        "lormetazepam", "zolpidem", "zopiclona",
+        "haloperidol", "quetiapina", "olanzapina", "risperidona", "clorpromazina",
+        "gabapentina", "pregabalina",
+        "difenhidramina", "hidroxizina", "dexclorfeniramina",
+        "tramadol", "morfina", "fentanilo", "oxicodona", "tapentadol", "buprenorfina", "codeina", "metadona"
+    );
+
+    private static final List<String> OPIOIDS = List.of(
+        "tramadol", "morfina", "fentanilo", "oxicodona", "tapentadol", "buprenorfina",
+        "codeina", "metadona", "petidina", "hidromorfona"
+    );
+
+    private static final List<String> STRONG_ANALGESICS = List.of(
+        "tramadol", "morfina", "fentanilo", "oxicodona", "tapentadol", "buprenorfina",
+        "codeina", "metadona", "petidina", "hidromorfona",
+        "pregabalina", "gabapentina", "amitriptilina", "duloxetina"
+    );
+
+    private static final List<String> ANTICOAGULANTS = List.of(
+        "sintrom", "acenocumarol", "warfarina", "heparina", "enoxaparina", "bemiparina",
+        "rivaroxaban", "apixaban", "edoxaban", "dabigatran"
+    );
+
+    private static final List<String> ANXIOLYTICS_SEDATIVES = List.of(
+        "lorazepam", "diazepam", "midazolam", "alprazolam", "clonazepam",
+        "haloperidol", "quetiapina", "olanzapina", "risperidona",
+        "hidroxizina"
+    );
+
+    private boolean matchesDrugList(String name, List<String> drugs) {
+        String lower = name.toLowerCase();
+        return drugs.stream().anyMatch(lower::contains);
+    }
+
+    // ── CROSS-DOMAIN ANALYSES ──
+
+    /**
+     * Patient somnolent/stuporous + habitual sedative medication prescribed recently.
+     */
+    private void checkSedativeSomnolence(List<ClinicalInsightDTO> insights, List<NursingAssessment> current, List<Medication> habitual) {
+        if (current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        String consciousness = latest.getConsciousness();
+        if (!"somnoliento".equals(consciousness) && !"estuporoso".equals(consciousness)) return;
+
+        List<String> suspects = habitual.stream()
+            .filter(m -> !Boolean.TRUE.equals(m.getSuspendedDuringAdmission()))
+            .filter(m -> matchesDrugList(m.getName(), SEDATIVES))
+            .filter(m -> m.getPrescribedSince() == null || m.getPrescribedSince().isAfter(java.time.LocalDate.now().minusMonths(3)))
+            .map(Medication::getName)
+            .toList();
+        if (suspects.isEmpty()) return;
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Somnolencia posiblemente asociada a medicación habitual")
+            .detail("Paciente " + consciousness + ". Medicación sedante reciente: " + String.join(", ", suspects))
+            .reasoning("Valorar si la somnolencia es efecto adverso de la medicación. Considerar ajuste de dosis o suspensión temporal")
+            .analysisType("sedative_somnolence")
+            .build());
+    }
+
+    /**
+     * Dysphagia detected + active oral prescriptions.
+     */
+    private void checkDysphagiaOralMeds(List<ClinicalInsightDTO> insights, List<NursingAssessment> current, List<AdmissionPrescription> rx) {
+        if (current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        if (!"disfagia".equals(latest.getNutrition())) return;
+
+        long oralCount = rx.stream()
+            .filter(p -> "oral".equalsIgnoreCase(p.getRoute()))
+            .count();
+        if (oralCount == 0) return;
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Disfagia con " + oralCount + " prescripciones orales activas")
+            .detail("Paciente con disfagia y medicación oral pautada. Riesgo de aspiración o falta de absorción")
+            .reasoning("Valorar cambio de vía de administración (IV, SL, rectal, SNG) o formulación (triturado, jarabe) para las prescripciones orales")
+            .analysisType("dysphagia_oral_meds")
+            .build());
+    }
+
+    /**
+     * Aspiration risk or SNG + active oral prescriptions.
+     */
+    private void checkAspirationRiskOralMeds(List<ClinicalInsightDTO> insights, List<NursingAssessment> current, List<AdmissionPrescription> rx) {
+        if (current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        boolean aspirationRisk = Boolean.TRUE.equals(latest.getAspirationRisk());
+        boolean hasSng = "sng".equals(latest.getNutrition());
+        if (!aspirationRisk && !hasSng) return;
+
+        long oralCount = rx.stream()
+            .filter(p -> "oral".equalsIgnoreCase(p.getRoute()))
+            .count();
+        if (oralCount == 0) return;
+
+        String reason = aspirationRisk ? "riesgo de aspiración" : "portador de SNG";
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Prescripciones orales con " + reason)
+            .detail(oralCount + " prescripciones orales activas en paciente con " + reason)
+            .reasoning("Revisar vía de administración. Valorar administración por SNG o cambio a vía alternativa")
+            .analysisType("aspiration_risk_oral_meds")
+            .build());
+    }
+
+    /**
+     * Patient agitated/aggressive without any sedative/anxiolytic prescribed in the admission.
+     */
+    private void checkAgitationNoSedative(List<ClinicalInsightDTO> insights, List<NursingAssessment> current, List<AdmissionPrescription> rx) {
+        if (current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        String mood = latest.getMood();
+        if (!"agitado".equals(mood) && !"agresivo".equals(mood)) return;
+
+        boolean hasSedative = rx.stream().anyMatch(p -> matchesDrugList(p.getName(), ANXIOLYTICS_SEDATIVES));
+        if (hasSedative) return;
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("info")
+            .title("Paciente " + mood + " sin ansiolítico/sedante pautado")
+            .detail("No hay prescripción activa de ansiolítico o sedante en el ingreso actual")
+            .reasoning("Valorar necesidad de pauta farmacológica para control de agitación. Considerar haloperidol, lorazepam o quetiapina según perfil del paciente")
+            .analysisType("agitation_no_sedative")
+            .build());
+    }
+
+    /**
+     * SpO2 <93% in vitals + abnormal breathing pattern in nursing assessment.
+     */
+    private void checkDesaturationWithRespiratoryPattern(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<NursingAssessment> current) {
+        if (vitals.isEmpty() || current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        String pattern = latest.getBreathingPattern();
+        if (pattern == null || "normal".equals(pattern)) return;
+
+        // Check last 3 vitals for SpO2 < 93
+        List<VitalSign> recent = vitals.subList(Math.max(0, vitals.size() - 3), vitals.size());
+        boolean hasLowSpo2 = recent.stream()
+            .anyMatch(v -> v.getSpo2() != null && v.getSpo2() < 93);
+        if (!hasLowSpo2) return;
+
+        int minSpo2 = recent.stream().filter(v -> v.getSpo2() != null).mapToInt(VitalSign::getSpo2).min().orElse(0);
+        String dyspnea = latest.getDyspneaLevel();
+        String level = minSpo2 < 90 || "reposo".equals(dyspnea) ? "critical" : "warning";
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level(level)
+            .title("Desaturación + " + pattern + " en valoración")
+            .detail("SpO2 mínima: " + minSpo2 + "%. Patrón respiratorio: " + pattern + (dyspnea != null && !"ninguna".equals(dyspnea) ? ". Disnea: " + dyspnea : ""))
+            .reasoning("Correlación entre desaturación en constantes y deterioro respiratorio en valoración de enfermería. Valoración médica urgente y soporte respiratorio")
+            .analysisType("desaturation_respiratory_pattern")
+            .build());
+    }
+
+    /**
+     * HR >110 + agitated/aggressive mood — distinguish organic vs reactive tachycardia.
+     */
+    private void checkTachycardiaAgitation(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<NursingAssessment> current) {
+        if (vitals.isEmpty() || current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        String mood = latest.getMood();
+        if (!"agitado".equals(mood) && !"agresivo".equals(mood)) return;
+
+        List<VitalSign> recent = vitals.subList(Math.max(0, vitals.size() - 3), vitals.size());
+        boolean hasTachycardia = recent.stream()
+            .anyMatch(v -> v.getHeartRate() != null && v.getHeartRate() > 110);
+        if (!hasTachycardia) return;
+
+        int maxHr = recent.stream().filter(v -> v.getHeartRate() != null).mapToInt(VitalSign::getHeartRate).max().orElse(0);
+        insights.add(ClinicalInsightDTO.builder()
+            .level("info")
+            .title("Taquicardia (FC " + maxHr + ") + paciente " + mood)
+            .detail("FC máxima reciente: " + maxHr + " lpm. Estado anímico: " + mood)
+            .reasoning("La taquicardia puede ser reactiva a la agitación. Reevaluar FC tras control de agitación para descartar causa orgánica")
+            .analysisType("tachycardia_agitation")
+            .build());
+    }
+
+    /**
+     * Active opioid prescription + respiratory rate ≤10.
+     */
+    private void checkOpioidRespiratoryDepression(List<ClinicalInsightDTO> insights, List<VitalSign> vitals, List<AdmissionPrescription> rx) {
+        if (vitals.isEmpty()) return;
+        boolean hasOpioid = rx.stream().anyMatch(p -> matchesDrugList(p.getName(), OPIOIDS));
+        if (!hasOpioid) return;
+
+        List<VitalSign> recent = vitals.subList(Math.max(0, vitals.size() - 3), vitals.size());
+        boolean hasLowRR = recent.stream()
+            .anyMatch(v -> v.getRespiratoryRate() != null && v.getRespiratoryRate() <= 10);
+        if (!hasLowRR) return;
+
+        int minRR = recent.stream().filter(v -> v.getRespiratoryRate() != null).mapToInt(VitalSign::getRespiratoryRate).min().orElse(0);
+        List<String> opioidNames = rx.stream().filter(p -> matchesDrugList(p.getName(), OPIOIDS)).map(AdmissionPrescription::getName).toList();
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("critical")
+            .title("Depresión respiratoria por opioides: FR " + minRR + " rpm")
+            .detail("FR mínima: " + minRR + " rpm. Opioides activos: " + String.join(", ", opioidNames))
+            .reasoning("FR ≤10 con opioides activos sugiere depresión respiratoria. Valorar naloxona, reducción de dosis y monitorización continua")
+            .analysisType("opioid_respiratory_depression")
+            .build());
+    }
+
+    /**
+     * Anticoagulant (habitual or prescribed) + fall risk with acute mobility impairment.
+     */
+    private void checkAnticoagulantFallRisk(List<ClinicalInsightDTO> insights, List<NursingAssessment> current, List<Medication> habitual, List<AdmissionPrescription> rx) {
+        if (current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        if (!Boolean.TRUE.equals(latest.getFallRisk())) return;
+
+        List<String> anticoagNames = new ArrayList<>();
+        habitual.stream()
+            .filter(m -> !Boolean.TRUE.equals(m.getSuspendedDuringAdmission()))
+            .filter(m -> matchesDrugList(m.getName(), ANTICOAGULANTS))
+            .forEach(m -> anticoagNames.add(m.getName() + " (habitual)"));
+        rx.stream()
+            .filter(p -> matchesDrugList(p.getName(), ANTICOAGULANTS))
+            .forEach(p -> anticoagNames.add(p.getName() + " (ingreso)"));
+        if (anticoagNames.isEmpty()) return;
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Anticoagulante + riesgo de caída")
+            .detail("Anticoagulantes: " + String.join(", ", anticoagNames) + ". Riesgo de caída activo")
+            .reasoning("Riesgo hemorrágico elevado ante caídas en paciente anticoagulado. Extremar medidas de prevención de caídas y valorar INR/anti-Xa si procede")
+            .analysisType("anticoagulant_fall_risk")
+            .build());
+    }
+
+    /**
+     * Habitual strong analgesic/opioid not covered by equivalent prescription in current admission.
+     */
+    private void checkHabitualAnalgesicNotPrescribed(List<ClinicalInsightDTO> insights, List<Medication> habitual, List<AdmissionPrescription> rx) {
+        List<Medication> habitualAnalgesics = habitual.stream()
+            .filter(m -> !Boolean.TRUE.equals(m.getSuspendedDuringAdmission()))
+            .filter(m -> matchesDrugList(m.getName(), STRONG_ANALGESICS))
+            .toList();
+        if (habitualAnalgesics.isEmpty()) return;
+
+        // Check if any equivalent is prescribed in the admission
+        List<String> uncovered = new ArrayList<>();
+        for (Medication hab : habitualAnalgesics) {
+            String habLower = hab.getName().toLowerCase();
+            boolean covered = rx.stream().anyMatch(p -> {
+                String pLower = p.getName().toLowerCase();
+                // Same drug or same family match
+                return STRONG_ANALGESICS.stream().anyMatch(drug -> habLower.contains(drug) && pLower.contains(drug));
+            });
+            if (!covered) uncovered.add(hab.getName() + (hab.getDose() != null ? " " + hab.getDose() : ""));
+        }
+        if (uncovered.isEmpty()) return;
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Analgesia habitual sin equivalencia en el ingreso")
+            .detail("Medicación habitual no cubierta: " + String.join(", ", uncovered))
+            .reasoning("Paciente con analgesia potente habitual sin prescripción equivalente en el ingreso. Riesgo de dolor no controlado o síndrome de abstinencia. Valorar pautar equivalencia")
+            .analysisType("habitual_analgesic_not_prescribed")
             .build());
     }
 

@@ -167,7 +167,7 @@ export default function PatientMedication() {
       {/* Insights — allergy conflicts */}
       {admission && (
         <div className="px-5 pt-2">
-          <InsightsPanel patientId={patient.id} admissionId={admission.id} includeTypes={['allergy_conflict']} />
+          <InsightsPanel patientId={patient.id} admissionId={admission.id} includeTypes={['allergy_conflict', 'habitual_analgesic_not_prescribed', 'opioid_respiratory_depression']} />
         </div>
       )}
 

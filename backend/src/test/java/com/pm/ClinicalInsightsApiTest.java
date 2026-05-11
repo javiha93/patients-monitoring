@@ -36,6 +36,7 @@ class ClinicalInsightsApiTest {
     @Autowired private AdmissionPrescriptionRepository prescriptionRepo;
     @Autowired private VitalSignRepository vitalSignRepo;
     @Autowired private NursingAssessmentRepository nursingRepo;
+    @Autowired private MedicationRepository medicationRepo;
 
     private Patient patient;
     private Admission admission;
@@ -386,5 +387,134 @@ class ClinicalInsightsApiTest {
             }
         }
         assertTrue(found, "Expected respiratory_pattern_deterioration insight");
+    }
+
+    // ── Cross-domain alert tests ──
+
+    @Test
+    @DisplayName("Somnolencia + medicación sedante habitual reciente")
+    void sedativeSomnolence() throws Exception {
+        medicationRepo.save(Medication.builder()
+                .patient(patient).name("Lorazepam 1mg").dose("1mg").frequency("noche")
+                .prescribedSince(LocalDate.now().minusWeeks(2)).build());
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("entrada").consciousness("somnoliento").glasgowScore(13).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "sedative_somnolence", "warning"));
+    }
+
+    @Test
+    @DisplayName("Depresión respiratoria por opioides: FR ≤10 + opioide activo")
+    void opioidRespiratoryDepression() throws Exception {
+        prescriptionRepo.save(AdmissionPrescription.builder()
+                .admission(admission).name("Morfina 5mg").amount("5").unit("mg").route("iv")
+                .frequency("c/6h").category(AdmissionPrescription.Category.fixed).active(true).build());
+        vitalSignRepo.save(VitalSign.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusMinutes(30))
+                .respiratoryRate(8).spo2(91).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "opioid_respiratory_depression", "critical"));
+    }
+
+    @Test
+    @DisplayName("Anticoagulante habitual + riesgo de caída")
+    void anticoagulantFallRisk() throws Exception {
+        medicationRepo.save(Medication.builder()
+                .patient(patient).name("Sintrom 4mg").dose("4mg").frequency("diario").build());
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("entrada").consciousness("alerta").glasgowScore(15)
+                .fallRisk(true).mobility("alteracion_aguda").build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "anticoagulant_fall_risk", "warning"));
+    }
+
+    @Test
+    @DisplayName("Analgesia habitual sin equivalencia en el ingreso")
+    void habitualAnalgesicNotPrescribed() throws Exception {
+        medicationRepo.save(Medication.builder()
+                .patient(patient).name("Fentanilo parche 25mcg").dose("25mcg/h").frequency("c/72h").build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "habitual_analgesic_not_prescribed", "warning"));
+    }
+
+    @Test
+    @DisplayName("Analgesia habitual cubierta no genera alerta")
+    void habitualAnalgesicCovered() throws Exception {
+        medicationRepo.save(Medication.builder()
+                .patient(patient).name("Fentanilo parche 25mcg").dose("25mcg/h").frequency("c/72h").build());
+        prescriptionRepo.save(AdmissionPrescription.builder()
+                .admission(admission).name("Fentanilo IV 50mcg").amount("50").unit("mcg").route("iv")
+                .frequency("c/8h").category(AdmissionPrescription.Category.fixed).active(true).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(hasInsight(body, "habitual_analgesic_not_prescribed", null));
+    }
+
+    @Test
+    @DisplayName("Disfagia con prescripciones orales activas")
+    void dysphagiaOralMeds() throws Exception {
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("entrada").consciousness("alerta").glasgowScore(15)
+                .nutrition("disfagia").build());
+        prescriptionRepo.save(AdmissionPrescription.builder()
+                .admission(admission).name("Paracetamol 1g").amount("1").unit("g").route("oral")
+                .frequency("c/8h").category(AdmissionPrescription.Category.fixed).active(true).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "dysphagia_oral_meds", "warning"));
+    }
+
+    @Test
+    @DisplayName("Paciente agitado sin sedante pautado")
+    void agitationNoSedative() throws Exception {
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("entrada").consciousness("alerta").glasgowScore(15)
+                .mood("agitado").bedRails(false).restraintAbdominal(false)
+                .restraintLegs(false).restraintArms(false).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "agitation_no_sedative", "info"));
+    }
+
+    @Test
+    @DisplayName("Riesgo caída con barandillas activas NO genera alerta")
+    void fallRiskWithBedRailsNoAlert() throws Exception {
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("entrada").consciousness("alerta").glasgowScore(15)
+                .fallRisk(true).mobility("alteracion_aguda").bedRails(true).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(hasInsight(body, "fall_risk_mobility", null));
+    }
+
+    // Helper to check for an insight by analysisType and optionally level
+    private boolean hasInsight(String json, String analysisType, String expectedLevel) throws Exception {
+        var insights = mapper.readTree(json);
+        for (var node : insights) {
+            if (analysisType.equals(node.get("analysisType").asText())) {
+                if (expectedLevel != null) {
+                    assertEquals(expectedLevel, node.get("level").asText());
+                }
+                return true;
+            }
+        }
+        return false;
     }
 }
