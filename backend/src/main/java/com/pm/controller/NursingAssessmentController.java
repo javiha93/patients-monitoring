@@ -26,6 +26,11 @@ public class NursingAssessmentController {
         return service.create(dto);
     }
 
+    @PutMapping("/{id}")
+    public NursingAssessmentDTO update(@PathVariable Long id, @RequestBody NursingAssessmentDTO dto) {
+        return service.update(id, dto);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

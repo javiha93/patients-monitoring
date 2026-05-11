@@ -7,6 +7,7 @@ const mockAssessments = [
   {
     id: 1, admissionId: 10, recordedAt: '2024-01-10T08:30:00',
     assessmentType: 'entrada', consciousness: 'alerta', glasgowScore: 15,
+    arrivalMode: 'ambulancia', accompanied: true, languageBarrier: 'ninguna',
     hasPain: true, painLocation: 'Torácico', painType: 'agudo',
     mood: 'ansioso', breathingPattern: 'taquipnea', mobility: 'sin_alteraciones',
     nutrition: 'sin_alteraciones', physicalCognitive: 'orientado',
@@ -19,6 +20,7 @@ vi.mock('../services/nursingApi', () => ({
   nursingApi: {
     getByAdmission: vi.fn(() => Promise.resolve({ data: mockAssessments })),
     create: vi.fn(() => Promise.resolve({ data: { id: 2 } })),
+    update: vi.fn(() => Promise.resolve({ data: { id: 1 } })),
     delete: vi.fn(() => Promise.resolve()),
   },
 }))
@@ -185,6 +187,46 @@ describe('KAN-79: Valoración de enfermería', () => {
     fireEvent.click(screen.getByText('Nueva valoración'))
     // Should show "Entrada" badge
     expect(screen.getByText('Entrada')).toBeInTheDocument()
+  })
+
+  it('formulario muestra sección Llegada con los nuevos campos', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
+    expect(screen.getByText('Llegada')).toBeInTheDocument()
+    expect(screen.getByText('Modo de llegada')).toBeInTheDocument()
+    expect(screen.getByText('Viene acompañado')).toBeInTheDocument()
+    expect(screen.getByText('Barrera comunicación')).toBeInTheDocument()
+  })
+
+  it('clic en editar abre el formulario con datos pre-rellenados', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Entrada'))
+    // Expand the card first to find the edit button
+    const editBtns = document.querySelectorAll('button')
+    const editBtn = Array.from(editBtns).find(b => b.querySelector('svg') && b.className.includes('hover:text-blue-500'))
+    fireEvent.click(editBtn)
+    // Form should open in edit mode
+    await waitFor(() => {
+      expect(screen.getByText('Editar valoración')).toBeInTheDocument()
+      expect(screen.getByText('Actualizar valoración')).toBeInTheDocument()
+    })
+  })
+
+  it('editar llama a update API en vez de create', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    renderTab()
+    await waitFor(() => screen.getByText('Entrada'))
+    // Click edit button
+    const editBtn = Array.from(document.querySelectorAll('button')).find(b => b.className.includes('hover:text-blue-500'))
+    fireEvent.click(editBtn)
+    await waitFor(() => screen.getByText('Editar valoración'))
+    // Submit
+    fireEvent.click(screen.getByText('Actualizar valoración'))
+    await waitFor(() => {
+      expect(nursingApi.update).toHaveBeenCalledWith(1, expect.objectContaining({ admissionId: 10 }))
+      expect(nursingApi.create).not.toHaveBeenCalled()
+    })
   })
 
   it('no muestra selector de tipo, solo badge de solo lectura', async () => {

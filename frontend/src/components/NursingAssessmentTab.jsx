@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Clock, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
+import { Plus, Trash2, Clock, ChevronDown, ChevronUp, HelpCircle, Pencil } from 'lucide-react'
 import { nursingApi } from '../services/nursingApi'
 import GlasgowModal from './GlasgowModal'
 
@@ -49,6 +49,8 @@ function TextInput({ label, value, onChange, placeholder }) {
 /* ── Option lists ── */
 const OPTS = {
   type: [{ value: 'entrada', label: 'Entrada' }, { value: 'sucesiva', label: 'Sucesiva' }, { value: 'salida', label: 'Salida' }],
+  arrivalMode: [{ value: 'por_su_cuenta', label: 'Por su cuenta' }, { value: 'ambulancia', label: 'Ambulancia' }, { value: 'traslado', label: 'Traslado hospitalario' }, { value: 'policia', label: 'Policía / Bomberos' }, { value: 'otros', label: 'Otros' }],
+  languageBarrier: [{ value: 'ninguna', label: 'Ninguna' }, { value: 'idioma', label: 'Idioma' }, { value: 'sensorial', label: 'Sensorial' }, { value: 'cognitiva', label: 'Cognitiva' }],
   consciousness: [{ value: 'alerta', label: 'Alerta' }, { value: 'somnoliento', label: 'Somnoliento' }, { value: 'estuporoso', label: 'Estuporoso' }, { value: 'comatoso', label: 'Comatoso' }],
   painType: [{ value: 'agudo', label: 'Agudo' }, { value: 'cronico', label: 'Crónico' }, { value: 'neuropatico', label: 'Neuropático' }, { value: 'visceral', label: 'Visceral' }],
   nutrition: [{ value: 'sin_alteraciones', label: 'Sin alteraciones' }, { value: 'nauseas', label: 'Náuseas' }, { value: 'disfagia', label: 'Disfagia' }, { value: 'sng', label: 'SNG' }, { value: 'ostomia', label: 'Ostomía' }],
@@ -66,7 +68,9 @@ const OPTS = {
 }
 
 const EMPTY_FORM = {
-  assessmentType: 'sucesiva', consciousness: null, glasgowScore: null,
+  assessmentType: 'sucesiva',
+  arrivalMode: null, accompanied: false, languageBarrier: 'ninguna',
+  consciousness: null, glasgowScore: null,
   hasPain: false, painLocation: '', painIrradiation: '', painType: null,
   nutrition: 'sin_alteraciones', vomitingType: null, vomitingAmount: null, aspirationRisk: false,
   mood: 'tranquilo', physicalCognitive: 'orientado',
@@ -99,6 +103,7 @@ const typeLabels = { entrada: 'Entrada', sucesiva: 'Sucesiva', salida: 'Salida' 
 export default function NursingAssessmentTab({ admissionId, toast }) {
   const [assessments, setAssessments] = useState([])
   const [formOpen, setFormOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
 
@@ -116,14 +121,75 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
   const handleSubmit = async () => {
     setSaving(true)
     try {
-      await nursingApi.create({ ...form, admissionId, recordedAt: toLocalISOString() })
+      if (editingId) {
+        await nursingApi.update(editingId, { ...form, admissionId })
+        toast.success('Valoración actualizada')
+      } else {
+        await nursingApi.create({ ...form, admissionId, recordedAt: toLocalISOString() })
+        toast.success('Valoración guardada')
+      }
       setFormOpen(false)
+      setEditingId(null)
       setForm({ ...EMPTY_FORM })
       fetch()
-      toast.success('Valoración guardada')
     } catch (e) {
       toast.error(e.response?.data?.error || 'Error guardando valoración')
     } finally { setSaving(false) }
+  }
+
+  const handleEdit = (assessment) => {
+    setForm({
+      assessmentType: assessment.assessmentType || 'sucesiva',
+      arrivalMode: assessment.arrivalMode || null,
+      accompanied: assessment.accompanied || false,
+      languageBarrier: assessment.languageBarrier || 'ninguna',
+      consciousness: assessment.consciousness || null,
+      glasgowScore: assessment.glasgowScore ?? null,
+      hasPain: assessment.hasPain || false,
+      painLocation: assessment.painLocation || '',
+      painIrradiation: assessment.painIrradiation || '',
+      painType: assessment.painType || null,
+      nutrition: assessment.nutrition || 'sin_alteraciones',
+      vomitingType: assessment.vomitingType || null,
+      vomitingAmount: assessment.vomitingAmount || null,
+      aspirationRisk: assessment.aspirationRisk || false,
+      mood: assessment.mood || 'tranquilo',
+      physicalCognitive: assessment.physicalCognitive || 'orientado',
+      sensoryBlindness: assessment.sensoryBlindness || false,
+      sensoryDeafness: assessment.sensoryDeafness || false,
+      sensoryAphasia: assessment.sensoryAphasia || false,
+      sensoryDysarthria: assessment.sensoryDysarthria || false,
+      physicalDisability: assessment.physicalDisability || false,
+      cognitiveObservations: assessment.cognitiveObservations || '',
+      urinePattern: assessment.urinePattern || 'sin_alteraciones',
+      stoolPattern: assessment.stoolPattern || 'sin_alteraciones',
+      urinaryIncontinence: assessment.urinaryIncontinence || false,
+      fecalIncontinence: assessment.fecalIncontinence || false,
+      hasDiaper: assessment.hasDiaper || false,
+      hasOstomy: assessment.hasOstomy || false,
+      hasUrinaryCatheter: assessment.hasUrinaryCatheter || false,
+      hasCollector: assessment.hasCollector || false,
+      breathingPattern: assessment.breathingPattern || 'normal',
+      dyspneaLevel: assessment.dyspneaLevel || 'ninguna',
+      coughType: assessment.coughType || 'ninguna',
+      expectoration: assessment.expectoration || 'ninguna',
+      homeOxygen: assessment.homeOxygen || false,
+      homeCpap: assessment.homeCpap || false,
+      mobility: assessment.mobility || 'sin_alteraciones',
+      mobilityDetails: assessment.mobilityDetails || '',
+      bedRails: assessment.bedRails || false,
+      restraintAbdominal: assessment.restraintAbdominal || false,
+      restraintLegs: assessment.restraintLegs || false,
+      restraintArms: assessment.restraintArms || false,
+      familyInformed: assessment.familyInformed || false,
+      patientInformed: assessment.patientInformed || false,
+      fallRisk: assessment.fallRisk || false,
+      selfHarmRisk: assessment.selfHarmRisk || false,
+      elopementRisk: assessment.elopementRisk || false,
+      notes: assessment.notes || '',
+    })
+    setEditingId(assessment.id)
+    setFormOpen(true)
   }
 
   const handleDelete = async (id) => {
@@ -149,13 +215,13 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
       )}
 
       {/* Form */}
-      {formOpen && <AssessmentForm form={form} set={set} onSubmit={handleSubmit} onCancel={() => setFormOpen(false)} saving={saving} />}
+      {formOpen && <AssessmentForm form={form} set={set} onSubmit={handleSubmit} onCancel={() => { setFormOpen(false); setEditingId(null) }} saving={saving} editing={!!editingId} />}
 
       {/* History */}
       {assessments.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Valoraciones anteriores</h3>
-          {assessments.map(a => <AssessmentCard key={a.id} assessment={a} onDelete={handleDelete} />)}
+          {assessments.map(a => <AssessmentCard key={a.id} assessment={a} onDelete={handleDelete} onEdit={handleEdit} />)}
         </div>
       )}
 
@@ -167,7 +233,7 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
 }
 
 /* ── The form itself, split out for readability ── */
-function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
+function AssessmentForm({ form, set, onSubmit, onCancel, saving, editing }) {
   const [glasgowOpen, setGlasgowOpen] = useState(false)
 
   const missingRequired = !form.consciousness || form.glasgowScore == null || form.glasgowScore === ''
@@ -175,7 +241,7 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-slate-800">Nueva valoración de enfermería</h3>
+        <h3 className="text-base font-bold text-slate-800">{editing ? 'Editar valoración' : 'Nueva valoración de enfermería'}</h3>
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
           form.assessmentType === 'entrada' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
         }`}>{form.assessmentType === 'entrada' ? 'Entrada' : 'Sucesiva'}</span>
@@ -184,6 +250,12 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Col 1 */}
         <div className="space-y-4">
+          <Section title="Llegada" color="bg-slate-500">
+            <Select label="Modo de llegada" value={form.arrivalMode} onChange={v => set('arrivalMode', v)} options={OPTS.arrivalMode} />
+            <Toggle label="Viene acompañado" checked={form.accompanied} onChange={v => set('accompanied', v)} />
+            <Select label="Barrera comunicación" value={form.languageBarrier} onChange={v => set('languageBarrier', v)} options={OPTS.languageBarrier} />
+          </Section>
+
           <Section title="Consciencia *" color="bg-indigo-500">
             <Select label="Nivel *" value={form.consciousness} onChange={v => set('consciousness', v)} options={OPTS.consciousness} />
             {!form.consciousness && <p className="text-xs text-red-500">Obligatorio</p>}
@@ -307,7 +379,7 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
         {missingRequired && <span className="text-xs text-red-500 mr-auto">* Consciencia y Glasgow son obligatorios</span>}
         <button onClick={onCancel} className="px-5 py-2 rounded-lg text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Cancelar</button>
         <button onClick={onSubmit} disabled={saving || missingRequired} className="px-5 py-2 rounded-lg text-sm font-medium bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed">
-          {saving ? 'Guardando...' : 'Guardar valoración'}
+          {saving ? 'Guardando...' : editing ? 'Actualizar valoración' : 'Guardar valoración'}
         </button>
       </div>
 
@@ -321,11 +393,13 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
 }
 
 /* ── Collapsed card showing a saved assessment ── */
-function AssessmentCard({ assessment, onDelete }) {
+function AssessmentCard({ assessment, onDelete, onEdit }) {
   const [open, setOpen] = useState(false)
   const a = assessment
 
+  const arrivalLabels = { por_su_cuenta: 'Propio', ambulancia: 'Ambulancia', traslado: 'Traslado', policia: 'Policía', otros: 'Otros' }
   const summaryItems = [
+    a.arrivalMode && `Llegada: ${arrivalLabels[a.arrivalMode] || a.arrivalMode}`,
     a.consciousness && `Consc: ${a.consciousness}`,
     a.mood && `Ánimo: ${a.mood}`,
     a.hasPain && `Dolor: ${a.painLocation || 'sí'}`,
@@ -340,6 +414,9 @@ function AssessmentCard({ assessment, onDelete }) {
         <span className="text-sm font-medium text-slate-700">{formatTime(a.recordedAt)}</span>
         <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">{typeLabels[a.assessmentType] || a.assessmentType}</span>
         <span className="text-xs text-slate-400 flex-1 truncate">{summaryItems.join(' · ')}</span>
+        {onEdit && (
+          <button onClick={e => { e.stopPropagation(); onEdit(a) }} className="text-slate-300 hover:text-blue-500"><Pencil size={14} /></button>
+        )}
         {onDelete && (
           <button onClick={e => { e.stopPropagation(); onDelete(a.id) }} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
         )}
@@ -347,6 +424,9 @@ function AssessmentCard({ assessment, onDelete }) {
       </div>
       {open && (
         <div className="px-4 pb-4 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-xs border-t border-slate-100 pt-3">
+          <Detail label="Llegada" value={arrivalLabels[a.arrivalMode] || a.arrivalMode} />
+          <Detail label="Acompañado" value={a.accompanied ? 'Sí' : 'No'} />
+          <Detail label="Barrera comunicación" value={a.languageBarrier} />
           <Detail label="Consciencia" value={a.consciousness} />
           <Detail label="Glasgow" value={a.glasgowScore} />
           <Detail label="Dolor" value={a.hasPain ? `${a.painLocation || 'Sí'} (${a.painType || '—'})` : 'No'} />

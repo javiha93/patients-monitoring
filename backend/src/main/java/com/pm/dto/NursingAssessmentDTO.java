@@ -11,6 +11,11 @@ public class NursingAssessmentDTO {
     private LocalDateTime recordedAt;
     private String assessmentType;
 
+    // Llegada
+    private String arrivalMode;
+    private Boolean accompanied;
+    private String languageBarrier;
+
     // Consciencia
     private String consciousness;
     private Integer glasgowScore;
@@ -83,6 +88,9 @@ public class NursingAssessmentDTO {
                 .admissionId(e.getAdmission().getId())
                 .recordedAt(e.getRecordedAt())
                 .assessmentType(e.getAssessmentType())
+                .arrivalMode(e.getArrivalMode())
+                .accompanied(e.getAccompanied())
+                .languageBarrier(e.getLanguageBarrier())
                 .consciousness(e.getConsciousness())
                 .glasgowScore(e.getGlasgowScore())
                 .hasPain(e.getHasPain())

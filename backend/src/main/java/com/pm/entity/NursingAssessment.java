@@ -23,6 +23,15 @@ public class NursingAssessment {
     @Column(name = "assessment_type")
     private String assessmentType; // entrada, sucesiva, salida
 
+    // ── Llegada ──
+    @Column(name = "arrival_mode")
+    private String arrivalMode; // por_su_cuenta, ambulancia, traslado, policia, otros
+
+    private Boolean accompanied;
+
+    @Column(name = "language_barrier")
+    private String languageBarrier; // ninguna, idioma, sensorial, cognitiva
+
     // ── Consciencia ──
     private String consciousness; // alerta, somnoliento, estuporoso, comatoso
     @Column(name = "glasgow_score")

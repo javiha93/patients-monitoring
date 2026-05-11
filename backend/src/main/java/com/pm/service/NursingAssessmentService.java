@@ -39,6 +39,9 @@ public class NursingAssessmentService {
                 .admission(admission)
                 .recordedAt(dto.getRecordedAt())
                 .assessmentType(autoType)
+                .arrivalMode(dto.getArrivalMode())
+                .accompanied(dto.getAccompanied())
+                .languageBarrier(dto.getLanguageBarrier())
                 .consciousness(dto.getConsciousness())
                 .glasgowScore(dto.getGlasgowScore())
                 .hasPain(dto.getHasPain())
@@ -85,6 +88,62 @@ public class NursingAssessmentService {
                 .notes(dto.getNotes())
                 .recordedBy(dto.getRecordedBy())
                 .build();
+
+        return NursingAssessmentDTO.fromEntity(repository.save(entity));
+    }
+
+    @Transactional
+    public NursingAssessmentDTO update(Long id, NursingAssessmentDTO dto) {
+        NursingAssessment entity = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Assessment not found"));
+
+        entity.setArrivalMode(dto.getArrivalMode());
+        entity.setAccompanied(dto.getAccompanied());
+        entity.setLanguageBarrier(dto.getLanguageBarrier());
+        entity.setConsciousness(dto.getConsciousness());
+        entity.setGlasgowScore(dto.getGlasgowScore());
+        entity.setHasPain(dto.getHasPain());
+        entity.setPainLocation(dto.getPainLocation());
+        entity.setPainIrradiation(dto.getPainIrradiation());
+        entity.setPainType(dto.getPainType());
+        entity.setNutrition(dto.getNutrition());
+        entity.setVomitingType(dto.getVomitingType());
+        entity.setVomitingAmount(dto.getVomitingAmount());
+        entity.setAspirationRisk(dto.getAspirationRisk());
+        entity.setMood(dto.getMood());
+        entity.setPhysicalCognitive(dto.getPhysicalCognitive());
+        entity.setSensoryBlindness(dto.getSensoryBlindness());
+        entity.setSensoryDeafness(dto.getSensoryDeafness());
+        entity.setSensoryAphasia(dto.getSensoryAphasia());
+        entity.setSensoryDysarthria(dto.getSensoryDysarthria());
+        entity.setPhysicalDisability(dto.getPhysicalDisability());
+        entity.setCognitiveObservations(dto.getCognitiveObservations());
+        entity.setUrinePattern(dto.getUrinePattern());
+        entity.setStoolPattern(dto.getStoolPattern());
+        entity.setUrinaryIncontinence(dto.getUrinaryIncontinence());
+        entity.setFecalIncontinence(dto.getFecalIncontinence());
+        entity.setHasDiaper(dto.getHasDiaper());
+        entity.setHasOstomy(dto.getHasOstomy());
+        entity.setHasUrinaryCatheter(dto.getHasUrinaryCatheter());
+        entity.setHasCollector(dto.getHasCollector());
+        entity.setBreathingPattern(dto.getBreathingPattern());
+        entity.setDyspneaLevel(dto.getDyspneaLevel());
+        entity.setCoughType(dto.getCoughType());
+        entity.setExpectoration(dto.getExpectoration());
+        entity.setHomeOxygen(dto.getHomeOxygen());
+        entity.setHomeCpap(dto.getHomeCpap());
+        entity.setMobility(dto.getMobility());
+        entity.setMobilityDetails(dto.getMobilityDetails());
+        entity.setBedRails(dto.getBedRails());
+        entity.setRestraintAbdominal(dto.getRestraintAbdominal());
+        entity.setRestraintLegs(dto.getRestraintLegs());
+        entity.setRestraintArms(dto.getRestraintArms());
+        entity.setFamilyInformed(dto.getFamilyInformed());
+        entity.setPatientInformed(dto.getPatientInformed());
+        entity.setFallRisk(dto.getFallRisk());
+        entity.setSelfHarmRisk(dto.getSelfHarmRisk());
+        entity.setElopementRisk(dto.getElopementRisk());
+        entity.setNotes(dto.getNotes());
 
         return NursingAssessmentDTO.fromEntity(repository.save(entity));
     }
