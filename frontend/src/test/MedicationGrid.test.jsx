@@ -153,6 +153,22 @@ describe('KAN-57: Firma directa — Cualquier celda', () => {
       expect(onDirectSign).toHaveBeenCalledTimes(1)
     }
   })
+
+  it('[KAN-57] administeredAt se envía en hora local (no UTC)', () => {
+    const onDirectSign = vi.fn()
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} onDirectSign={onDirectSign} />
+    )
+    const emptyCell = Array.from(container.querySelectorAll('td'))
+      .find(td => td.textContent === '' && td.style.height === '44px')
+    if (emptyCell) {
+      fireEvent.click(emptyCell)
+      const call = onDirectSign.mock.calls[0][0]
+      // Must NOT end with 'Z' (UTC) — should be local format like 2024-01-10T08:00:00
+      expect(call.administeredAt).not.toMatch(/Z$/)
+      expect(call.administeredAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/)
+    }
+  })
 })
 
 describe('KAN-57: Celda firmada — Dosis con unidad', () => {

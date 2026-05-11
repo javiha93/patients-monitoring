@@ -27,6 +27,13 @@ function parseScheduledHours(str) {
   return str.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
 }
 
+// Format a Date as local ISO string (yyyy-MM-ddTHH:mm:ss) without UTC conversion.
+// Backend uses LocalDateTime, so we must send local time, not UTC.
+function toLocalISOString(d) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
 // ── Sections ──
 
 const sections = [
@@ -89,12 +96,12 @@ const MedicationGrid = forwardRef(function MedicationGrid(
         onDirectUnsign(admin.id)
       }
     } else if (p.category === 'insulin') {
-      onOpenInsulinModal(p, slot.toISOString())
+      onOpenInsulinModal(p, toLocalISOString(slot))
     } else {
       // Any cell: sign directly
       onDirectSign({
         prescriptionId: p.id,
-        administeredAt: slot.toISOString(),
+        administeredAt: toLocalISOString(slot),
         doseGiven: p.amount,
         signedBy: '',
       })
