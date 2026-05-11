@@ -181,8 +181,13 @@ const MedicationGrid = forwardRef(function MedicationGrid(
     if (!container) return
     const nowIdx = slots.findIndex(s => isCurrentHour(s))
     if (nowIdx < 0) return
-    // Center the current hour: scroll so nowIdx is in the middle of the visible area
-    const targetScroll = (nowIdx * CELL_W) - ((VISIBLE_HOURS / 2) * CELL_W) + (CELL_W / 2)
+    // The now column's left edge in the table = LABEL_W + nowIdx * CELL_W
+    // We want it centered in the visible area.
+    // Visible width of the scroll container = container.clientWidth
+    // Target scrollLeft = position of now column - half the visible area + half a cell
+    const nowLeft = LABEL_W + (nowIdx * CELL_W)
+    const visibleWidth = container.clientWidth
+    const targetScroll = nowLeft - (visibleWidth / 2) + (CELL_W / 2)
     container.scrollTo({ left: Math.max(0, targetScroll), behavior: smooth ? 'smooth' : 'auto' })
   }
 
@@ -249,10 +254,9 @@ const MedicationGrid = forwardRef(function MedicationGrid(
   return (
     <div
       ref={scrollRef}
-      className="flex-1 overflow-auto pb-16"
-      style={{ scrollbarGutter: 'stable' }}
+      className="flex-1 overflow-x-auto overflow-y-auto pb-16"
     >
-      <table className="border-collapse" style={{ minWidth: LABEL_W + (slots.length * CELL_W) }}>
+      <table className="border-collapse" style={{ width: LABEL_W + (slots.length * CELL_W), tableLayout: 'fixed' }}>
         <thead className="sticky top-0 z-30">
           <tr>
             <th
