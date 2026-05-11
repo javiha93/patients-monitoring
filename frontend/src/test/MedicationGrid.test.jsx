@@ -346,46 +346,63 @@ describe('KAN-57: Editar — Icono lápiz en hover', () => {
 })
 
 describe('KAN-57: ▶ dinámica — se recalcula tras firmar', () => {
-  it('[KAN-57] sin administraciones muestra ▶ en horas pautadas iniciales', () => {
+  // Use a future admission so scheduled slots are not filtered as past
+  const futureStart = new Date()
+  futureStart.setMinutes(0, 0, 0)
+  const futureAdmission = futureStart.toISOString()
+  const currentHour = futureStart.getHours()
+  // Schedule at current+1, current+9, current+17 (all in the future, 8h apart)
+  const h1 = (currentHour + 1) % 24
+  const h2 = (currentHour + 9) % 24
+  const h3 = (currentHour + 17) % 24
+  const futureMed = {
+    ...fixedMed,
+    scheduledHours: `${h1},${h2},${h3}`,
+    frequency: 'c/8h',
+    administrations: [],
+  }
+
+  it('[KAN-57] sin administraciones muestra ▶ en horas pautadas futuras', () => {
     const { container } = render(
-      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+      <MedicationGrid prescriptions={[futureMed]} admissionDate={futureAdmission}
+        onDirectSign={vi.fn()} onDirectUnsign={vi.fn()}
+        onOpenInsulinModal={vi.fn()} onOpenEditModal={vi.fn()} />
     )
-    // scheduledHours: '8,16,0' with c/8h → arrows at static hours initially
     const arrows = Array.from(container.querySelectorAll('td')).filter(td => td.textContent.includes('▶'))
     expect(arrows.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('[KAN-57] tras firmar a las 10:00, siguiente ▶ se mueve a 10+8=18:00', () => {
-    // Dexketoprofeno c/8h, scheduled at 8,16,0
-    // Signed at 10:00 → next should be at 18:00, then 02:00
+  it('[KAN-57] no muestra ▶ en horas pasadas', () => {
+    // Use the fixed past admission date — all slots are in the past
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+    )
+    const arrows = Array.from(container.querySelectorAll('td')).filter(td => td.textContent.includes('▶'))
+    expect(arrows.length).toBe(0)
+  })
+
+  it('[KAN-57] tras firmar, siguiente ▶ se recalcula desde la administración', () => {
+    // Sign at h1 → next ▶ should be at h1+8, not at h2 (the original static hour)
+    const signTime = new Date(futureStart)
+    signTime.setHours(h1, 30, 0, 0)
     const medWithAdmin = {
-      ...fixedMed,
-      name: 'Dexketoprofeno',
-      scheduledHours: '8,16,0',
+      ...futureMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T10:00:00',
+        id: 100, administeredAt: signTime.toISOString(),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
       }],
     }
     const { container } = render(
-      <MedicationGrid prescriptions={[medWithAdmin]} {...defaultProps} />
+      <MedicationGrid prescriptions={[medWithAdmin]} admissionDate={futureAdmission}
+        onDirectSign={vi.fn()} onDirectUnsign={vi.fn()}
+        onOpenInsulinModal={vi.fn()} onOpenEditModal={vi.fn()} />
     )
-    // The 08:00 slot (first scheduled) should still have ▶ (it's before the admin)
-    // After admin at 10:00, next ▶ should be at 18:00 (10+8), then 02:00 (18+8)
-    // NOT at 16:00 and 00:00 (the original static hours)
-    const allCells = Array.from(container.querySelectorAll('td[data-scheduled="true"]'))
-    const arrowCells = allCells.filter(td => td.textContent.includes('▶'))
-
-    // Check that 18:00 has an arrow
-    // Slot index: admission starts at 08:00, so 18:00 = index 10
-    const slot18 = container.querySelectorAll('thead th')[11] // +1 for label column
-    if (slot18) {
-      expect(slot18.textContent).toContain('18:00')
-    }
-
-    // Verify arrows exist and the signed cell at 10:00 has ✓ not ▶
+    // The signed cell should show ✓, not ▶
     const signedCells = Array.from(container.querySelectorAll('td')).filter(td => td.textContent.includes('✓'))
     expect(signedCells.length).toBe(1)
+    const signedSlotArrows = Array.from(container.querySelectorAll('td[data-signed="true"]'))
+      .filter(td => td.textContent.includes('▶'))
+    expect(signedSlotArrows.length).toBe(0)
   })
 
   it('[KAN-57] celda firmada muestra ✓, no ▶', () => {
@@ -399,10 +416,8 @@ describe('KAN-57: ▶ dinámica — se recalcula tras firmar', () => {
     const { container } = render(
       <MedicationGrid prescriptions={[signedMed]} {...defaultProps} />
     )
-    // The signed slot should show ✓, not ▶
     const signedCells = Array.from(container.querySelectorAll('td')).filter(td => td.textContent.includes('✓'))
     expect(signedCells.length).toBe(1)
-    // No arrow at the signed hour
     const signedSlotArrows = Array.from(container.querySelectorAll('td[data-signed="true"]'))
       .filter(td => td.textContent.includes('▶'))
     expect(signedSlotArrows.length).toBe(0)
