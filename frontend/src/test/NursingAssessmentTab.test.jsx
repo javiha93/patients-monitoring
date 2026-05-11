@@ -95,29 +95,35 @@ describe('KAN-79: Valoración de enfermería', () => {
     expect(screen.queryByText('Nueva valoración de enfermería')).not.toBeInTheDocument()
   })
 
-  it('botón guardar deshabilitado sin consciencia y glasgow (entrada)', async () => {
+  it('botón guardar deshabilitado sin campos obligatorios (entrada)', async () => {
     const { nursingApi } = await import('../services/nursingApi')
     nursingApi.getByAdmission.mockResolvedValueOnce({ data: [] })
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
-    // Entrada form starts empty → required fields missing
+    // Entrada form starts empty → required fields missing (consciousness, glasgow, arrivalMode)
     const saveBtn = screen.getByText('Guardar valoración')
     expect(saveBtn.disabled).toBe(true)
-    expect(screen.getByText('* Consciencia y Glasgow son obligatorios')).toBeInTheDocument()
+    expect(screen.getByText('* Campos obligatorios sin rellenar')).toBeInTheDocument()
   })
 
-  it('guardar habilitado tras rellenar consciencia y glasgow', async () => {
+  it('guardar habilitado tras rellenar todos los campos obligatorios', async () => {
     const { nursingApi } = await import('../services/nursingApi')
     nursingApi.getByAdmission.mockResolvedValueOnce({ data: [] })
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
-    // Entrada form starts empty → fill required fields
+    // Fill arrivalMode (required for entrada)
+    const arrivalSelect = screen.getAllByRole('combobox').find(s =>
+      Array.from(s.options).some(o => o.value === 'ambulancia')
+    )
+    fireEvent.change(arrivalSelect, { target: { value: 'ambulancia' } })
+    // Fill consciousness
     const consciousnessSelect = screen.getAllByRole('combobox').find(s =>
       Array.from(s.options).some(o => o.value === 'alerta')
     )
     fireEvent.change(consciousnessSelect, { target: { value: 'alerta' } })
+    // Fill glasgow
     const glasgowInput = screen.getByPlaceholderText('Ej: 15')
     fireEvent.change(glasgowInput, { target: { value: '15' } })
     const saveBtn = screen.getByText('Guardar valoración')

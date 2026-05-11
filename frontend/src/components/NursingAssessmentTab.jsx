@@ -290,6 +290,7 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving, editing }) {
   const [glasgowOpen, setGlasgowOpen] = useState(false)
 
   const missingRequired = !form.consciousness || form.glasgowScore == null || form.glasgowScore === ''
+    || (form.assessmentType === 'entrada' && !form.arrivalMode)
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
@@ -304,8 +305,9 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving, editing }) {
         {/* Col 1 */}
         <div className="space-y-4">
           {form.assessmentType === 'entrada' && (
-            <Section title="Llegada" color="bg-slate-500">
-              <Select label="Modo de llegada" value={form.arrivalMode} onChange={v => set('arrivalMode', v)} options={OPTS.arrivalMode} />
+            <Section title="Llegada *" color="bg-slate-500">
+              <Select label="Modo de llegada *" value={form.arrivalMode} onChange={v => set('arrivalMode', v)} options={OPTS.arrivalMode} />
+              {!form.arrivalMode && <p className="text-xs text-red-500">Obligatorio</p>}
               <Toggle label="Viene acompañado" checked={form.accompanied} onChange={v => set('accompanied', v)} />
             </Section>
           )}
@@ -431,7 +433,7 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving, editing }) {
           className="px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none resize-none" />
       </div>
       <div className="flex items-center gap-3 justify-end pt-2 border-t border-slate-100">
-        {missingRequired && <span className="text-xs text-red-500 mr-auto">* Consciencia y Glasgow son obligatorios</span>}
+        {missingRequired && <span className="text-xs text-red-500 mr-auto">* Campos obligatorios sin rellenar</span>}
         <button onClick={onCancel} className="px-5 py-2 rounded-lg text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Cancelar</button>
         <button onClick={onSubmit} disabled={saving || missingRequired} className="px-5 py-2 rounded-lg text-sm font-medium bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed">
           {saving ? 'Guardando...' : editing ? 'Actualizar valoración' : 'Guardar valoración'}
