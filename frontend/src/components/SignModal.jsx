@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { X, AlertTriangle } from 'lucide-react'
+import ConfirmModal from './ConfirmModal'
 
 /**
  * Calculate dose from insulin scale based on glycemia value.
@@ -175,6 +176,7 @@ export function InsulinSignModal({ open, prescription, slot, vitals, currentUser
 export function EditAdminModal({ open, admin, prescription, onUpdate, onUnsign, onClose }) {
   const [doseGiven, setDoseGiven] = useState(admin?.doseGiven || '')
   const [note, setNote] = useState(admin?.note || '')
+  const [confirmUnsign, setConfirmUnsign] = useState(false)
 
   if (!open || !admin) return null
 
@@ -216,7 +218,7 @@ export function EditAdminModal({ open, admin, prescription, onUpdate, onUnsign, 
           </div>
           <div className="flex justify-between pt-1">
             <button type="button"
-              onClick={() => { if (confirm('¿Desfirmar esta administración?')) onUnsign(admin.id) }}
+              onClick={() => setConfirmUnsign(true)}
               className="text-red-500 text-xs font-medium hover:text-red-700">
               Desfirmar
             </button>
@@ -227,6 +229,12 @@ export function EditAdminModal({ open, admin, prescription, onUpdate, onUnsign, 
           </div>
         </form>
       </div>
+      <ConfirmModal
+        open={confirmUnsign}
+        message="¿Desfirmar esta administración?"
+        onConfirm={() => { onUnsign(admin.id); setConfirmUnsign(false) }}
+        onCancel={() => setConfirmUnsign(false)}
+      />
     </div>
   )
 }

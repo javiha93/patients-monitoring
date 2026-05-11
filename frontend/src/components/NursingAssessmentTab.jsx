@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, Clock, ChevronDown, ChevronUp, HelpCircle, Pencil } from 'lucide-react'
 import { nursingApi } from '../services/nursingApi'
 import GlasgowModal from './GlasgowModal'
+import ConfirmModal from './ConfirmModal'
 
 /* ── Reusable sub-components ── */
 
@@ -106,6 +107,7 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const fetch = async () => {
     try {
@@ -193,7 +195,6 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar esta valoración?')) return
     try {
       await nursingApi.delete(id)
       fetch()
@@ -274,13 +275,20 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
       {assessments.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Valoraciones anteriores</h3>
-          {assessments.map(a => <AssessmentCard key={a.id} assessment={a} onDelete={handleDelete} onEdit={handleEdit} />)}
+          {assessments.map(a => <AssessmentCard key={a.id} assessment={a} onDelete={(id) => setConfirmDelete(id)} onEdit={handleEdit} />)}
         </div>
       )}
 
       {!formOpen && assessments.length === 0 && (
         <p className="text-slate-400 text-center py-8">No hay valoraciones registradas</p>
       )}
+
+      <ConfirmModal
+        open={confirmDelete != null}
+        message="¿Eliminar esta valoración?"
+        onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

@@ -11,6 +11,7 @@ import EditVitalSignModal from '../components/EditVitalSignModal'
 import { useToast, ToastContainer } from '../components/Toast'
 import InsightsPanel from '../components/InsightsPanel'
 import NursingAssessmentTab from '../components/NursingAssessmentTab'
+import ConfirmModal from '../components/ConfirmModal'
 
 function calcAge(birthDate) {
   if (!birthDate) return null
@@ -37,6 +38,7 @@ export default function PatientRecord() {
   const { toasts, removeToast, toast } = useToast()
   const [editVital, setEditVital] = useState(null)
   const [activeTab, setActiveTab] = useState('vitals')
+  const [confirmAction, setConfirmAction] = useState(null) // { message, action }
 
   const fetchData = async () => {
     try {
@@ -62,7 +64,6 @@ export default function PatientRecord() {
   const admission = patient.activeAdmission
 
   const handleDischarge = async () => {
-    if (!confirm(`¿Confirmas el alta hospitalaria de ${patient.lastName}, ${patient.firstName}?`)) return
     try {
       await patientApi.discharge(patient.id, { dischargeDate: new Date().toISOString() })
       navigate('/')
@@ -92,7 +93,6 @@ export default function PatientRecord() {
   }
 
   const handleDeleteVital = async (id) => {
-    if (!confirm('¿Eliminar este registro de constantes?')) return
     try {
       await vitalsApi.delete(id)
       fetchData()
@@ -120,7 +120,7 @@ export default function PatientRecord() {
           </button>
         )}
         {admission && (
-          <button onClick={handleDischarge} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
+          <button onClick={() => setConfirmAction({ message: `¿Confirmas el alta hospitalaria de ${patient.lastName}, ${patient.firstName}?`, action: handleDischarge })} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
             Alta hospitalaria
           </button>
         )}
@@ -145,7 +145,7 @@ export default function PatientRecord() {
         {activeTab === 'vitals' && <>
           {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} />}
           <VitalsSummaryCards vitals={vitals} />
-          <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={handleDeleteVital} />
+          <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} />
         </>}
         {activeTab === 'nursing' && admission && (
           <NursingAssessmentTab admissionId={admission.id} toast={toast} />
@@ -169,6 +169,12 @@ export default function PatientRecord() {
         patientName={`${patient.lastName}, ${patient.firstName} · ${age || ''}`}
       />
 
+      <ConfirmModal
+        open={confirmAction != null}
+        message={confirmAction?.message}
+        onConfirm={() => { confirmAction?.action(); setConfirmAction(null) }}
+        onCancel={() => setConfirmAction(null)}
+      />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )

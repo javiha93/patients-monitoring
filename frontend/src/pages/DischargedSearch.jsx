@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, RotateCcw } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { useToast, ToastContainer } from '../components/Toast'
+import ConfirmModal from '../components/ConfirmModal'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -15,6 +16,7 @@ export default function DischargedSearch() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searched, setSearched] = useState(false)
+  const [confirmReopen, setConfirmReopen] = useState(null)
   const navigate = useNavigate()
 
   const handleSearch = async () => {
@@ -28,7 +30,6 @@ export default function DischargedSearch() {
   }
 
   const handleReopen = async (patientId) => {
-    if (!confirm('¿Reabrir ficha de este paciente?')) return
     try {
       await patientApi.reopen(patientId, 3, null)
       navigate(`/patient/${patientId}`)
@@ -83,7 +84,7 @@ export default function DischargedSearch() {
                     <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
                     <td className="px-4 py-3 text-sm text-slate-500">{formatDate(p.admissionDate)}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => handleReopen(p.id)} className="text-sky-500 hover:text-sky-700 flex items-center gap-1 text-sm font-medium">
+                      <button onClick={() => setConfirmReopen(p.id)} className="text-sky-500 hover:text-sky-700 flex items-center gap-1 text-sm font-medium">
                         <RotateCcw size={14} /> Reabrir
                       </button>
                     </td>
@@ -94,6 +95,12 @@ export default function DischargedSearch() {
           </div>
         )}
       </div>
+      <ConfirmModal
+        open={confirmReopen != null}
+        message="¿Reabrir ficha de este paciente?"
+        onConfirm={() => { handleReopen(confirmReopen); setConfirmReopen(null) }}
+        onCancel={() => setConfirmReopen(null)}
+      />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
