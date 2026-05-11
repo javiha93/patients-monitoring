@@ -49,18 +49,20 @@ export function InsulinSignModal({ open, prescription, slot, vitals, currentUser
   const hasGlucose = latestGlucose != null
   const glycemia = latestGlucose?.value ?? null
 
+  // Auto-calculate dose from insulin scale whenever glycemia or scales change
+  const suggestedDose = useMemo(() => {
+    if (!glycemia || !prescription?.insulinScales?.length) return null
+    return calcDoseFromScale(prescription.insulinScales, glycemia)
+  }, [glycemia, prescription])
+
   // Reset fields when modal opens with new data
   useEffect(() => {
     if (open) {
       setSignedBy(currentUser || '')
       setNote('')
-      if (glycemia && prescription?.insulinScales) {
-        setDoseUI(calcDoseFromScale(prescription.insulinScales, glycemia) || '')
-      } else {
-        setDoseUI('')
-      }
+      setDoseUI(suggestedDose != null ? suggestedDose : '')
     }
-  }, [open, latestGlucose, prescription, currentUser])
+  }, [open, suggestedDose, currentUser])
 
   if (!open || !prescription) return null
 
@@ -137,9 +139,9 @@ export function InsulinSignModal({ open, prescription, slot, vitals, currentUser
             <label className="text-[11px] font-medium text-slate-600">Dosis (UI)</label>
             <input type="number" value={doseUI} onChange={e => setDoseUI(e.target.value)}
               required className="w-full border rounded-lg px-2.5 py-1.5 text-sm mt-0.5" placeholder="4" />
-            {glycemia && prescription.insulinScales?.length > 0 && (
+            {suggestedDose != null && (
               <div className="text-[10px] text-slate-500 mt-0.5" data-testid="dose-suggestion">
-                Según pauta: {calcDoseFromScale(prescription.insulinScales, glycemia) ?? '—'} UI
+                Según pauta: {suggestedDose} UI
               </div>
             )}
           </div>
