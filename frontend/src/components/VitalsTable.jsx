@@ -49,6 +49,47 @@ const deviceLabels = {
   mechanical_ventilation: 'VM',
 }
 
+/**
+ * Parameters shown inline per device type:
+ * - nasal_cannula, reservoir_mask: flow only
+ * - ventimax, high_flow_cannula: flow + FiO2
+ * - mechanical_ventilation: FiO2 + PEEP
+ * - cpap, bipap: nothing inline
+ */
+export function formatDeviceDetail(rs) {
+  if (!rs) return ''
+  const t = rs.deviceType
+  const parts = []
+  // Flow: gafas nasales, reservorio, ventimax, OAF
+  if (['nasal_cannula', 'reservoir_mask', 'ventimax', 'high_flow_cannula'].includes(t) && rs.flowRate) {
+    parts.push(`${rs.flowRate}L`)
+  }
+  // FiO2: ventimax, OAF, VM
+  if (['ventimax', 'high_flow_cannula', 'mechanical_ventilation'].includes(t) && rs.fio2) {
+    parts.push(`FiO₂${rs.fio2}%`)
+  }
+  // PEEP: VM
+  if (t === 'mechanical_ventilation' && rs.peep) {
+    parts.push(`PEEP ${rs.peep}`)
+  }
+  return parts.length ? ' ' + parts.join(' ') : ''
+}
+
+/** Tooltip for devices with extra parameters not shown inline. */
+export function formatDeviceTooltip(rs) {
+  if (!rs) return undefined
+  if (rs.deviceType === 'bipap') {
+    return `IPAP: ${rs.ipap ?? '—'} / EPAP: ${rs.epap ?? '—'} cmH₂O`
+  }
+  if (rs.deviceType === 'mechanical_ventilation') {
+    const parts = []
+    if (rs.tidalVolume) parts.push(`Vt: ${rs.tidalVolume} mL`)
+    if (rs.respiratoryRateSet) parts.push(`FR prog: ${rs.respiratoryRateSet} rpm`)
+    return parts.length ? parts.join(' · ') : undefined
+  }
+  return undefined
+}
+
 export default function VitalsTable({ vitals, onEdit, onDelete }) {
   const [hoveredCol, setHoveredCol] = useState(null)
 
@@ -104,15 +145,8 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
                   }
                   const rs = v.respiratorySupport
                   const label = rs ? deviceLabels[rs.deviceType] || rs.deviceType : 'Aire ambiente'
-                  let detail = ''
-                  if (rs) {
-                    if (rs.flowRate) detail += ` ${rs.flowRate}L`
-                    if (rs.fio2) detail += ` FiO₂${rs.fio2}%`
-                  }
-                  // BiPAP tooltip with IPAP/EPAP
-                  const tooltip = rs && rs.deviceType === 'bipap'
-                    ? `IPAP: ${rs.ipap ?? '—'} / EPAP: ${rs.epap ?? '—'} cmH₂O`
-                    : undefined
+                  const detail = rs ? formatDeviceDetail(rs) : ''
+                  const tooltip = rs ? formatDeviceTooltip(rs) : undefined
                   return (
                     <td
                       key={v.id}
