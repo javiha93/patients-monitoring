@@ -27,23 +27,6 @@ function parseScheduledHours(str) {
   return str.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
 }
 
-/**
- * Find the index of the next scheduled slot that hasn't been signed yet.
- * "Next" = first scheduled+unsigned slot at or after the current hour.
- */
-function findNextDoseIndex(slots, scheduled, administrations) {
-  const now = new Date()
-  for (let i = 0; i < slots.length; i++) {
-    const slot = slots[i]
-    if (slot < now) continue
-    const hour = slot.getHours()
-    if (!scheduled.includes(hour)) continue
-    const alreadySigned = administrations?.some(a => isSameHour(new Date(a.administeredAt), slot))
-    if (!alreadySigned) return i
-  }
-  return -1
-}
-
 // ── Sections ──
 
 const sections = [
@@ -60,47 +43,6 @@ const insulinScaleLabels = [
   { range: '>350: 6UI', color: '#dc2626' },
 ]
 
-// ── Tooltip component ──
-
-function CellTooltip({ admin, unit, children }) {
-  const [show, setShow] = useState(false)
-  const [pos, setPos] = useState({ top: 0, left: 0 })
-  const tooltipRef = useRef(null)
-
-  if (!admin) return children
-
-  const handleMouseEnter = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    setPos({ top: rect.top - 4, left: rect.left + rect.width / 2 })
-    setShow(true)
-  }
-
-  const handleMouseLeave = () => setShow(false)
-
-  return (
-    <div
-      className="contents"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {children}
-      {show && (
-        <div
-          ref={tooltipRef}
-          className="fixed z-[100] pointer-events-none"
-          style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -100%)' }}
-        >
-          <div className="bg-slate-800 text-white text-[11px] rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap" data-testid="cell-tooltip">
-            <div className="font-medium">{admin.signedBy || 'Firmado'}</div>
-            {admin.doseGiven && <div>{admin.doseGiven}{unit}</div>}
-            {admin.note && <div className="text-blue-300 mt-0.5">Obs: {admin.note}</div>}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Component ──
 
 const MedicationGrid = forwardRef(function MedicationGrid(
@@ -109,6 +51,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
 ) {
   const nowRef = useRef(null)
   const [hoveredCell, setHoveredCell] = useState(null)
+  const [tooltip, setTooltip] = useState(null) // { x, y, admin, unit }
 
   const slots = generate72hSlots(admissionDate)
 
@@ -139,17 +82,16 @@ const MedicationGrid = forwardRef(function MedicationGrid(
 
   let firstMedRendered = false
 
-  function handleCellClick(e, p, slot, admin, isScheduled) {
+  function handleCellClick(e, p, slot, admin) {
     if (admin) {
-      // Signed cell → open edit modal (no confirm dialog)
-      onOpenEditModal(admin, p)
-    } else if (!isScheduled) {
-      // Non-scheduled empty cell → do nothing
-      return
+      // Signed cell: confirm then unsign directly
+      if (confirm(`¿Desfirmar ${p.name}?`)) {
+        onDirectUnsign(admin.id)
+      }
     } else if (p.category === 'insulin') {
       onOpenInsulinModal(p, slot.toISOString())
     } else {
-      // Normal medication: sign only this specific slot
+      // Any cell: sign directly
       onDirectSign({
         prescriptionId: p.id,
         administeredAt: slot.toISOString(),
@@ -157,6 +99,26 @@ const MedicationGrid = forwardRef(function MedicationGrid(
         signedBy: '',
       })
     }
+  }
+
+  function handleEditClick(e, admin, p) {
+    e.stopPropagation()
+    onOpenEditModal(admin, p)
+  }
+
+  function handleCellMouseEnter(e, admin, unit) {
+    if (!admin) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setTooltip({
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+      admin,
+      unit,
+    })
+  }
+
+  function handleCellMouseLeave() {
+    setTooltip(null)
   }
 
   return (
@@ -212,9 +174,6 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                   const isInsulin = section.key === 'insulin'
                   if (!firstMedRendered) firstMedRendered = true
 
-                  // Only the NEXT scheduled+unsigned slot gets ▶
-                  const nextDoseIdx = findNextDoseIndex(slots, scheduled, p.administrations)
-
                   return (
                     <tr key={p.id}>
                       <th
@@ -251,22 +210,21 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                         const cellKey = `${p.id}-${si}`
                         const isHovered = hoveredCell === cellKey
 
-                        // Only the single next dose gets ▶
-                        const isNext = si === nextDoseIdx
+                        // ▶ on ALL scheduled+unsigned slots
+                        const isNext = isScheduled && !admin
 
                         let bg = '#fff'
                         if (admin) bg = '#dcfce7'
                         else if (isNow) bg = '#dbeafe'
-                        else if (isScheduled) bg = '#f0f9ff'
 
-                        const hoverBg = admin ? '#bbf7d0' : (isScheduled ? '#e0f2fe' : '#f8fafc')
+                        const hoverBg = admin ? '#bbf7d0' : '#f0f9ff'
 
-                        const cellContent = (
+                        return (
                           <td
                             key={si}
                             data-scheduled={isScheduled ? 'true' : undefined}
                             data-signed={admin ? 'true' : undefined}
-                            className={`text-center align-middle relative ${isScheduled || admin ? 'cursor-pointer' : 'cursor-default'}`}
+                            className="text-center align-middle relative cursor-pointer"
                             style={{
                               width: 56, minWidth: 56, height: 44,
                               background: isHovered ? hoverBg : bg,
@@ -274,15 +232,37 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                               borderRight: '1px solid #e2e8f0',
                               borderLeft: midnight ? '2px solid #3b82f6' : undefined,
                             }}
-                            onMouseEnter={() => setHoveredCell(cellKey)}
-                            onMouseLeave={() => setHoveredCell(null)}
-                            onClick={(e) => handleCellClick(e, p, slot, admin, isScheduled)}
+                            onMouseEnter={(e) => {
+                              setHoveredCell(cellKey)
+                              handleCellMouseEnter(e, admin, p.unit)
+                            }}
+                            onMouseLeave={() => {
+                              setHoveredCell(null)
+                              handleCellMouseLeave()
+                            }}
+                            onClick={(e) => handleCellClick(e, p, slot, admin)}
                           >
                             {admin ? (
                               <>
-                                {admin.note && (
-                                  <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" data-testid="observation-dot" />
+                                {/* Edit icon on hover */}
+                                {!isInsulin && isHovered && (
+                                  <svg
+                                    className="absolute top-0.5 right-0.5 text-slate-500 cursor-pointer"
+                                    style={{ width: 14, height: 14 }}
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                    strokeLinecap="round" strokeLinejoin="round"
+                                    onClick={(e) => handleEditClick(e, admin, p)}
+                                    data-testid="edit-icon"
+                                  >
+                                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                    <path d="m15 5 4 4" />
+                                  </svg>
                                 )}
+                                {/* Observation dot */}
+                                {admin.note && (
+                                  <span className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" data-testid="observation-dot" />
+                                )}
+                                {/* Tick + dose with unit */}
                                 <span className="text-green-800 font-semibold text-base">✓</span>
                                 {admin.doseGiven && (
                                   <div className="text-[10px] text-green-700 leading-none">{admin.doseGiven}{p.unit}</div>
@@ -290,21 +270,9 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                               </>
                             ) : isNext ? (
                               <span className="text-sky-500 font-bold text-sm">▶</span>
-                            ) : isScheduled ? (
-                              <span className="text-slate-300 text-xs">·</span>
                             ) : null}
                           </td>
                         )
-
-                        if (admin) {
-                          return (
-                            <CellTooltip key={si} admin={admin} unit={p.unit}>
-                              {cellContent}
-                            </CellTooltip>
-                          )
-                        }
-
-                        return cellContent
                       })}
                     </tr>
                   )
@@ -314,6 +282,25 @@ const MedicationGrid = forwardRef(function MedicationGrid(
           })}
         </tbody>
       </table>
+
+      {/* Tooltip rendered as portal outside the table to avoid layout shifts */}
+      {tooltip && (
+        <div
+          className="fixed z-[100] pointer-events-none"
+          style={{
+            top: tooltip.y - 4,
+            left: tooltip.x,
+            transform: 'translate(-50%, -100%)',
+          }}
+          data-testid="cell-tooltip"
+        >
+          <div className="bg-slate-800 text-white text-[11px] rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap">
+            <div className="font-medium">{tooltip.admin.signedBy || 'Firmado'}</div>
+            {tooltip.admin.doseGiven && <div>{tooltip.admin.doseGiven}{tooltip.unit}</div>}
+            {tooltip.admin.note && <div className="text-blue-300 mt-0.5">Obs: {tooltip.admin.note}</div>}
+          </div>
+        </div>
+      )}
     </div>
   )
 })
