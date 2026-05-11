@@ -205,8 +205,61 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
       {/* New assessment button */}
       {!formOpen && (
         <button onClick={() => {
-          const autoType = assessments.length === 0 ? 'entrada' : 'sucesiva'
-          setForm({ ...EMPTY_FORM, assessmentType: autoType })
+          if (assessments.length === 0) {
+            setForm({ ...EMPTY_FORM, assessmentType: 'entrada' })
+          } else {
+            // Pre-fill from last assessment, but reset arrival fields and type
+            const last = assessments[0]
+            setForm({
+              assessmentType: 'sucesiva',
+              arrivalMode: null, accompanied: false,
+              languageBarrier: last.languageBarrier || 'ninguna',
+              consciousness: last.consciousness || null,
+              glasgowScore: last.glasgowScore ?? null,
+              hasPain: last.hasPain || false,
+              painLocation: last.painLocation || '',
+              painIrradiation: last.painIrradiation || '',
+              painType: last.painType || null,
+              nutrition: last.nutrition || 'sin_alteraciones',
+              vomitingType: last.vomitingType || null,
+              vomitingAmount: last.vomitingAmount || null,
+              aspirationRisk: last.aspirationRisk || false,
+              mood: last.mood || 'tranquilo',
+              physicalCognitive: last.physicalCognitive || 'orientado',
+              sensoryBlindness: last.sensoryBlindness || false,
+              sensoryDeafness: last.sensoryDeafness || false,
+              sensoryAphasia: last.sensoryAphasia || false,
+              sensoryDysarthria: last.sensoryDysarthria || false,
+              physicalDisability: last.physicalDisability || false,
+              cognitiveObservations: last.cognitiveObservations || '',
+              urinePattern: last.urinePattern || 'sin_alteraciones',
+              stoolPattern: last.stoolPattern || 'sin_alteraciones',
+              urinaryIncontinence: last.urinaryIncontinence || false,
+              fecalIncontinence: last.fecalIncontinence || false,
+              hasDiaper: last.hasDiaper || false,
+              hasOstomy: last.hasOstomy || false,
+              hasUrinaryCatheter: last.hasUrinaryCatheter || false,
+              hasCollector: last.hasCollector || false,
+              breathingPattern: last.breathingPattern || 'normal',
+              dyspneaLevel: last.dyspneaLevel || 'ninguna',
+              coughType: last.coughType || 'ninguna',
+              expectoration: last.expectoration || 'ninguna',
+              homeOxygen: last.homeOxygen || false,
+              homeCpap: last.homeCpap || false,
+              mobility: last.mobility || 'sin_alteraciones',
+              mobilityDetails: last.mobilityDetails || '',
+              bedRails: last.bedRails || false,
+              restraintAbdominal: last.restraintAbdominal || false,
+              restraintLegs: last.restraintLegs || false,
+              restraintArms: last.restraintArms || false,
+              familyInformed: last.familyInformed || false,
+              patientInformed: last.patientInformed || false,
+              fallRisk: last.fallRisk || false,
+              selfHarmRisk: last.selfHarmRisk || false,
+              elopementRisk: last.elopementRisk || false,
+              notes: '',
+            })
+          }
           setFormOpen(true)
         }}
           className="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-sky-600">
@@ -250,11 +303,12 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving, editing }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Col 1 */}
         <div className="space-y-4">
-          <Section title="Llegada" color="bg-slate-500">
-            <Select label="Modo de llegada" value={form.arrivalMode} onChange={v => set('arrivalMode', v)} options={OPTS.arrivalMode} />
-            <Toggle label="Viene acompañado" checked={form.accompanied} onChange={v => set('accompanied', v)} />
-            <Select label="Barrera comunicación" value={form.languageBarrier} onChange={v => set('languageBarrier', v)} options={OPTS.languageBarrier} />
-          </Section>
+          {form.assessmentType === 'entrada' && (
+            <Section title="Llegada" color="bg-slate-500">
+              <Select label="Modo de llegada" value={form.arrivalMode} onChange={v => set('arrivalMode', v)} options={OPTS.arrivalMode} />
+              <Toggle label="Viene acompañado" checked={form.accompanied} onChange={v => set('accompanied', v)} />
+            </Section>
+          )}
 
           <Section title="Consciencia *" color="bg-indigo-500">
             <Select label="Nivel *" value={form.consciousness} onChange={v => set('consciousness', v)} options={OPTS.consciousness} />
@@ -311,6 +365,7 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving, editing }) {
               <Toggle label="Disartria" checked={form.sensoryDysarthria} onChange={v => set('sensoryDysarthria', v)} />
             </div>
             <Toggle label="Discapacidad física" checked={form.physicalDisability} onChange={v => set('physicalDisability', v)} />
+            <Select label="Barrera comunicación" value={form.languageBarrier} onChange={v => set('languageBarrier', v)} options={OPTS.languageBarrier} />
             <TextInput label="Observaciones" value={form.cognitiveObservations} onChange={v => set('cognitiveObservations', v)} />
           </Section>
 
@@ -424,15 +479,15 @@ function AssessmentCard({ assessment, onDelete, onEdit }) {
       </div>
       {open && (
         <div className="px-4 pb-4 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-xs border-t border-slate-100 pt-3">
-          <Detail label="Llegada" value={arrivalLabels[a.arrivalMode] || a.arrivalMode} />
-          <Detail label="Acompañado" value={a.accompanied ? 'Sí' : 'No'} />
-          <Detail label="Barrera comunicación" value={a.languageBarrier} />
+          {a.arrivalMode && <Detail label="Llegada" value={arrivalLabels[a.arrivalMode] || a.arrivalMode} />}
+          {a.accompanied && <Detail label="Acompañado" value="Sí" />}
           <Detail label="Consciencia" value={a.consciousness} />
           <Detail label="Glasgow" value={a.glasgowScore} />
           <Detail label="Dolor" value={a.hasPain ? `${a.painLocation || 'Sí'} (${a.painType || '—'})` : 'No'} />
           <Detail label="Alimentación" value={a.nutrition} />
           <Detail label="Ánimo" value={a.mood} />
           <Detail label="Cognitivo" value={a.physicalCognitive} />
+          {a.languageBarrier && a.languageBarrier !== 'ninguna' && <Detail label="Barrera comunicación" value={a.languageBarrier} />}
           <Detail label="Orina" value={a.urinePattern} />
           <Detail label="Deposición" value={a.stoolPattern} />
           <Detail label="Respiración" value={a.breathingPattern} />

@@ -189,14 +189,47 @@ describe('KAN-79: Valoración de enfermería', () => {
     expect(screen.getByText('Entrada')).toBeInTheDocument()
   })
 
-  it('formulario muestra sección Llegada con los nuevos campos', async () => {
+  it('sección Llegada visible solo en valoración de entrada', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    nursingApi.getByAdmission.mockResolvedValueOnce({ data: [] })
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
+    // Entrada → Llegada visible
     expect(screen.getByText('Llegada')).toBeInTheDocument()
     expect(screen.getByText('Modo de llegada')).toBeInTheDocument()
-    expect(screen.getByText('Viene acompañado')).toBeInTheDocument()
+  })
+
+  it('sección Llegada oculta en valoración sucesiva', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
+    // Sucesiva → Llegada no visible
+    expect(screen.queryByText('Llegada')).not.toBeInTheDocument()
+    expect(screen.queryByText('Modo de llegada')).not.toBeInTheDocument()
+  })
+
+  it('barrera comunicación está en sección Estado físico y cognitivo', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
     expect(screen.getByText('Barrera comunicación')).toBeInTheDocument()
+    // Should be near the cognitive section, not in Llegada
+    expect(screen.getByText('Estado físico y cognitivo')).toBeInTheDocument()
+  })
+
+  it('sucesiva se pre-rellena con datos de la última valoración', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
+    // Glasgow should be pre-filled with 15 from mockAssessments[0]
+    const glasgowInput = screen.getByPlaceholderText('Ej: 15')
+    expect(glasgowInput.value).toBe('15')
+    // Consciousness should be pre-filled with 'alerta'
+    const consciousnessSelect = screen.getAllByRole('combobox').find(s =>
+      Array.from(s.options).some(o => o.value === 'alerta')
+    )
+    expect(consciousnessSelect.value).toBe('alerta')
   })
 
   it('clic en editar abre el formulario con datos pre-rellenados', async () => {
