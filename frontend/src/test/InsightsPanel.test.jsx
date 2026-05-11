@@ -6,6 +6,7 @@ const mockInsights = [
   { level: 'critical', title: 'Alergia vs prescripción: Metamizol', detail: 'Paciente alérgico a Metamizol', reasoning: 'Cruce directo', analysisType: 'allergy_conflict' },
   { level: 'warning', title: 'Bradicardia + betabloqueante', detail: 'FC mínima: 48 lpm', reasoning: 'Valorar reducción', analysisType: 'bradycardia_beta_blockers' },
   { level: 'info', title: 'FR elevada: 24 rpm', detail: 'Media últimos registros', reasoning: 'Monitorizar', analysisType: 'elevated_respiratory_rate' },
+  { level: 'warning', title: 'Deterioro cognitivo nuevo: desorientado', detail: 'Orientado en ingresos previos', reasoning: 'Descartar causas orgánicas', analysisType: 'new_cognitive_decline' },
 ]
 
 vi.mock('../services/insightsApi', () => ({
@@ -20,8 +21,8 @@ describe('KAN-69: Panel de insights clínicos', () => {
     await waitFor(() => {
       expect(screen.getByText('Inteligencia Clínica')).toBeInTheDocument()
       expect(screen.getByText(/1 crítico/)).toBeInTheDocument()
-      expect(screen.getByText(/1 alerta/)).toBeInTheDocument()
-      expect(screen.getByText('3 insights')).toBeInTheDocument()
+      expect(screen.getByText(/2 alertas/)).toBeInTheDocument()
+      expect(screen.getByText('4 insights')).toBeInTheDocument()
     })
   })
 
@@ -61,7 +62,7 @@ describe('KAN-69: Panel de insights clínicos', () => {
     await waitFor(() => {
       expect(screen.getByText('Bradicardia + betabloqueante')).toBeInTheDocument()
       expect(screen.queryByText('Alergia vs prescripción: Metamizol')).not.toBeInTheDocument()
-      expect(screen.getByText('2 insights')).toBeInTheDocument()
+      expect(screen.getByText('3 insights')).toBeInTheDocument()
     })
   })
 
@@ -70,6 +71,16 @@ describe('KAN-69: Panel de insights clínicos', () => {
     await waitFor(() => {
       expect(screen.getByText('Alergia vs prescripción: Metamizol')).toBeInTheDocument()
       expect(screen.queryByText('Bradicardia + betabloqueante')).not.toBeInTheDocument()
+      expect(screen.getByText('1 insight')).toBeInTheDocument()
+    })
+  })
+
+  it('includeTypes con tipos de enfermería muestra solo alertas de enfermería', async () => {
+    render(<InsightsPanel patientId={1} admissionId={10} includeTypes={['new_cognitive_decline']} />)
+    await waitFor(() => {
+      expect(screen.getByText('Deterioro cognitivo nuevo: desorientado')).toBeInTheDocument()
+      expect(screen.queryByText('Bradicardia + betabloqueante')).not.toBeInTheDocument()
+      expect(screen.queryByText('Alergia vs prescripción: Metamizol')).not.toBeInTheDocument()
       expect(screen.getByText('1 insight')).toBeInTheDocument()
     })
   })

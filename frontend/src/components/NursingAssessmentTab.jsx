@@ -3,6 +3,7 @@ import { Plus, Trash2, Clock, ChevronDown, ChevronUp, HelpCircle, Pencil, Histor
 import { nursingApi } from '../services/nursingApi'
 import GlasgowModal from './GlasgowModal'
 import ConfirmModal from './ConfirmModal'
+import InsightsPanel from './InsightsPanel'
 
 /* ── Reusable sub-components ── */
 
@@ -220,8 +221,15 @@ export default function NursingAssessmentTab({ admissionId, patientId, toast }) 
     } catch { toast.error('Error eliminando valoración') }
   }
 
+  const nursingInsightTypes = ['new_cognitive_decline', 'progressive_cognitive_decline', 'glasgow_drop', 'fall_risk_mobility', 'agitation_no_restraint', 'respiratory_pattern_deterioration']
+
   return (
     <div className="space-y-4">
+      {/* Nursing insights */}
+      {patientId && admissionId && (
+        <InsightsPanel patientId={patientId} admissionId={admissionId} includeTypes={nursingInsightTypes} />
+      )}
+
       {/* New assessment button */}
       {!formOpen && (
         <button onClick={() => {

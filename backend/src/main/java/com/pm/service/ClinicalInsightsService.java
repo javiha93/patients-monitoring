@@ -21,6 +21,7 @@ public class ClinicalInsightsService {
     private final MedicalHistoryRepository historyRepo;
     private final AdmissionPrescriptionRepository prescriptionRepo;
     private final MedicationAdministrationRepository adminRepo;
+    private final NursingAssessmentRepository nursingRepo;
 
     public List<ClinicalInsightDTO> analyze(Long patientId, Long admissionId) {
         List<ClinicalInsightDTO> insights = new ArrayList<>();
@@ -42,7 +43,11 @@ public class ClinicalInsightsService {
 
         Set<String> historyLabels = history.stream().map(h -> h.getLabel().toLowerCase()).collect(Collectors.toSet());
 
-        // Run all 14 analyses
+        // Nursing assessments
+        List<NursingAssessment> currentAssessments = nursingRepo.findByAdmissionIdOrderByRecordedAtDesc(admissionId);
+        List<NursingAssessment> priorAssessments = nursingRepo.findAllHistoricalByPatient(patientId, admissionId);
+
+        // Run all 20 analyses
         checkAllergyConflicts(insights, allergies, prescriptions);
         checkNephrotoxicity(insights, historyLabels, prescriptions);
         checkBaselineDeviation(insights, vitals, priorVitals, habitual);
@@ -57,6 +62,12 @@ public class ClinicalInsightsService {
         checkMultiParameterDeterioration(insights, vitals);
         checkElevatedRespiratoryRate(insights, vitals, admissionId);
         checkCorticosteroidHyperglycemia(insights, vitals, prescriptions);
+        checkNewCognitiveDecline(insights, currentAssessments, priorAssessments);
+        checkProgressiveCognitiveDecline(insights, currentAssessments);
+        checkGlasgowDrop(insights, currentAssessments, priorAssessments);
+        checkFallRiskWithMobilityImpairment(insights, currentAssessments);
+        checkAgitationWithoutRestraint(insights, currentAssessments);
+        checkRespiratoryPatternDeterioration(insights, currentAssessments);
 
         // Sort: critical first, then warning, then info
         insights.sort(Comparator.comparingInt(i -> levelOrder(i.getLevel())));
@@ -367,5 +378,186 @@ public class ClinicalInsightsService {
                 .analysisType("corticosteroid_hyperglycemia")
                 .build());
         }
+    }
+
+    // ── NURSING ASSESSMENT ANALYSES ──
+
+    private static final Map<String, Integer> COGNITIVE_ORDER = Map.of(
+        "orientado", 0, "desorientado", 1, "confuso", 2, "demencia", 3
+    );
+
+    /**
+     * Patient was oriented in prior admissions but arrives disoriented/confused now.
+     */
+    private void checkNewCognitiveDecline(List<ClinicalInsightDTO> insights, List<NursingAssessment> current, List<NursingAssessment> prior) {
+        if (current.isEmpty() || prior.isEmpty()) return;
+        // Most recent current assessment
+        NursingAssessment latest = current.get(0);
+        String currentCog = latest.getPhysicalCognitive();
+        if (currentCog == null || "orientado".equals(currentCog)) return;
+
+        // Check if patient was consistently oriented in prior admissions
+        boolean wasOriented = prior.stream()
+            .filter(a -> a.getPhysicalCognitive() != null)
+            .allMatch(a -> "orientado".equals(a.getPhysicalCognitive()));
+        if (!wasOriented) return;
+
+        long priorCount = prior.stream().filter(a -> a.getPhysicalCognitive() != null).count();
+        if (priorCount == 0) return;
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Deterioro cognitivo nuevo: " + currentCog)
+            .detail("Paciente orientado en " + priorCount + " valoraciones de ingresos previos. Estado actual: " + currentCog)
+            .reasoning("Cambio respecto al baseline cognitivo del paciente. Descartar causas orgánicas: infección, fármacos, alteraciones metabólicas, ACV")
+            .analysisType("new_cognitive_decline")
+            .build());
+    }
+
+    /**
+     * Patient entered oriented in this admission but has deteriorated in subsequent assessments.
+     */
+    private void checkProgressiveCognitiveDecline(List<ClinicalInsightDTO> insights, List<NursingAssessment> current) {
+        if (current.size() < 2) return;
+        // Assessments are ordered desc, so last element is the earliest
+        NursingAssessment first = current.get(current.size() - 1);
+        NursingAssessment latest = current.get(0);
+        String firstCog = first.getPhysicalCognitive();
+        String latestCog = latest.getPhysicalCognitive();
+        if (firstCog == null || latestCog == null) return;
+
+        int firstOrder = COGNITIVE_ORDER.getOrDefault(firstCog, -1);
+        int latestOrder = COGNITIVE_ORDER.getOrDefault(latestCog, -1);
+        if (firstOrder < 0 || latestOrder < 0) return;
+        if (latestOrder <= firstOrder) return; // No deterioration
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Deterioro cognitivo progresivo durante el ingreso")
+            .detail("Entrada: " + firstCog + " → Actual: " + latestCog + " (en " + current.size() + " valoraciones)")
+            .reasoning("Empeoramiento del estado cognitivo durante la estancia. Valorar causas reversibles: fármacos sedantes, infección, hipoxia, alteraciones electrolíticas")
+            .analysisType("progressive_cognitive_decline")
+            .build());
+    }
+
+    /**
+     * Glasgow score dropped ≥2 points from entry or from prior admission baseline.
+     */
+    private void checkGlasgowDrop(List<ClinicalInsightDTO> insights, List<NursingAssessment> current, List<NursingAssessment> prior) {
+        if (current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        if (latest.getGlasgowScore() == null) return;
+        int currentGlasgow = latest.getGlasgowScore();
+
+        // Compare with entry assessment of this admission
+        NursingAssessment entry = current.get(current.size() - 1);
+        if (entry.getGlasgowScore() != null && current.size() >= 2) {
+            int entryGlasgow = entry.getGlasgowScore();
+            int drop = entryGlasgow - currentGlasgow;
+            if (drop >= 2) {
+                String level = drop >= 4 || currentGlasgow <= 8 ? "critical" : "warning";
+                insights.add(ClinicalInsightDTO.builder()
+                    .level(level)
+                    .title("Caída de Glasgow: " + entryGlasgow + " → " + currentGlasgow)
+                    .detail("Descenso de " + drop + " puntos desde la valoración de entrada")
+                    .reasoning("Descenso significativo del nivel de consciencia. Valoración neurológica urgente y descartar causas tratables")
+                    .analysisType("glasgow_drop")
+                    .build());
+                return; // Don't also report baseline comparison
+            }
+        }
+
+        // Compare with prior admissions baseline
+        OptionalDouble baselineGlasgow = prior.stream()
+            .filter(a -> a.getGlasgowScore() != null)
+            .mapToInt(NursingAssessment::getGlasgowScore)
+            .average();
+        if (baselineGlasgow.isPresent()) {
+            double baseline = baselineGlasgow.getAsDouble();
+            double drop = baseline - currentGlasgow;
+            if (drop >= 2) {
+                String level = currentGlasgow <= 8 ? "critical" : "warning";
+                insights.add(ClinicalInsightDTO.builder()
+                    .level(level)
+                    .title("Glasgow " + currentGlasgow + " — inferior al baseline (" + String.format("%.0f", baseline) + ")")
+                    .detail("Glasgow actual: " + currentGlasgow + ". Media en ingresos previos: " + String.format("%.1f", baseline))
+                    .reasoning("Nivel de consciencia inferior al habitual del paciente. Investigar causa del deterioro neurológico")
+                    .analysisType("glasgow_drop")
+                    .build());
+            }
+        }
+    }
+
+    /**
+     * Fall risk flagged with acute mobility impairment.
+     */
+    private void checkFallRiskWithMobilityImpairment(List<ClinicalInsightDTO> insights, List<NursingAssessment> current) {
+        if (current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        boolean fallRisk = Boolean.TRUE.equals(latest.getFallRisk());
+        boolean acuteMobility = "alteracion_aguda".equals(latest.getMobility());
+        if (!fallRisk || !acuteMobility) return;
+
+        boolean hasBedRails = Boolean.TRUE.equals(latest.getBedRails());
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Riesgo de caída con alteración aguda de movilidad")
+            .detail("Paciente con riesgo de caída y alteración aguda de movilidad." + (hasBedRails ? " Barandillas activas." : " Sin barandillas."))
+            .reasoning("Combinación de alto riesgo. Asegurar medidas preventivas: barandillas, timbre accesible, calzado adecuado, acompañamiento en deambulación")
+            .analysisType("fall_risk_mobility")
+            .build());
+    }
+
+    /**
+     * Patient agitated or aggressive without any restraint measures active.
+     */
+    private void checkAgitationWithoutRestraint(List<ClinicalInsightDTO> insights, List<NursingAssessment> current) {
+        if (current.isEmpty()) return;
+        NursingAssessment latest = current.get(0);
+        String mood = latest.getMood();
+        if (!"agitado".equals(mood) && !"agresivo".equals(mood)) return;
+
+        boolean hasRestraint = Boolean.TRUE.equals(latest.getBedRails())
+            || Boolean.TRUE.equals(latest.getRestraintAbdominal())
+            || Boolean.TRUE.equals(latest.getRestraintLegs())
+            || Boolean.TRUE.equals(latest.getRestraintArms());
+        if (hasRestraint) return;
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Paciente " + mood + " sin medidas de contención")
+            .detail("Estado anímico: " + mood + ". No hay contención mecánica ni barandillas activas")
+            .reasoning("Valorar necesidad de contención mecánica, tratamiento farmacológico y vigilancia estrecha. Informar a familia si procede")
+            .analysisType("agitation_no_restraint")
+            .build());
+    }
+
+    /**
+     * Breathing pattern deteriorated between assessments (normal → taquipnea/bradipnea/apnea).
+     */
+    private void checkRespiratoryPatternDeterioration(List<ClinicalInsightDTO> insights, List<NursingAssessment> current) {
+        if (current.size() < 2) return;
+        NursingAssessment latest = current.get(0);
+        String latestPattern = latest.getBreathingPattern();
+        if (latestPattern == null || "normal".equals(latestPattern)) return;
+
+        // Check if any earlier assessment had normal breathing
+        boolean wasNormal = current.subList(1, current.size()).stream()
+            .anyMatch(a -> "normal".equals(a.getBreathingPattern()));
+        if (!wasNormal) return;
+
+        String dyspnea = latest.getDyspneaLevel();
+        String detail = "Patrón respiratorio: " + latestPattern;
+        if (dyspnea != null && !"ninguna".equals(dyspnea)) {
+            detail += ". Disnea: " + ("reposo".equals(dyspnea) ? "en reposo" : "de esfuerzo");
+        }
+
+        insights.add(ClinicalInsightDTO.builder()
+            .level("reposo".equals(dyspnea) ? "warning" : "info")
+            .title("Deterioro del patrón respiratorio: " + latestPattern)
+            .detail(detail)
+            .reasoning("El patrón respiratorio ha empeorado respecto a valoraciones previas. Correlacionar con constantes vitales (SpO2, FR) y valorar soporte")
+            .analysisType("respiratory_pattern_deterioration")
+            .build());
     }
 }

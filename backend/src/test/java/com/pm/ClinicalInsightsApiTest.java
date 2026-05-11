@@ -35,6 +35,7 @@ class ClinicalInsightsApiTest {
     @Autowired private MedicalHistoryRepository historyRepo;
     @Autowired private AdmissionPrescriptionRepository prescriptionRepo;
     @Autowired private VitalSignRepository vitalSignRepo;
+    @Autowired private NursingAssessmentRepository nursingRepo;
 
     private Patient patient;
     private Admission admission;
@@ -209,5 +210,156 @@ class ClinicalInsightsApiTest {
         mvc.perform(get(insightsUrl()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    // ── Nursing assessment alerts ──
+
+    @Test
+    @DisplayName("Deterioro cognitivo nuevo respecto a ingresos previos")
+    void newCognitiveDecline() throws Exception {
+        // Prior admission with oriented assessments
+        Admission prior = admissionRepo.save(Admission.builder()
+                .patient(patient).admissionDate(LocalDateTime.now().minusMonths(3))
+                .dischargeDate(LocalDateTime.now().minusMonths(2))
+                .triageLevel(3).status(Admission.Status.discharged).build());
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(prior).recordedAt(LocalDateTime.now().minusMonths(3))
+                .assessmentType("entrada").physicalCognitive("orientado").glasgowScore(15)
+                .consciousness("alerta").build());
+
+        // Current admission: patient arrives disoriented
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(2))
+                .assessmentType("entrada").physicalCognitive("desorientado").glasgowScore(14)
+                .consciousness("alerta").build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("new_cognitive_decline".equals(node.get("analysisType").asText())) {
+                assertEquals("warning", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected new_cognitive_decline insight");
+    }
+
+    @Test
+    @DisplayName("Deterioro cognitivo progresivo durante el ingreso")
+    void progressiveCognitiveDecline() throws Exception {
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(6))
+                .assessmentType("entrada").physicalCognitive("orientado").glasgowScore(15)
+                .consciousness("alerta").build());
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("sucesiva").physicalCognitive("confuso").glasgowScore(13)
+                .consciousness("somnoliento").build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("progressive_cognitive_decline".equals(node.get("analysisType").asText())) {
+                assertEquals("warning", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected progressive_cognitive_decline insight");
+    }
+
+    @Test
+    @DisplayName("Caída de Glasgow ≥2 puntos durante el ingreso")
+    void glasgowDrop() throws Exception {
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(6))
+                .assessmentType("entrada").glasgowScore(15).consciousness("alerta").build());
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("sucesiva").glasgowScore(12).consciousness("somnoliento").build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("glasgow_drop".equals(node.get("analysisType").asText())) {
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected glasgow_drop insight");
+    }
+
+    @Test
+    @DisplayName("Paciente agitado sin medidas de contención")
+    void agitationNoRestraint() throws Exception {
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("entrada").mood("agitado").consciousness("alerta").glasgowScore(15)
+                .bedRails(false).restraintAbdominal(false).restraintLegs(false).restraintArms(false)
+                .build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("agitation_no_restraint".equals(node.get("analysisType").asText())) {
+                assertEquals("warning", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected agitation_no_restraint insight");
+    }
+
+    @Test
+    @DisplayName("Riesgo de caída con alteración aguda de movilidad")
+    void fallRiskMobility() throws Exception {
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("entrada").consciousness("alerta").glasgowScore(15)
+                .fallRisk(true).mobility("alteracion_aguda").bedRails(false)
+                .build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("fall_risk_mobility".equals(node.get("analysisType").asText())) {
+                assertEquals("warning", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected fall_risk_mobility insight");
+    }
+
+    @Test
+    @DisplayName("Deterioro del patrón respiratorio en valoraciones")
+    void respiratoryPatternDeterioration() throws Exception {
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(6))
+                .assessmentType("entrada").breathingPattern("normal").consciousness("alerta").glasgowScore(15)
+                .build());
+        nursingRepo.save(NursingAssessment.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
+                .assessmentType("sucesiva").breathingPattern("taquipnea").dyspneaLevel("reposo")
+                .consciousness("alerta").glasgowScore(15)
+                .build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("respiratory_pattern_deterioration".equals(node.get("analysisType").asText())) {
+                assertEquals("warning", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected respiratory_pattern_deterioration insight");
     }
 }

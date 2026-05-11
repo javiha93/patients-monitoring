@@ -12,4 +12,7 @@ public interface NursingAssessmentRepository extends JpaRepository<NursingAssess
 
     @Query("SELECT n FROM NursingAssessment n WHERE n.admission.patient.id = :patientId AND n.admission.id <> :excludeAdmissionId ORDER BY n.recordedAt DESC")
     Page<NursingAssessment> findHistoricalByPatient(Long patientId, Long excludeAdmissionId, Pageable pageable);
+
+    @Query("SELECT n FROM NursingAssessment n WHERE n.admission.patient.id = :patientId AND n.admission.id <> :excludeAdmissionId ORDER BY n.recordedAt DESC")
+    List<NursingAssessment> findAllHistoricalByPatient(Long patientId, Long excludeAdmissionId);
 }
