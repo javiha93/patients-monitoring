@@ -463,9 +463,9 @@ describe('KAN-78: Filtros colapsables', () => {
     fireEvent.click(screen.getByText('Filtros'))
     // Select one specialty
     fireEvent.click(getFilterButton('Medicina'))
-    // Badge should show "1"
-    const badge = screen.getByText('1')
-    expect(badge.className).toContain('bg-blue-500')
+    // Badge is a span with bg-blue-500 inside the Filtros button area
+    const badges = screen.getAllByText('1').filter(el => el.className.includes('bg-blue-500'))
+    expect(badges.length).toBe(1)
   })
 
   it('limpiar filtros restaura todos los pacientes', async () => {
