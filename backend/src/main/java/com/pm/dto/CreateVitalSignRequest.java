@@ -12,16 +12,12 @@ public class CreateVitalSignRequest {
     @NotNull
     private LocalDateTime recordedAt;
 
-    @NotNull
     private Integer systolicBp;
 
-    @NotNull
     private Integer diastolicBp;
 
-    @NotNull
     private Integer heartRate;
 
-    @NotNull
     private Integer spo2;
 
     private Integer respiratoryRate;

@@ -36,10 +36,10 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
     e.preventDefault()
     const data = {
       recordedAt: new Date(form.recordedAt).toISOString(),
-      systolicBp: parseInt(form.systolicBp),
-      diastolicBp: parseInt(form.diastolicBp),
-      heartRate: parseInt(form.heartRate),
-      spo2: parseInt(form.spo2),
+      systolicBp: form.systolicBp ? parseInt(form.systolicBp) : null,
+      diastolicBp: form.diastolicBp ? parseInt(form.diastolicBp) : null,
+      heartRate: form.heartRate ? parseInt(form.heartRate) : null,
+      spo2: form.spo2 ? parseInt(form.spo2) : null,
       respiratoryRate: form.respiratoryRate ? parseInt(form.respiratoryRate) : null,
       temperature: form.temperature ? parseFloat(form.temperature) : null,
       painLevel: form.painLevel ? parseInt(form.painLevel) : null,
@@ -82,22 +82,22 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Constantes vitales</div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">TAS (mmHg) <span className="text-red-500">*</span></label>
-            <input required type="number" value={form.systolicBp} onChange={set('systolicBp')} placeholder="120" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <label className="text-xs font-medium text-slate-600">TAS (mmHg)</label>
+            <input type="number" value={form.systolicBp} onChange={set('systolicBp')} placeholder="120" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">TAD (mmHg) <span className="text-red-500">*</span></label>
-            <input required type="number" value={form.diastolicBp} onChange={set('diastolicBp')} placeholder="80" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <label className="text-xs font-medium text-slate-600">TAD (mmHg)</label>
+            <input type="number" value={form.diastolicBp} onChange={set('diastolicBp')} placeholder="80" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">FC (bpm) <span className="text-red-500">*</span></label>
-            <input required type="number" value={form.heartRate} onChange={set('heartRate')} placeholder="80" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <label className="text-xs font-medium text-slate-600">FC (bpm)</label>
+            <input type="number" value={form.heartRate} onChange={set('heartRate')} placeholder="80" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">SpO2 (%) <span className="text-red-500">*</span></label>
-            <input required type="number" value={form.spo2} onChange={set('spo2')} placeholder="98" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
+            <label className="text-xs font-medium text-slate-600">SpO2 (%)</label>
+            <input type="number" value={form.spo2} onChange={set('spo2')} placeholder="98" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">FR (rpm)</label>
