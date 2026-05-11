@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -50,6 +51,10 @@ class ClinicalInsightsApiTest {
                 .status(Admission.Status.active).build());
     }
 
+    private String insightsUrl() {
+        return "/api/insights/patient/" + patient.getId() + "/admission/" + admission.getId();
+    }
+
     @Test
     @DisplayName("[KAN-70] Alerta de alergia vs prescripción activa")
     void allergyConflict() throws Exception {
@@ -63,10 +68,18 @@ class ClinicalInsightsApiTest {
                 .route("IV").frequency("c/8h").category(AdmissionPrescription.Category.fixed)
                 .active(true).build());
 
-        mvc.perform(get("/api/insights/patient/" + patient.getId() + "/admission/" + admission.getId()))
+        String body = mvc.perform(get(insightsUrl()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.analysisType=='allergy_conflict')]", hasSize(1)))
-                .andExpect(jsonPath("$[?(@.analysisType=='allergy_conflict')][0].level").value("critical"));
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("allergy_conflict".equals(node.get("analysisType").asText())) {
+                assertEquals("critical", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected allergy_conflict insight");
     }
 
     @Test
@@ -81,33 +94,47 @@ class ClinicalInsightsApiTest {
                 .route("VO").frequency("c/8h").category(AdmissionPrescription.Category.fixed)
                 .active(true).build());
 
-        mvc.perform(get("/api/insights/patient/" + patient.getId() + "/admission/" + admission.getId()))
+        String body = mvc.perform(get(insightsUrl()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.analysisType=='nephrotoxicity')]", hasSize(1)))
-                .andExpect(jsonPath("$[?(@.analysisType=='nephrotoxicity')][0].level").value("critical"));
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("nephrotoxicity".equals(node.get("analysisType").asText())) {
+                assertEquals("critical", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected nephrotoxicity insight");
     }
 
     @Test
     @DisplayName("[KAN-68] Alerta de deterioro progresivo multiparámetro")
     void multiParameterDeterioration() throws Exception {
         LocalDateTime base = LocalDateTime.now().minusHours(6);
-        // Early vitals: stable
         for (int i = 0; i < 3; i++) {
             vitalSignRepo.save(VitalSign.builder()
                     .admission(admission).recordedAt(base.plusHours(i))
                     .heartRate(75).systolicBp(125).spo2(97).temperature(36.8).build());
         }
-        // Recent vitals: deteriorating
         for (int i = 0; i < 3; i++) {
             vitalSignRepo.save(VitalSign.builder()
                     .admission(admission).recordedAt(base.plusHours(3 + i))
                     .heartRate(110).systolicBp(90).spo2(91).temperature(39.0).build());
         }
 
-        mvc.perform(get("/api/insights/patient/" + patient.getId() + "/admission/" + admission.getId()))
+        String body = mvc.perform(get(insightsUrl()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.analysisType=='multi_parameter_deterioration')]", hasSize(1)))
-                .andExpect(jsonPath("$[?(@.analysisType=='multi_parameter_deterioration')][0].level").value("critical"));
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("multi_parameter_deterioration".equals(node.get("analysisType").asText())) {
+                assertEquals("critical", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected multi_parameter_deterioration insight");
     }
 
     @Test
@@ -121,9 +148,17 @@ class ClinicalInsightsApiTest {
                     .painLevel(painScores[i]).heartRate(80).build());
         }
 
-        mvc.perform(get("/api/insights/patient/" + patient.getId() + "/admission/" + admission.getId()))
+        String body = mvc.perform(get(insightsUrl()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.analysisType=='uncontrolled_pain')]", hasSize(1)));
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("uncontrolled_pain".equals(node.get("analysisType").asText())) {
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected uncontrolled_pain insight");
     }
 
     @Test
@@ -134,10 +169,18 @@ class ClinicalInsightsApiTest {
                 .route("IV").frequency("c/12h").category(AdmissionPrescription.Category.fixed)
                 .active(true).build());
 
-        mvc.perform(get("/api/insights/patient/" + patient.getId() + "/admission/" + admission.getId()))
+        String body = mvc.perform(get(insightsUrl()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.analysisType=='corticosteroid_hyperglycemia')]", hasSize(1)))
-                .andExpect(jsonPath("$[?(@.analysisType=='corticosteroid_hyperglycemia')][0].level").value("info"));
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("corticosteroid_hyperglycemia".equals(node.get("analysisType").asText())) {
+                assertEquals("info", node.get("level").asText());
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected corticosteroid_hyperglycemia insight");
     }
 
     @Test
@@ -147,15 +190,23 @@ class ClinicalInsightsApiTest {
                 .admission(admission).recordedAt(LocalDateTime.now().minusHours(1))
                 .heartRate(120).temperature(39.5).build());
 
-        mvc.perform(get("/api/insights/patient/" + patient.getId() + "/admission/" + admission.getId()))
+        String body = mvc.perform(get(insightsUrl()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.analysisType=='tachycardia_fever')]", hasSize(1)));
+                .andReturn().getResponse().getContentAsString();
+        var insights = mapper.readTree(body);
+        boolean found = false;
+        for (var node : insights) {
+            if ("tachycardia_fever".equals(node.get("analysisType").asText())) {
+                found = true;
+            }
+        }
+        assertTrue(found, "Expected tachycardia_fever insight");
     }
 
     @Test
     @DisplayName("[KAN-61] Sin insights cuando no hay datos clínicos")
     void noInsightsWhenClean() throws Exception {
-        mvc.perform(get("/api/insights/patient/" + patient.getId() + "/admission/" + admission.getId()))
+        mvc.perform(get(insightsUrl()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }

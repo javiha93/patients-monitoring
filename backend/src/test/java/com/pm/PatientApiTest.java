@@ -68,15 +68,17 @@ class PatientApiTest {
         // Create two patients
         mvc.perform(post("/api/patients")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(mapper.writeValueAsString(buildRequest("NHC-001", "Ana", "García"))));
+                .content(mapper.writeValueAsString(buildRequest("NHC-001", "Ana", "García"))))
+                .andExpect(status().isCreated());
         CreatePatientRequest req2 = buildRequest("NHC-002", "Carlos", "López");
         req2.setLocation("B3");
         req2.setTriageLevel(4);
         mvc.perform(post("/api/patients")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(mapper.writeValueAsString(req2)));
+                .content(mapper.writeValueAsString(req2)))
+                .andExpect(status().isCreated());
 
-        mvc.perform(get("/api/patients/active"))
+        mvc.perform(get("/api/patients"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].location").exists())
@@ -90,6 +92,7 @@ class PatientApiTest {
         String response = mvc.perform(post("/api/patients")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(buildRequest("NHC-001", "Ana", "García"))))
+                .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         Long patientId = mapper.readTree(response).get("id").asLong();
 
@@ -102,7 +105,7 @@ class PatientApiTest {
                 .andExpect(jsonPath("$.activeAdmission").isEmpty());
 
         // Active list should be empty
-        mvc.perform(get("/api/patients/active"))
+        mvc.perform(get("/api/patients"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }

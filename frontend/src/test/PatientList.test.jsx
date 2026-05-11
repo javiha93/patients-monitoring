@@ -65,8 +65,12 @@ describe('KAN-5: Listado de pacientes', () => {
     await waitFor(() => screen.getByText('García, Ana'))
     expect(screen.getByText('Selecciona un paciente')).toBeInTheDocument()
     fireEvent.click(screen.getByText('García, Ana'))
-    expect(screen.getByText(/García, Ana/)).toBeInTheDocument()
-    expect(screen.getByText(/NHC-001/)).toBeInTheDocument()
+    // After selection, name appears in both table and action bar
+    expect(screen.queryByText('Selecciona un paciente')).not.toBeInTheDocument()
+    // Action bar should show the selected patient's NHC
+    const actionBar = document.querySelector('.fixed.bottom-0')
+    expect(actionBar.textContent).toContain('García')
+    expect(actionBar.textContent).toContain('NHC-001')
   })
 
   it('[KAN-5] botones de acción deshabilitados sin selección', async () => {
