@@ -1073,7 +1073,7 @@ public class ClinicalInsightsService {
         if (!hasSng) return;
         if (assessments.isEmpty()) return;
         NursingAssessment latest = assessments.get(0); // already sorted desc
-        String consciousness = latest.getConsciousnessLevel();
+        String consciousness = latest.getConsciousness();
         if (consciousness == null || "alerta".equalsIgnoreCase(consciousness)) return;
         insights.add(ClinicalInsightDTO.builder()
             .level("warning")

@@ -625,7 +625,7 @@ class ClinicalInsightsApiTest {
 
         nursingRepo.save(NursingAssessment.builder()
                 .admission(admission).recordedAt(LocalDateTime.now().minusHours(2))
-                .consciousnessLevel("somnoliento").build());
+                .consciousness("somnoliento").build());
 
         String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
