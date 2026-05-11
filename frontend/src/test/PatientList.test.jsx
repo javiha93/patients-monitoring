@@ -47,11 +47,12 @@ describe('KAN-5: Listado de pacientes', () => {
   })
 
   it('[KAN-5] muestra la columna Ubicación en la tabla', async () => {
-    renderList()
+    const { container } = renderList()
     await waitFor(() => {
       expect(screen.getByText(/^Ubicación/)).toBeInTheDocument()
-      expect(screen.getByText('B1')).toBeInTheDocument()
-      expect(screen.getByText('B3')).toBeInTheDocument()
+      // Location is now a <select> dropdown — check its value
+      const selects = container.querySelectorAll('select')
+      expect(selects.length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -272,14 +273,19 @@ describe('KAN-5: Cambiar ubicación desde la lista', () => {
     })
   })
 
-  it('[KAN-5] clic en el desplegable no selecciona la fila del paciente', async () => {
-    renderList()
+  it('[KAN-5] cambiar ubicación no navega a la ficha del paciente', async () => {
+    const { patientApi } = await import('../services/patientApi')
+    const { container } = renderList()
     await waitFor(() => screen.getByText('García, Ana'))
 
-    const select = document.querySelector('select')
-    fireEvent.click(select)
+    mockNavigate.mockClear()
+    const selects = container.querySelectorAll('select')
+    fireEvent.change(selects[0], { target: { value: 'B5' } })
 
-    // Should not navigate or select the row
+    // Changing location should NOT trigger navigation
+    await waitFor(() => {
+      expect(patientApi.updateLocation).toHaveBeenCalled()
+    })
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 })

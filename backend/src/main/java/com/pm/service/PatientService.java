@@ -119,10 +119,6 @@ public class PatientService {
         return getPatient(patient.getId());
     }
 
-    /**
-     * Discharge patient (close active admission).
-     */
-    @Transactional
     @Transactional
     public void updateAdmissionLocation(Long admissionId, String location) {
         Admission admission = admissionRepository.findById(admissionId)
@@ -131,6 +127,10 @@ public class PatientService {
         admissionRepository.save(admission);
     }
 
+    /**
+     * Discharge patient (close active admission).
+     */
+    @Transactional
     public PatientDTO dischargePatient(Long patientId, DischargeRequest req) {
         List<Admission> active = admissionRepository.findByPatientIdAndStatus(patientId, Admission.Status.active);
         if (active.isEmpty()) {
