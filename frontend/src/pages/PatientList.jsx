@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, ChevronDown, Check } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, ChevronDown, Check, Filter, X } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import TriageBadge from '../components/TriageBadge'
 import { useToast, ToastContainer } from '../components/Toast'
@@ -11,6 +11,44 @@ const SPECIALTIES = [
 ]
 
 const LOCATIONS = Array.from({ length: 25 }, (_, i) => `B${i + 1}`)
+
+const DATE_FILTERS = [
+  { key: 'hoy', label: 'Hoy', days: 0 },
+  { key: 'ayer', label: 'Ayer', days: 1 },
+  { key: 'hoy_ayer', label: 'Hoy + Ayer', days: 1, includeToday: true },
+  { key: '3d', label: '3 días', days: 3 },
+  { key: '5d', label: '5 días', days: 5 },
+  { key: '1w', label: '1 semana', days: 7 },
+  { key: '1m', label: '1 mes', days: 30 },
+]
+
+/** Check if admissionDate passes the selected date filter */
+export function matchesDateFilter(admissionDate, filterKey) {
+  if (!filterKey || !admissionDate) return true
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const admission = new Date(admissionDate)
+  const filter = DATE_FILTERS.find(f => f.key === filterKey)
+  if (!filter) return true
+
+  if (filter.key === 'hoy') {
+    return admission >= startOfToday
+  }
+  if (filter.key === 'ayer') {
+    const startOfYesterday = new Date(startOfToday)
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1)
+    return admission >= startOfYesterday && admission < startOfToday
+  }
+  if (filter.key === 'hoy_ayer') {
+    const startOfYesterday = new Date(startOfToday)
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1)
+    return admission >= startOfYesterday
+  }
+  // "last N days" = from (today - N days) to now
+  const cutoff = new Date(startOfToday)
+  cutoff.setDate(cutoff.getDate() - filter.days)
+  return admission >= cutoff
+}
 
 /**
  * Natural sort: extracts leading letters and trailing number
@@ -109,9 +147,25 @@ export default function PatientList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
-  const [sortKey, setSortKey] = useState(null) // 'nivel' | 'ubicacion' | 'ingreso'
+  const [sortKey, setSortKey] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filterSpecialties, setFilterSpecialties] = useState([])   // multi-select
+  const [filterLevels, setFilterLevels] = useState([])             // multi-select
+  const [filterDate, setFilterDate] = useState(null)               // single select
   const navigate = useNavigate()
+
+  const activeFilterCount = filterSpecialties.length + filterLevels.length + (filterDate ? 1 : 0)
+
+  const clearFilters = () => {
+    setFilterSpecialties([])
+    setFilterLevels([])
+    setFilterDate(null)
+  }
+
+  const toggleFilter = (arr, setArr, val) => {
+    setArr(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val])
+  }
 
   const fetchPatients = async () => {
     try {
@@ -127,12 +181,22 @@ export default function PatientList() {
   useEffect(() => { fetchPatients() }, [])
 
   const filtered = patients.filter(p => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return p.firstName?.toLowerCase().includes(q)
-      || p.lastName?.toLowerCase().includes(q)
-      || p.nhc?.toLowerCase().includes(q)
-      || p.matCategory?.toLowerCase().includes(q)
+    // Text search
+    if (search) {
+      const q = search.toLowerCase()
+      const matchesSearch = p.firstName?.toLowerCase().includes(q)
+        || p.lastName?.toLowerCase().includes(q)
+        || p.nhc?.toLowerCase().includes(q)
+        || p.matCategory?.toLowerCase().includes(q)
+      if (!matchesSearch) return false
+    }
+    // Specialty filter
+    if (filterSpecialties.length > 0 && !filterSpecialties.includes(p.specialty)) return false
+    // Level filter
+    if (filterLevels.length > 0 && !filterLevels.includes(p.triageLevel)) return false
+    // Date filter
+    if (filterDate && !matchesDateFilter(p.admissionDate, filterDate)) return false
+    return true
   })
 
   const handleSort = (key) => {
@@ -208,6 +272,83 @@ export default function PatientList() {
         </button>
       </div>
 
+      {/* Filter bar */}
+      <div className="bg-white border-b border-slate-200 flex-shrink-0">
+        <button
+          onClick={() => setFiltersOpen(prev => !prev)}
+          className="flex items-center gap-2 px-6 py-2 text-sm text-slate-600 hover:text-slate-900 w-full"
+        >
+          <Filter size={14} />
+          <span className="font-medium">Filtros</span>
+          {activeFilterCount > 0 && (
+            <span className="bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{activeFilterCount}</span>
+          )}
+          <ChevronDown size={14} className={`ml-auto transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {filtersOpen && (
+          <div className="px-6 pb-4 flex flex-wrap items-start gap-6">
+            {/* Specialty multi-select */}
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Especialidad</div>
+              <div className="flex flex-wrap gap-1.5">
+                {SPECIALTIES.map(s => {
+                  const active = filterSpecialties.includes(s)
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => toggleFilter(filterSpecialties, setFilterSpecialties, s)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                        ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                    >{s}</button>
+                  )
+                })}
+              </div>
+            </div>
+            {/* Level multi-select */}
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Nivel</div>
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4, 5].map(n => {
+                  const active = filterLevels.includes(n)
+                  const colors = ['bg-red-600', 'bg-orange-600', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500']
+                  return (
+                    <button
+                      key={n}
+                      onClick={() => toggleFilter(filterLevels, setFilterLevels, n)}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all
+                        ${colors[n - 1]} ${active ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'opacity-40 hover:opacity-70'}`}
+                    >{n}</button>
+                  )
+                })}
+              </div>
+            </div>
+            {/* Date filter */}
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Ingreso</div>
+              <div className="flex flex-wrap gap-1.5">
+                {DATE_FILTERS.map(f => {
+                  const active = filterDate === f.key
+                  return (
+                    <button
+                      key={f.key}
+                      onClick={() => setFilterDate(prev => prev === f.key ? null : f.key)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                        ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                    >{f.label}</button>
+                  )
+                })}
+              </div>
+            </div>
+            {/* Clear all */}
+            {activeFilterCount > 0 && (
+              <button onClick={clearFilters} className="self-end text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 pb-0.5">
+                <X size={12} /> Limpiar filtros
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Content */}
       <div className="flex-1 overflow-auto p-6 pb-24">
         {loading ? (
@@ -221,10 +362,10 @@ export default function PatientList() {
                 <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-4 py-3 w-20 cursor-pointer select-none hover:text-slate-700 whitespace-nowrap" onClick={() => handleSort('nivel')}>Nivel{sortIndicator('nivel')}</th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubicación{sortIndicator('ubicacion')}</th>
+                  <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Especialidad{sortIndicator('especialidad')}</th>
                   <th className="px-4 py-3">Paciente</th>
                   <th className="px-4 py-3">NHC</th>
                   <th className="px-4 py-3">Edad</th>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Especialidad{sortIndicator('especialidad')}</th>
                   <th className="px-4 py-3">Motivo</th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ingreso')}>Ingreso{sortIndicator('ingreso')}</th>
                 </tr>
@@ -255,9 +396,6 @@ export default function PatientList() {
                           width="w-24"
                         />
                       </td>
-                      <td className="px-4 py-3 font-medium">{p.lastName}, {p.firstName}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{p.nhc}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <InlineDropdown
                           value={p.specialty || ''}
@@ -274,6 +412,9 @@ export default function PatientList() {
                           width="w-36"
                         />
                       </td>
+                      <td className="px-4 py-3 font-medium">{p.lastName}, {p.firstName}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500">{p.nhc}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
                       <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{formatDate(p.admissionDate)}</td>
                     </tr>

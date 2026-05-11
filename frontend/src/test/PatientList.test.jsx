@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import PatientList, { naturalCompare } from '../pages/PatientList'
+import PatientList, { naturalCompare, matchesDateFilter } from '../pages/PatientList'
 
 // Mock navigate
 const mockNavigate = vi.fn()
@@ -140,7 +140,8 @@ describe('KAN-7: Búsqueda y filtrado', () => {
 describe('KAN-5: Ordenación en modo tabla', () => {
   function getRowNames(container) {
     const rows = container.querySelectorAll('tbody tr')
-    return Array.from(rows).map(r => r.querySelectorAll('td')[2]?.textContent)
+    // Column order: Nivel(0), Ubicación(1), Especialidad(2), Paciente(3)
+    return Array.from(rows).map(r => r.querySelectorAll('td')[3]?.textContent)
   }
 
   it('[KAN-5] ordena por nivel ascendente al hacer clic en cabecera Nivel', async () => {
@@ -292,7 +293,8 @@ describe('KAN-5: Columna Especialidad', () => {
     fireEvent.click(espHeader)
 
     const rows = container.querySelectorAll('tbody tr')
-    const names = Array.from(rows).map(r => r.querySelectorAll('td')[2]?.textContent)
+    // Column order: Nivel(0), Ubicación(1), Especialidad(2), Paciente(3)
+    const names = Array.from(rows).map(r => r.querySelectorAll('td')[3]?.textContent)
     // Cirugía < Medicina < Traumatología → López, García, Ruiz
     expect(names[0]).toBe('López, Carlos')
     expect(names[1]).toBe('García, Ana')
@@ -323,5 +325,162 @@ describe('naturalCompare', () => {
 
   it('handles null values', () => {
     expect(naturalCompare(null, 'B1')).toBeLessThan(0)
+  })
+})
+
+describe('matchesDateFilter', () => {
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  function daysAgo(n) {
+    const d = new Date(startOfToday)
+    d.setDate(d.getDate() - n)
+    d.setHours(12, 0, 0)
+    return d.toISOString()
+  }
+
+  it('returns true when no filter is set', () => {
+    expect(matchesDateFilter('2024-01-01T10:00:00', null)).toBe(true)
+  })
+
+  it('"hoy" matches today', () => {
+    const todayNoon = new Date(startOfToday)
+    todayNoon.setHours(12, 0, 0)
+    expect(matchesDateFilter(todayNoon.toISOString(), 'hoy')).toBe(true)
+  })
+
+  it('"hoy" rejects yesterday', () => {
+    expect(matchesDateFilter(daysAgo(1), 'hoy')).toBe(false)
+  })
+
+  it('"ayer" matches yesterday only', () => {
+    expect(matchesDateFilter(daysAgo(1), 'ayer')).toBe(true)
+  })
+
+  it('"ayer" rejects today', () => {
+    const todayNoon = new Date(startOfToday)
+    todayNoon.setHours(12, 0, 0)
+    expect(matchesDateFilter(todayNoon.toISOString(), 'ayer')).toBe(false)
+  })
+
+  it('"hoy_ayer" matches both today and yesterday', () => {
+    const todayNoon = new Date(startOfToday)
+    todayNoon.setHours(12, 0, 0)
+    expect(matchesDateFilter(todayNoon.toISOString(), 'hoy_ayer')).toBe(true)
+    expect(matchesDateFilter(daysAgo(1), 'hoy_ayer')).toBe(true)
+  })
+
+  it('"hoy_ayer" rejects 2 days ago', () => {
+    expect(matchesDateFilter(daysAgo(2), 'hoy_ayer')).toBe(false)
+  })
+
+  it('"3d" matches 2 days ago', () => {
+    expect(matchesDateFilter(daysAgo(2), '3d')).toBe(true)
+  })
+
+  it('"3d" rejects 4 days ago', () => {
+    expect(matchesDateFilter(daysAgo(4), '3d')).toBe(false)
+  })
+
+  it('"1w" matches 6 days ago', () => {
+    expect(matchesDateFilter(daysAgo(6), '1w')).toBe(true)
+  })
+
+  it('"1m" matches 25 days ago', () => {
+    expect(matchesDateFilter(daysAgo(25), '1m')).toBe(true)
+  })
+
+  it('"1m" rejects 35 days ago', () => {
+    expect(matchesDateFilter(daysAgo(35), '1m')).toBe(false)
+  })
+})
+
+describe('KAN-78: Filtros colapsables', () => {
+  it('muestra el botón de filtros', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByText('Filtros')).toBeInTheDocument()
+  })
+
+  it('los filtros están ocultos por defecto', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    // Specialty filter labels should not be visible
+    expect(screen.queryByText('Pediatría')).not.toBeInTheDocument()
+  })
+
+  it('clic en Filtros muestra las opciones', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    // Now specialty options should be visible
+    expect(screen.getByText('Pediatría')).toBeInTheDocument()
+    expect(screen.getByText('Oftalmología')).toBeInTheDocument()
+    // Date options
+    expect(screen.getByText('Hoy')).toBeInTheDocument()
+    expect(screen.getByText('1 semana')).toBeInTheDocument()
+  })
+
+  function getFilterButton(label) {
+    // Filter buttons are inside the filter panel (not the table InlineDropdowns)
+    // They are rounded-full pill buttons
+    return screen.getAllByRole('button').find(
+      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-8')
+    )
+  }
+
+  it('filtrar por especialidad oculta pacientes que no coinciden', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    // Click "Medicina" filter pill — only García (Medicina) should remain
+    fireEvent.click(getFilterButton('Medicina'))
+    await waitFor(() => {
+      expect(screen.getByText('García, Ana')).toBeInTheDocument()
+      expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument()
+      expect(screen.queryByText('Ruiz, María')).not.toBeInTheDocument()
+    })
+  })
+
+  it('filtrar por nivel oculta pacientes que no coinciden', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    // Click level 1 — only Ruiz (triageLevel=1) should remain
+    // Level buttons are w-8 h-8 rounded-full
+    const levelButtons = screen.getAllByRole('button').filter(b => b.textContent === '1' && b.className.includes('w-8'))
+    fireEvent.click(levelButtons[0])
+    await waitFor(() => {
+      expect(screen.getByText('Ruiz, María')).toBeInTheDocument()
+      expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
+      expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument()
+    })
+  })
+
+  it('muestra badge con número de filtros activos', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    // Select one specialty
+    fireEvent.click(getFilterButton('Medicina'))
+    // Badge should show "1"
+    const badge = screen.getByText('1')
+    expect(badge.className).toContain('bg-blue-500')
+  })
+
+  it('limpiar filtros restaura todos los pacientes', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    // Filter by Medicina
+    fireEvent.click(getFilterButton('Medicina'))
+    await waitFor(() => expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument())
+    // Clear filters
+    fireEvent.click(screen.getByText('Limpiar filtros'))
+    await waitFor(() => {
+      expect(screen.getByText('García, Ana')).toBeInTheDocument()
+      expect(screen.getByText('López, Carlos')).toBeInTheDocument()
+      expect(screen.getByText('Ruiz, María')).toBeInTheDocument()
+    })
   })
 })
