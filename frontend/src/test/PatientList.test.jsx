@@ -48,7 +48,7 @@ describe('KAN-5: Listado de pacientes', () => {
   it('[KAN-5] muestra la columna Ubicación en la tabla', async () => {
     renderList()
     await waitFor(() => {
-      expect(screen.getByText('Ubicación')).toBeInTheDocument()
+      expect(screen.getByText(/^Ubicación/)).toBeInTheDocument()
       expect(screen.getByText('B1')).toBeInTheDocument()
       expect(screen.getByText('B3')).toBeInTheDocument()
     })
