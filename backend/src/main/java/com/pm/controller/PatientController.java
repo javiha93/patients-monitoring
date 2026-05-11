@@ -52,12 +52,18 @@ public class PatientController {
         patientService.updateAdmissionLocation(admissionId, location);
     }
 
+    @PatchMapping("/admission/{admissionId}/specialty")
+    public void updateSpecialty(@PathVariable Long admissionId, @RequestParam String specialty) {
+        patientService.updateAdmissionSpecialty(admissionId, specialty);
+    }
+
     @PostMapping("/{id}/reopen")
     public PatientDTO reopen(
             @PathVariable Long id,
             @RequestParam(required = false) Integer triageLevel,
             @RequestParam(required = false) String matCategory,
-            @RequestParam(required = false) String location) {
-        return patientService.reopenPatient(id, triageLevel, matCategory, location);
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) String specialty) {
+        return patientService.reopenPatient(id, triageLevel, matCategory, location, specialty);
     }
 }

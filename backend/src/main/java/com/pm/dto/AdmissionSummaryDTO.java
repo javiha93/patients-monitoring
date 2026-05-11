@@ -12,6 +12,7 @@ public class AdmissionSummaryDTO {
     private Integer triageLevel;
     private String matCategory;
     private String location;
+    private String specialty;
     private String status;
 
     public static AdmissionSummaryDTO fromEntity(Admission a) {
@@ -22,6 +23,7 @@ public class AdmissionSummaryDTO {
                 .triageLevel(a.getTriageLevel())
                 .matCategory(a.getMatCategory())
                 .location(a.getLocation())
+                .specialty(a.getSpecialty())
                 .status(a.getStatus().name())
                 .build();
     }

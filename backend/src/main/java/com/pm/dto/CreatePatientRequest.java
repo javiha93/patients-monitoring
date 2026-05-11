@@ -27,4 +27,6 @@ public class CreatePatientRequest {
     private String matCategory;
 
     private String location;
+
+    private String specialty;
 }

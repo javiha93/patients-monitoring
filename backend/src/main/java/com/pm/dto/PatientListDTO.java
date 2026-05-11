@@ -23,5 +23,6 @@ public class PatientListDTO {
     private String matCategory;
     private LocalDateTime admissionDate;
     private String location;
+    private String specialty;
     private String status;
 }

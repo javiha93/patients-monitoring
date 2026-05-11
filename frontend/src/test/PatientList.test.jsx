@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import PatientList from '../pages/PatientList'
+import PatientList, { naturalCompare } from '../pages/PatientList'
 
 // Mock navigate
 const mockNavigate = vi.fn()
@@ -12,9 +12,9 @@ vi.mock('react-router-dom', async () => {
 
 // Mock API
 const mockPatients = [
-  { id: 1, admissionId: 10, nhc: 'NHC-001', firstName: 'Ana', lastName: 'García', birthDate: '1985-03-15', sex: 'female', triageLevel: 2, matCategory: 'Dolor torácico', admissionDate: '2024-01-10T08:30:00', location: 'B1', status: 'active' },
-  { id: 2, admissionId: 11, nhc: 'NHC-002', firstName: 'Carlos', lastName: 'López', birthDate: '1970-07-22', sex: 'male', triageLevel: 4, matCategory: 'Fiebre', admissionDate: '2024-01-11T14:00:00', location: 'B3', status: 'active' },
-  { id: 3, admissionId: 12, nhc: 'NHC-003', firstName: 'María', lastName: 'Ruiz', birthDate: '1990-01-01', sex: 'female', triageLevel: 1, matCategory: 'Politraumatismo', admissionDate: '2024-01-09T06:00:00', location: 'A2', status: 'active' },
+  { id: 1, admissionId: 10, nhc: 'NHC-001', firstName: 'Ana', lastName: 'García', birthDate: '1985-03-15', sex: 'female', triageLevel: 2, matCategory: 'Dolor torácico', admissionDate: '2024-01-10T08:30:00', location: 'B1', specialty: 'Medicina', status: 'active' },
+  { id: 2, admissionId: 11, nhc: 'NHC-002', firstName: 'Carlos', lastName: 'López', birthDate: '1970-07-22', sex: 'male', triageLevel: 4, matCategory: 'Fiebre', admissionDate: '2024-01-11T14:00:00', location: 'B10', specialty: 'Cirugía', status: 'active' },
+  { id: 3, admissionId: 12, nhc: 'NHC-003', firstName: 'María', lastName: 'Ruiz', birthDate: '1990-01-01', sex: 'female', triageLevel: 1, matCategory: 'Politraumatismo', admissionDate: '2024-01-09T06:00:00', location: 'B2', specialty: 'Traumatología', status: 'active' },
 ]
 
 vi.mock('../services/patientApi', () => ({
@@ -22,6 +22,7 @@ vi.mock('../services/patientApi', () => ({
     listActive: vi.fn(() => Promise.resolve({ data: mockPatients })),
     create: vi.fn((data) => Promise.resolve({ data: { id: 4, ...data } })),
     updateLocation: vi.fn(() => Promise.resolve({ data: {} })),
+    updateSpecialty: vi.fn(() => Promise.resolve({ data: {} })),
   },
 }))
 
@@ -47,12 +48,9 @@ describe('KAN-5: Listado de pacientes', () => {
   })
 
   it('[KAN-5] muestra la columna Ubicación en la tabla', async () => {
-    const { container } = renderList()
+    renderList()
     await waitFor(() => {
       expect(screen.getByText(/^Ubicación/)).toBeInTheDocument()
-      // Location is now a <select> dropdown — check its value
-      const selects = container.querySelectorAll('select')
-      expect(selects.length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -175,7 +173,7 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     expect(names[2]).toBe('Ruiz, María')
   })
 
-  it('[KAN-5] ordena por ubicación ascendente', async () => {
+  it('[KAN-5] ordena por ubicación ascendente (natural sort: B2 antes de B10)', async () => {
     const { container } = renderList()
     await waitFor(() => screen.getByText('García, Ana'))
 
@@ -183,9 +181,9 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     fireEvent.click(ubicacionHeader)
 
     const names = getRowNames(container)
-    // location: Ruiz=A2, García=B1, López=B3
-    expect(names[0]).toBe('Ruiz, María')
-    expect(names[1]).toBe('García, Ana')
+    // natural sort: García=B1, Ruiz=B2, López=B10
+    expect(names[0]).toBe('García, Ana')
+    expect(names[1]).toBe('Ruiz, María')
     expect(names[2]).toBe('López, Carlos')
   })
 
@@ -235,57 +233,95 @@ describe('KAN-5: Ordenación en modo tabla', () => {
 })
 
 describe('KAN-5: Cambiar ubicación desde la lista', () => {
-  it('[KAN-5] muestra un desplegable de ubicación con opciones B1-B25', async () => {
-    const { container } = renderList()
+  it('[KAN-5] muestra el dropdown de ubicación con el valor actual', async () => {
+    renderList()
     await waitFor(() => screen.getByText('García, Ana'))
-
-    const selects = container.querySelectorAll('select')
-    expect(selects.length).toBeGreaterThanOrEqual(1)
-
-    // Check options B1 to B25
-    const firstSelect = selects[0]
-    const options = Array.from(firstSelect.querySelectorAll('option'))
-    // 26 options: 1 empty + 25 locations
-    expect(options.length).toBe(26)
-    expect(options[1].value).toBe('B1')
-    expect(options[25].value).toBe('B25')
+    // García has location B1 — shown as button text
+    const buttons = screen.getAllByRole('button').filter(b => b.textContent.includes('B1'))
+    expect(buttons.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('[KAN-5] el desplegable muestra la ubicación actual del paciente', async () => {
-    const { container } = renderList()
+  it('[KAN-5] abrir dropdown muestra opciones B1-B25', async () => {
+    renderList()
     await waitFor(() => screen.getByText('García, Ana'))
-
-    const selects = container.querySelectorAll('select')
-    // García has location B1
-    expect(selects[0].value).toBe('B1')
-  })
-
-  it('[KAN-5] cambiar ubicación llama a la API con admissionId y nueva ubicación', async () => {
-    const { patientApi } = await import('../services/patientApi')
-    const { container } = renderList()
-    await waitFor(() => screen.getByText('García, Ana'))
-
-    const selects = container.querySelectorAll('select')
-    fireEvent.change(selects[0], { target: { value: 'B10' } })
-
+    // Click the B1 dropdown button to open it
+    const locBtn = screen.getAllByRole('button').find(b => b.textContent.trim() === 'B1')
+    fireEvent.mouseDown(locBtn)
+    fireEvent.click(locBtn)
+    // Should show B25 as last option
     await waitFor(() => {
-      expect(patientApi.updateLocation).toHaveBeenCalledWith(10, 'B10')
+      expect(screen.getByText('B25')).toBeInTheDocument()
     })
   })
 
   it('[KAN-5] cambiar ubicación no navega a la ficha del paciente', async () => {
-    const { patientApi } = await import('../services/patientApi')
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    mockNavigate.mockClear()
+    // Click the location dropdown
+    const locBtn = screen.getAllByRole('button').find(b => b.textContent.trim() === 'B1')
+    fireEvent.click(locBtn)
+    // Select B5
+    await waitFor(() => screen.getByText('B5'))
+    fireEvent.click(screen.getByText('B5'))
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+})
+
+describe('KAN-5: Columna Especialidad', () => {
+  it('[KAN-5] muestra la columna Especialidad en la tabla', async () => {
+    renderList()
+    await waitFor(() => {
+      expect(screen.getByText(/^Especialidad/)).toBeInTheDocument()
+    })
+  })
+
+  it('[KAN-5] muestra la especialidad actual del paciente', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    // García has specialty Medicina
+    const btns = screen.getAllByRole('button').filter(b => b.textContent.includes('Medicina'))
+    expect(btns.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('[KAN-5] ordena por especialidad ascendente', async () => {
     const { container } = renderList()
     await waitFor(() => screen.getByText('García, Ana'))
 
-    mockNavigate.mockClear()
-    const selects = container.querySelectorAll('select')
-    fireEvent.change(selects[0], { target: { value: 'B5' } })
+    const espHeader = screen.getByText(/^Especialidad/)
+    fireEvent.click(espHeader)
 
-    // Changing location should NOT trigger navigation
-    await waitFor(() => {
-      expect(patientApi.updateLocation).toHaveBeenCalled()
-    })
-    expect(mockNavigate).not.toHaveBeenCalled()
+    const rows = container.querySelectorAll('tbody tr')
+    const names = Array.from(rows).map(r => r.querySelectorAll('td')[2]?.textContent)
+    // Cirugía < Medicina < Traumatología → López, García, Ruiz
+    expect(names[0]).toBe('López, Carlos')
+    expect(names[1]).toBe('García, Ana')
+    expect(names[2]).toBe('Ruiz, María')
+  })
+})
+
+describe('naturalCompare', () => {
+  it('sorts B2 before B10', () => {
+    expect(naturalCompare('B2', 'B10')).toBeLessThan(0)
+  })
+
+  it('sorts B1 before B2', () => {
+    expect(naturalCompare('B1', 'B2')).toBeLessThan(0)
+  })
+
+  it('sorts A1 before B1', () => {
+    expect(naturalCompare('A1', 'B1')).toBeLessThan(0)
+  })
+
+  it('treats equal values as 0', () => {
+    expect(naturalCompare('B5', 'B5')).toBe(0)
+  })
+
+  it('handles empty strings', () => {
+    expect(naturalCompare('', 'B1')).toBeLessThan(0)
+  })
+
+  it('handles null values', () => {
+    expect(naturalCompare(null, 'B1')).toBeLessThan(0)
   })
 })

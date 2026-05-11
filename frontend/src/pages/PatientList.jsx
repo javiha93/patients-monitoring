@@ -1,10 +1,73 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, ChevronDown, Check } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import TriageBadge from '../components/TriageBadge'
 import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
+
+const SPECIALTIES = [
+  'Medicina', 'Traumatología', 'Cirugía', 'Ginecología', 'Pediatría', 'Oftalmología',
+]
+
+const LOCATIONS = Array.from({ length: 25 }, (_, i) => `B${i + 1}`)
+
+/**
+ * Natural sort: extracts leading letters and trailing number
+ * so "B2" sorts before "B10".
+ */
+export function naturalCompare(a, b) {
+  const re = /^([A-Za-z]*)(\d+)?$/
+  const ma = (a || '').match(re) || ['', a || '', '']
+  const mb = (b || '').match(re) || ['', b || '', '']
+  const cmp = (ma[1] || '').localeCompare(mb[1] || '')
+  if (cmp !== 0) return cmp
+  return (parseInt(ma[2]) || 0) - (parseInt(mb[2]) || 0)
+}
+
+/* ── Custom dropdown component ── */
+function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28' }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className={`relative ${width}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`w-full flex items-center justify-between gap-1 px-2 py-1 rounded-md text-sm border transition-colors
+          ${value
+            ? 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-400'
+            : 'bg-white border-dashed border-slate-300 text-slate-400 hover:border-slate-400'}`}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <ChevronDown size={14} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg py-1 max-h-52 overflow-y-auto">
+          <button
+            onClick={() => { onChange(''); setOpen(false) }}
+            className="w-full text-left px-3 py-1.5 text-sm text-slate-400 hover:bg-slate-50"
+          >—</button>
+          {options.map(opt => (
+            <button
+              key={opt}
+              onClick={() => { onChange(opt); setOpen(false) }}
+              className={`w-full text-left px-3 py-1.5 text-sm flex items-center justify-between hover:bg-blue-50
+                ${value === opt ? 'text-blue-600 font-medium bg-blue-50/50' : 'text-slate-700'}`}
+            >{opt}{value === opt && <Check size={14} className="text-blue-500" />}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function calcAge(birthDate) {
   if (!birthDate) return null
@@ -88,7 +151,10 @@ export default function PatientList() {
       return ((a.triageLevel || 0) - (b.triageLevel || 0)) * dir
     }
     if (sortKey === 'ubicacion') {
-      return (a.location || '').localeCompare(b.location || '') * dir
+      return naturalCompare(a.location, b.location) * dir
+    }
+    if (sortKey === 'especialidad') {
+      return (a.specialty || '').localeCompare(b.specialty || '') * dir
     }
     if (sortKey === 'ingreso') {
       return ((a.admissionDate || '').localeCompare(b.admissionDate || '')) * dir
@@ -149,7 +215,7 @@ export default function PatientList() {
         ) : filtered.length === 0 ? (
           <p className="text-slate-400 text-center mt-12">No hay pacientes activos</p>
         ) : view === 'table' ? (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm overflow-visible">
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -158,6 +224,7 @@ export default function PatientList() {
                   <th className="px-4 py-3">Paciente</th>
                   <th className="px-4 py-3">NHC</th>
                   <th className="px-4 py-3">Edad</th>
+                  <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Especialidad{sortIndicator('especialidad')}</th>
                   <th className="px-4 py-3">Motivo</th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ingreso')}>Ingreso{sortIndicator('ingreso')}</th>
                 </tr>
@@ -172,31 +239,41 @@ export default function PatientList() {
                       className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}
                     >
                       <td className="px-4 py-3"><TriageBadge level={p.triageLevel} /></td>
-                      <td className="px-4 py-3 text-sm font-medium text-slate-700" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          className="bg-transparent border border-slate-200 rounded px-1.5 py-0.5 text-sm text-slate-700 cursor-pointer hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <InlineDropdown
                           value={p.location || ''}
-                          onChange={async (e) => {
-                            const newLoc = e.target.value
+                          options={LOCATIONS}
+                          placeholder="Cama"
+                          onChange={async (v) => {
                             try {
-                              await patientApi.updateLocation(p.admissionId, newLoc)
+                              await patientApi.updateLocation(p.admissionId, v)
                               setPatients(prev => prev.map(pt =>
-                                pt.admissionId === p.admissionId ? { ...pt, location: newLoc } : pt
+                                pt.admissionId === p.admissionId ? { ...pt, location: v } : pt
                               ))
-                            } catch (err) {
-                              toast.error('Error al cambiar ubicación')
-                            }
+                            } catch { toast.error('Error al cambiar ubicación') }
                           }}
-                        >
-                          <option value="">—</option>
-                          {Array.from({ length: 25 }, (_, i) => `B${i + 1}`).map(loc => (
-                            <option key={loc} value={loc}>{loc}</option>
-                          ))}
-                        </select>
+                          width="w-24"
+                        />
                       </td>
                       <td className="px-4 py-3 font-medium">{p.lastName}, {p.firstName}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{p.nhc}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <InlineDropdown
+                          value={p.specialty || ''}
+                          options={SPECIALTIES}
+                          placeholder="Espec."
+                          onChange={async (v) => {
+                            try {
+                              await patientApi.updateSpecialty(p.admissionId, v)
+                              setPatients(prev => prev.map(pt =>
+                                pt.admissionId === p.admissionId ? { ...pt, specialty: v } : pt
+                              ))
+                            } catch { toast.error('Error al cambiar especialidad') }
+                          }}
+                          width="w-36"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{formatDate(p.admissionDate)}</td>
                     </tr>
@@ -222,9 +299,10 @@ export default function PatientList() {
                       <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
                     {p.location && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{p.location}</span>}
+                    {p.specialty && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{p.specialty}</span>}
                   </div>
                   <div className="text-xs text-slate-400 mt-1">{formatDate(p.admissionDate)}</div>
                 </div>

@@ -33,6 +33,8 @@ public class Admission {
 
     private String location;
 
+    private String specialty;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;

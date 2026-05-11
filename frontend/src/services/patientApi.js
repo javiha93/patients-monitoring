@@ -11,4 +11,6 @@ export const patientApi = {
     api.post(`/patients/${id}/reopen`, null, { params: { triageLevel, matCategory } }),
   updateLocation: (admissionId, location) =>
     api.patch(`/patients/admission/${admissionId}/location`, null, { params: { location } }),
+  updateSpecialty: (admissionId, specialty) =>
+    api.patch(`/patients/admission/${admissionId}/specialty`, null, { params: { specialty } }),
 }
