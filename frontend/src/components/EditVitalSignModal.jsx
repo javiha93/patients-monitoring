@@ -58,10 +58,10 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
     const data = {
       admissionId: vitalSign.admissionId,
       recordedAt: form.recordedAt + ':00',
-      systolicBp: parseInt(form.systolicBp),
-      diastolicBp: parseInt(form.diastolicBp),
-      heartRate: parseInt(form.heartRate),
-      spo2: parseInt(form.spo2),
+      systolicBp: form.systolicBp ? parseInt(form.systolicBp) : null,
+      diastolicBp: form.diastolicBp ? parseInt(form.diastolicBp) : null,
+      heartRate: form.heartRate ? parseInt(form.heartRate) : null,
+      spo2: form.spo2 ? parseInt(form.spo2) : null,
       respiratoryRate: form.respiratoryRate ? parseInt(form.respiratoryRate) : null,
       temperature: form.temperature ? parseFloat(form.temperature) : null,
       painLevel: form.painLevel ? parseInt(form.painLevel) : null,
@@ -150,14 +150,18 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
         </div>
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Soporte respiratorio</div>
+        {!form.spo2 ? (
+          <p className="text-xs text-slate-400 mb-3">Registre SpO2 para poder añadir soporte respiratorio</p>
+        ) : (
         <div className="flex flex-col gap-1 mb-3">
           <label className="text-xs font-medium text-slate-600">Dispositivo</label>
           <select value={form.deviceType} onChange={set('deviceType')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500">
             {devices.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
           </select>
         </div>
+        )}
 
-        {(device === 'nasal_cannula' || device === 'reservoir_mask') && (
+        {form.spo2 && (device === 'nasal_cannula' || device === 'reservoir_mask') && (
           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">Flujo (L/min)</label>
@@ -165,7 +169,7 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
             </div>
           </div>
         )}
-        {device === 'ventimax' && (
+        {form.spo2 && device === 'ventimax' && (
           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">Flujo (L/min)</label>
@@ -177,7 +181,7 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
             </div>
           </div>
         )}
-        {device === 'bipap' && (
+        {form.spo2 && device === 'bipap' && (
           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">IPAP (cmH₂O)</label>
@@ -189,7 +193,7 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
             </div>
           </div>
         )}
-        {device === 'mechanical_ventilation' && (
+        {form.spo2 && device === 'mechanical_ventilation' && (
           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">FiO2 (%)</label>

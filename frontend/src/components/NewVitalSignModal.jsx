@@ -128,14 +128,18 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
         </div>
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Soporte respiratorio</div>
+        {!form.spo2 ? (
+          <p className="text-xs text-slate-400 mb-3">Registre SpO2 para poder añadir soporte respiratorio</p>
+        ) : (
         <div className="flex flex-col gap-1 mb-3">
           <label className="text-xs font-medium text-slate-600">Dispositivo</label>
           <select value={form.deviceType} onChange={set('deviceType')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500">
             {devices.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
           </select>
         </div>
+        )}
 
-        {(device === 'nasal_cannula' || device === 'reservoir_mask') && (
+        {form.spo2 && (device === 'nasal_cannula' || device === 'reservoir_mask') && (
           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">Flujo (L/min)</label>
@@ -143,7 +147,7 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
             </div>
           </div>
         )}
-        {device === 'ventimax' && (
+        {form.spo2 && device === 'ventimax' && (
           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">Flujo (L/min)</label>
@@ -155,7 +159,7 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
             </div>
           </div>
         )}
-        {device === 'bipap' && (
+        {form.spo2 && device === 'bipap' && (
           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">IPAP (cmH₂O)</label>
@@ -167,7 +171,7 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
             </div>
           </div>
         )}
-        {device === 'mechanical_ventilation' && (
+        {form.spo2 && device === 'mechanical_ventilation' && (
           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-slate-50 rounded-lg">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">FiO2 (%)</label>

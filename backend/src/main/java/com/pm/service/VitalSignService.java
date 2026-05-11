@@ -104,6 +104,25 @@ public class VitalSignService {
             vs.setConsciousnessLevel(null);
         }
 
+        // Update respiratory support
+        if (req.getDeviceType() != null && !req.getDeviceType().isBlank() && !req.getDeviceType().equals("none")) {
+            RespiratorySupport rs = vs.getRespiratorySupport();
+            if (rs == null) {
+                rs = RespiratorySupport.builder().vitalSign(vs).build();
+            }
+            rs.setDeviceType(RespiratorySupport.DeviceType.valueOf(req.getDeviceType()));
+            rs.setFlowRate(req.getFlowRate());
+            rs.setFio2(req.getFio2());
+            rs.setPeep(req.getPeep());
+            rs.setIpap(req.getIpap());
+            rs.setEpap(req.getEpap());
+            rs.setTidalVolume(req.getTidalVolume());
+            rs.setRespiratoryRateSet(req.getRespiratoryRateSet());
+            vs.setRespiratorySupport(rs);
+        } else if (vs.getRespiratorySupport() != null) {
+            vs.setRespiratorySupport(null);
+        }
+
         vs = vitalSignRepository.save(vs);
         return VitalSignDTO.fromEntity(vs);
     }

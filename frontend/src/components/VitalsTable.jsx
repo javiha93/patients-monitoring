@@ -31,6 +31,7 @@ const rows = [
   { key: 'heartRate', label: 'FC (bpm)' },
   { key: 'temperature', label: 'Tª (°C)' },
   { key: 'spo2', label: 'SpO2 (%)' },
+  { key: 'respiratorySupport', label: 'Soporte resp.', special: true },
   { key: 'respiratoryRate', label: 'FR (rpm)' },
   { key: 'painLevel', label: 'Dolor (EVA)' },
   { key: 'bloodGlucose', label: 'Glucemia (mg/dL)' },
@@ -90,6 +91,22 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
             <tr key={r.key} className="border-t border-slate-100">
               <th className="px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10">{r.label}</th>
               {sorted.map(v => {
+                if (r.special) {
+                  const rs = v.respiratorySupport
+                  const label = rs ? deviceLabels[rs.deviceType] || rs.deviceType : 'Aire ambiente'
+                  const detail = rs && rs.flowRate ? ` ${rs.flowRate}L` : ''
+                  return (
+                    <td
+                      key={v.id}
+                      className={`px-3 py-2.5 text-center text-xs whitespace-nowrap text-slate-500 ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                      onClick={onEdit ? () => onEdit(v) : undefined}
+                      onMouseEnter={() => setHoveredCol(v.id)}
+                      onMouseLeave={() => setHoveredCol(null)}
+                    >
+                      {label}{detail}
+                    </td>
+                  )
+                }
                 const val = v[r.key]
                 return (
                   <td
@@ -105,26 +122,6 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
               })}
             </tr>
           ))}
-          {/* Respiratory support row */}
-          <tr className="border-t border-slate-100">
-            <th className="px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10">Soporte resp.</th>
-            {sorted.map(v => {
-              const rs = v.respiratorySupport
-              const label = rs ? deviceLabels[rs.deviceType] || rs.deviceType : 'Aire ambiente'
-              const detail = rs && rs.flowRate ? ` ${rs.flowRate}L` : ''
-              return (
-                <td
-                  key={v.id}
-                  className={`px-3 py-2.5 text-center text-xs whitespace-nowrap text-slate-500 ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
-                  onClick={onEdit ? () => onEdit(v) : undefined}
-                  onMouseEnter={() => setHoveredCol(v.id)}
-                  onMouseLeave={() => setHoveredCol(null)}
-                >
-                  {label}{detail}
-                </td>
-              )
-            })}
-          </tr>
         </tbody>
       </table>
     </div>
