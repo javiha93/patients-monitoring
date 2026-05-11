@@ -7,10 +7,16 @@ import ActionBar from '../components/ActionBar'
 
 function calcAge(bd) {
   if (!bd) return null
-  const t = new Date(), b = new Date(bd)
-  let a = t.getFullYear() - b.getFullYear()
-  if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--
-  return a
+  const today = new Date(), birth = new Date(bd)
+  let years = today.getFullYear() - birth.getFullYear()
+  let months = today.getMonth() - birth.getMonth()
+  let days = today.getDate() - birth.getDate()
+  if (days < 0) { months--; days += new Date(today.getFullYear(), today.getMonth(), 0).getDate() }
+  if (months < 0) { years--; months += 12 }
+  const totalMonths = years * 12 + months
+  if (years >= 2) return `${years} años`
+  if (totalMonths >= 1) return `${totalMonths} meses`
+  return `${Math.max(0, days)} días`
 }
 
 const severityColors = { mild: 'bg-yellow-100 text-yellow-800', moderate: 'bg-orange-100 text-orange-800', severe: 'bg-red-100 text-red-800', unknown: 'bg-slate-100 text-slate-600' }
@@ -82,7 +88,7 @@ export default function PatientHistory() {
         </Link>
         <div className="flex-1">
           <div className="text-lg font-bold">{patient.lastName}, {patient.firstName}</div>
-          <div className="text-sm text-slate-500">{age ? `${age} años · ` : ''}{patient.nhc}</div>
+          <div className="text-sm text-slate-500">{age ? `${age} · ` : ''}{patient.nhc}</div>
         </div>
       </div>
 

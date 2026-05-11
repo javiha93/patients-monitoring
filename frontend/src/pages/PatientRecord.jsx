@@ -13,10 +13,15 @@ function calcAge(birthDate) {
   if (!birthDate) return null
   const today = new Date()
   const birth = new Date(birthDate)
-  let age = today.getFullYear() - birth.getFullYear()
-  const m = today.getMonth() - birth.getMonth()
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
-  return age
+  let years = today.getFullYear() - birth.getFullYear()
+  let months = today.getMonth() - birth.getMonth()
+  let days = today.getDate() - birth.getDate()
+  if (days < 0) { months--; days += new Date(today.getFullYear(), today.getMonth(), 0).getDate() }
+  if (months < 0) { years--; months += 12 }
+  const totalMonths = years * 12 + months
+  if (years >= 2) return `${years} años`
+  if (totalMonths >= 1) return `${totalMonths} meses`
+  return `${Math.max(0, days)} días`
 }
 
 export default function PatientRecord() {
@@ -79,7 +84,7 @@ export default function PatientRecord() {
         <div className="flex-1">
           <div className="text-lg font-bold">{patient.lastName}, {patient.firstName}</div>
           <div className="text-sm text-slate-500">
-            {age ? `${age} años · ` : ''}{patient.nhc}
+            {age ? `${age} · ` : ''}{patient.nhc}
             {admission ? ` · ${admission.matCategory || ''}` : ''}
           </div>
         </div>
@@ -105,7 +110,7 @@ export default function PatientRecord() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleNewVital}
-        patientName={`${patient.lastName}, ${patient.firstName} · ${age ? age + ' años' : ''}`}
+        patientName={`${patient.lastName}, ${patient.firstName} · ${age || ''}`}
       />
     </div>
   )

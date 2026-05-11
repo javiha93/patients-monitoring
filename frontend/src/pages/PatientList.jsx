@@ -9,10 +9,26 @@ function calcAge(birthDate) {
   if (!birthDate) return null
   const today = new Date()
   const birth = new Date(birthDate)
-  let age = today.getFullYear() - birth.getFullYear()
-  const m = today.getMonth() - birth.getMonth()
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
-  return age
+
+  let years = today.getFullYear() - birth.getFullYear()
+  let months = today.getMonth() - birth.getMonth()
+  let days = today.getDate() - birth.getDate()
+
+  if (days < 0) {
+    months--
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+    days += prevMonth.getDate()
+  }
+  if (months < 0) {
+    years--
+    months += 12
+  }
+
+  const totalMonths = years * 12 + months
+
+  if (years >= 2) return `${years} años`
+  if (totalMonths >= 1) return `${totalMonths} meses`
+  return `${Math.max(0, days)} días`
 }
 
 function formatDate(dateStr) {
@@ -149,7 +165,7 @@ export default function PatientList() {
                     <TriageBadge level={p.triageLevel} />
                     <div>
                       <div className="font-semibold">{p.lastName}, {p.firstName}</div>
-                      <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'} años</div>
+                      <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
