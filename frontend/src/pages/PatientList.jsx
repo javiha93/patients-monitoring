@@ -44,6 +44,8 @@ export default function PatientList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
+  const [sortKey, setSortKey] = useState(null) // 'nivel' | 'ubicacion' | 'ingreso'
+  const [sortDir, setSortDir] = useState('asc')
   const navigate = useNavigate()
 
   const fetchPatients = async () => {
@@ -67,6 +69,35 @@ export default function PatientList() {
       || p.nhc?.toLowerCase().includes(q)
       || p.matCategory?.toLowerCase().includes(q)
   })
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (!sortKey) return 0
+    const dir = sortDir === 'asc' ? 1 : -1
+    if (sortKey === 'nivel') {
+      return ((a.triageLevel || 0) - (b.triageLevel || 0)) * dir
+    }
+    if (sortKey === 'ubicacion') {
+      return (a.location || '').localeCompare(b.location || '') * dir
+    }
+    if (sortKey === 'ingreso') {
+      return ((a.admissionDate || '').localeCompare(b.admissionDate || '')) * dir
+    }
+    return 0
+  })
+
+  const sortIndicator = (key) => {
+    if (sortKey !== key) return ' ↕'
+    return sortDir === 'asc' ? ' ↑' : ' ↓'
+  }
 
   const selectedPatient = patients.find(p => p.id === selectedId)
 
@@ -120,17 +151,17 @@ export default function PatientList() {
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="px-4 py-3 w-12">Nivel</th>
-                  <th className="px-4 py-3">Ubicación</th>
+                  <th className="px-4 py-3 w-12 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('nivel')}>Nivel{sortIndicator('nivel')}</th>
+                  <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubicación{sortIndicator('ubicacion')}</th>
                   <th className="px-4 py-3">Paciente</th>
                   <th className="px-4 py-3">NHC</th>
                   <th className="px-4 py-3">Edad</th>
                   <th className="px-4 py-3">Motivo</th>
-                  <th className="px-4 py-3">Ingreso</th>
+                  <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ingreso')}>Ingreso{sortIndicator('ingreso')}</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(p => {
+                {sorted.map(p => {
                   const isSelected = selectedId === p.id
                   return (
                     <tr

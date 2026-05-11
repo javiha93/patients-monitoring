@@ -14,6 +14,7 @@ vi.mock('react-router-dom', async () => {
 const mockPatients = [
   { id: 1, admissionId: 10, nhc: 'NHC-001', firstName: 'Ana', lastName: 'García', birthDate: '1985-03-15', sex: 'female', triageLevel: 2, matCategory: 'Dolor torácico', admissionDate: '2024-01-10T08:30:00', location: 'B1', status: 'active' },
   { id: 2, admissionId: 11, nhc: 'NHC-002', firstName: 'Carlos', lastName: 'López', birthDate: '1970-07-22', sex: 'male', triageLevel: 4, matCategory: 'Fiebre', admissionDate: '2024-01-11T14:00:00', location: 'B3', status: 'active' },
+  { id: 3, admissionId: 12, nhc: 'NHC-003', firstName: 'María', lastName: 'Ruiz', birthDate: '1990-01-01', sex: 'female', triageLevel: 1, matCategory: 'Politraumatismo', admissionDate: '2024-01-09T06:00:00', location: 'A2', status: 'active' },
 ]
 
 vi.mock('../services/patientApi', () => ({
@@ -133,5 +134,100 @@ describe('KAN-7: Búsqueda y filtrado', () => {
     fireEvent.change(input, { target: { value: 'NHC-001' } })
     expect(screen.getByText('García, Ana')).toBeInTheDocument()
     expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument()
+  })
+})
+
+describe('KAN-5: Ordenación en modo tabla', () => {
+  function getRowNames(container) {
+    const rows = container.querySelectorAll('tbody tr')
+    return Array.from(rows).map(r => r.querySelectorAll('td')[2]?.textContent)
+  }
+
+  it('[KAN-5] ordena por nivel ascendente al hacer clic en cabecera Nivel', async () => {
+    const { container } = renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    // Click Nivel header
+    const nivelHeader = screen.getByText(/^Nivel/)
+    fireEvent.click(nivelHeader)
+
+    const names = getRowNames(container)
+    // triageLevel: Ruiz=1, García=2, López=4
+    expect(names[0]).toBe('Ruiz, María')
+    expect(names[1]).toBe('García, Ana')
+    expect(names[2]).toBe('López, Carlos')
+  })
+
+  it('[KAN-5] segundo clic en Nivel ordena descendente', async () => {
+    const { container } = renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const nivelHeader = screen.getByText(/^Nivel/)
+    fireEvent.click(nivelHeader) // asc
+    fireEvent.click(nivelHeader) // desc
+
+    const names = getRowNames(container)
+    // desc: López=4, García=2, Ruiz=1
+    expect(names[0]).toBe('López, Carlos')
+    expect(names[1]).toBe('García, Ana')
+    expect(names[2]).toBe('Ruiz, María')
+  })
+
+  it('[KAN-5] ordena por ubicación ascendente', async () => {
+    const { container } = renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const ubicacionHeader = screen.getByText(/^Ubicación/)
+    fireEvent.click(ubicacionHeader)
+
+    const names = getRowNames(container)
+    // location: Ruiz=A2, García=B1, López=B3
+    expect(names[0]).toBe('Ruiz, María')
+    expect(names[1]).toBe('García, Ana')
+    expect(names[2]).toBe('López, Carlos')
+  })
+
+  it('[KAN-5] ordena por ingreso ascendente', async () => {
+    const { container } = renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const ingresoHeader = screen.getByText(/^Ingreso/)
+    fireEvent.click(ingresoHeader)
+
+    const names = getRowNames(container)
+    // admissionDate: Ruiz=09, García=10, López=11
+    expect(names[0]).toBe('Ruiz, María')
+    expect(names[1]).toBe('García, Ana')
+    expect(names[2]).toBe('López, Carlos')
+  })
+
+  it('[KAN-5] ordena por ingreso descendente', async () => {
+    const { container } = renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const ingresoHeader = screen.getByText(/^Ingreso/)
+    fireEvent.click(ingresoHeader) // asc
+    fireEvent.click(ingresoHeader) // desc
+
+    const names = getRowNames(container)
+    // desc: López=11, García=10, Ruiz=09
+    expect(names[0]).toBe('López, Carlos')
+    expect(names[1]).toBe('García, Ana')
+    expect(names[2]).toBe('Ruiz, María')
+  })
+
+  it('[KAN-5] muestra indicador de dirección en cabecera activa', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+
+    const nivelHeader = screen.getByText(/^Nivel/)
+    // Before sorting: shows ↕
+    expect(nivelHeader.textContent).toContain('↕')
+
+    fireEvent.click(nivelHeader)
+    expect(nivelHeader.textContent).toContain('↑')
+
+    fireEvent.click(nivelHeader)
+    expect(nivelHeader.textContent).toContain('↓')
   })
 })
