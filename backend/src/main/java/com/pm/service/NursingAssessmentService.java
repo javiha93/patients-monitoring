@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,10 +31,14 @@ public class NursingAssessmentService {
         Admission admission = admissionRepository.findById(dto.getAdmissionId())
                 .orElseThrow(() -> new RuntimeException("Admission not found"));
 
+        // Auto-assign type: first assessment for this admission = "entrada", rest = "sucesiva"
+        List<NursingAssessment> existing = repository.findByAdmissionIdOrderByRecordedAtDesc(dto.getAdmissionId());
+        String autoType = existing.isEmpty() ? "entrada" : "sucesiva";
+
         NursingAssessment entity = NursingAssessment.builder()
                 .admission(admission)
                 .recordedAt(dto.getRecordedAt())
-                .assessmentType(dto.getAssessmentType())
+                .assessmentType(autoType)
                 .consciousness(dto.getConsciousness())
                 .glasgowScore(dto.getGlasgowScore())
                 .hasPain(dto.getHasPain())
@@ -86,5 +92,22 @@ public class NursingAssessmentService {
     @Transactional
     public void delete(Long id) {
         repository.deleteById(id);
+    }
+
+    /**
+     * On discharge: if the most recent assessment was recorded within 2 hours,
+     * update its type to "salida".
+     */
+    @Transactional
+    public void markLastAsSalidaIfRecent(Long admissionId) {
+        List<NursingAssessment> assessments = repository.findByAdmissionIdOrderByRecordedAtDesc(admissionId);
+        if (assessments.isEmpty()) return;
+
+        NursingAssessment last = assessments.get(0);
+        Duration elapsed = Duration.between(last.getRecordedAt(), LocalDateTime.now());
+        if (elapsed.toHours() < 2) {
+            last.setAssessmentType("salida");
+            repository.save(last);
+        }
     }
 }

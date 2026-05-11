@@ -55,8 +55,8 @@ const OPTS = {
   vomitingAmount: [{ value: 'escaso', label: 'Escaso' }, { value: 'moderado', label: 'Moderado' }, { value: 'abundante', label: 'Abundante' }],
   mood: [{ value: 'tranquilo', label: 'Tranquilo' }, { value: 'ansioso', label: 'Ansioso' }, { value: 'agitado', label: 'Agitado' }, { value: 'deprimido', label: 'Deprimido' }, { value: 'agresivo', label: 'Agresivo' }],
   physicalCognitive: [{ value: 'orientado', label: 'Orientado' }, { value: 'desorientado', label: 'Desorientado' }, { value: 'confuso', label: 'Confuso' }, { value: 'demencia', label: 'Demencia' }],
-  urinePattern: [{ value: 'normal', label: 'Normal' }, { value: 'oliguria', label: 'Oliguria' }, { value: 'anuria', label: 'Anuria' }, { value: 'poliuria', label: 'Poliuria' }, { value: 'hematuria', label: 'Hematuria' }],
-  stoolPattern: [{ value: 'normal', label: 'Normal' }, { value: 'diarrea', label: 'Diarrea' }, { value: 'estrenimiento', label: 'Estreñimiento' }, { value: 'melenas', label: 'Melenas' }, { value: 'rectorragia', label: 'Rectorragia' }],
+  urinePattern: [{ value: 'sin_alteraciones', label: 'Sin alteraciones' }, { value: 'oliguria', label: 'Oliguria' }, { value: 'anuria', label: 'Anuria' }, { value: 'poliuria', label: 'Poliuria' }, { value: 'hematuria', label: 'Hematuria' }],
+  stoolPattern: [{ value: 'sin_alteraciones', label: 'Sin alteraciones' }, { value: 'diarrea', label: 'Diarrea' }, { value: 'estrenimiento', label: 'Estreñimiento' }, { value: 'melenas', label: 'Melenas' }, { value: 'rectorragia', label: 'Rectorragia' }],
   breathingPattern: [{ value: 'normal', label: 'Normal' }, { value: 'taquipnea', label: 'Taquipnea' }, { value: 'bradipnea', label: 'Bradipnea' }, { value: 'apnea', label: 'Apnea' }],
   dyspnea: [{ value: 'ninguna', label: 'Ninguna' }, { value: 'reposo', label: 'En reposo' }, { value: 'esfuerzo', label: 'Al esfuerzo' }],
   cough: [{ value: 'ninguna', label: 'Ninguna' }, { value: 'seca', label: 'Seca' }, { value: 'productiva', label: 'Productiva' }],
@@ -71,7 +71,7 @@ const EMPTY_FORM = {
   mood: 'tranquilo', physicalCognitive: 'orientado',
   sensoryBlindness: false, sensoryDeafness: false, sensoryAphasia: false, sensoryDysarthria: false,
   physicalDisability: false, cognitiveObservations: '',
-  urinePattern: 'normal', stoolPattern: 'normal',
+  urinePattern: 'sin_alteraciones', stoolPattern: 'sin_alteraciones',
   urinaryIncontinence: false, fecalIncontinence: false,
   hasDiaper: false, hasOstomy: false, hasUrinaryCatheter: false, hasCollector: false,
   breathingPattern: 'normal', dyspneaLevel: 'ninguna', coughType: 'ninguna', expectoration: 'ninguna',
@@ -137,7 +137,11 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
     <div className="space-y-4">
       {/* New assessment button */}
       {!formOpen && (
-        <button onClick={() => setFormOpen(true)}
+        <button onClick={() => {
+          const autoType = assessments.length === 0 ? 'entrada' : 'sucesiva'
+          setForm({ ...EMPTY_FORM, assessmentType: autoType })
+          setFormOpen(true)
+        }}
           className="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-sky-600">
           <Plus size={16} /> Nueva valoración
         </button>
@@ -167,7 +171,9 @@ function AssessmentForm({ form, set, onSubmit, onCancel, saving }) {
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold text-slate-800">Nueva valoración de enfermería</h3>
-        <Select label="" value={form.assessmentType} onChange={v => set('assessmentType', v)} options={OPTS.type} />
+        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+          form.assessmentType === 'entrada' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+        }`}>{form.assessmentType === 'entrada' ? 'Entrada' : 'Sucesiva'}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -10,7 +10,7 @@ const mockAssessments = [
     hasPain: true, painLocation: 'Torácico', painType: 'agudo',
     mood: 'ansioso', breathingPattern: 'taquipnea', mobility: 'sin_alteraciones',
     nutrition: 'sin_alteraciones', physicalCognitive: 'orientado',
-    urinePattern: 'normal', stoolPattern: 'normal',
+    urinePattern: 'sin_alteraciones', stoolPattern: 'sin_alteraciones',
     bedRails: true, fallRisk: true, notes: 'Paciente estable',
   },
 ]
@@ -133,5 +133,35 @@ describe('KAN-79: Valoración de enfermería', () => {
     await waitFor(() => {
       expect(screen.getByText('No hay valoraciones registradas')).toBeInTheDocument()
     })
+  })
+
+  it('auto-marca como "Sucesiva" cuando ya existen valoraciones', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
+    // Should show "Sucesiva" badge (assessments array has 1 item)
+    expect(screen.getByText('Sucesiva')).toBeInTheDocument()
+  })
+
+  it('auto-marca como "Entrada" cuando no hay valoraciones previas', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    nursingApi.getByAdmission.mockResolvedValueOnce({ data: [] })
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
+    // Should show "Entrada" badge
+    expect(screen.getByText('Entrada')).toBeInTheDocument()
+  })
+
+  it('no muestra selector de tipo, solo badge de solo lectura', async () => {
+    renderTab()
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    fireEvent.click(screen.getByText('Nueva valoración'))
+    // No <select> for type should exist in the form header
+    const selects = document.querySelectorAll('select')
+    const typeSelect = Array.from(selects).find(s =>
+      Array.from(s.options).some(o => o.value === 'entrada')
+    )
+    expect(typeSelect).toBeUndefined()
   })
 })

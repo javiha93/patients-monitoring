@@ -5,6 +5,7 @@ import com.pm.entity.Admission;
 import com.pm.entity.Patient;
 import com.pm.repository.AdmissionRepository;
 import com.pm.repository.PatientRepository;
+import com.pm.service.NursingAssessmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ public class PatientService {
 
     private final PatientRepository patientRepository;
     private final AdmissionRepository admissionRepository;
+    private final NursingAssessmentService nursingAssessmentService;
 
     /**
      * List all patients with active admissions.
@@ -147,6 +149,7 @@ public class PatientService {
             throw new RuntimeException("No active admission for patient: " + patientId);
         }
         Admission admission = active.get(0);
+        nursingAssessmentService.markLastAsSalidaIfRecent(admission.getId());
         admission.setStatus(Admission.Status.discharged);
         admission.setDischargeDate(req.getDischargeDate() != null ? req.getDischargeDate() : LocalDateTime.now());
         admissionRepository.save(admission);
