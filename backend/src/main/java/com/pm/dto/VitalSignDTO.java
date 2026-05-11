@@ -18,6 +18,7 @@ public class VitalSignDTO {
     private String consciousnessLevel;
     private Integer painLevel;
     private Integer bloodGlucose;
+    private Integer diuresis;
     private String notes;
     private RespiratorySupportDTO respiratorySupport;
 
@@ -35,6 +36,7 @@ public class VitalSignDTO {
                 .consciousnessLevel(v.getConsciousnessLevel() != null ? v.getConsciousnessLevel().name() : null)
                 .painLevel(v.getPainLevel())
                 .bloodGlucose(v.getBloodGlucose())
+                .diuresis(v.getDiuresis())
                 .notes(v.getNotes())
                 .build();
         if (v.getRespiratorySupport() != null) {

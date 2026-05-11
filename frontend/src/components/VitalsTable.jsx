@@ -30,6 +30,8 @@ const rows = [
   { key: 'spo2', label: 'SpO2 (%)' },
   { key: 'respiratoryRate', label: 'FR (rpm)' },
   { key: 'painLevel', label: 'Dolor (EVA)' },
+  { key: 'bloodGlucose', label: 'Glucemia (mg/dL)' },
+  { key: 'diuresis', label: 'Diuresis (mL)' },
 ]
 
 const deviceLabels = {
@@ -43,7 +45,7 @@ const deviceLabels = {
   mechanical_ventilation: 'VM',
 }
 
-export default function VitalsTable({ vitals }) {
+export default function VitalsTable({ vitals, onEdit, onDelete }) {
   if (!vitals || vitals.length === 0) {
     return <p className="text-slate-400 text-center py-8">No hay registros de constantes</p>
   }
@@ -89,6 +91,28 @@ export default function VitalsTable({ vitals }) {
               )
             })}
           </tr>
+          {/* Actions row */}
+          {(onEdit || onDelete) && (
+            <tr className="border-t border-slate-200 bg-slate-50">
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 sticky left-0 bg-slate-50 z-10">Acciones</th>
+              {vitals.map(v => (
+                <td key={v.id} className="px-3 py-2 text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center gap-1">
+                    {onEdit && (
+                      <button onClick={() => onEdit(v)} className="text-blue-500 hover:text-blue-700 text-[11px] font-medium px-1.5 py-0.5 rounded hover:bg-blue-50" title="Editar">
+                        Editar
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button onClick={() => onDelete(v.id)} className="text-red-400 hover:text-red-600 text-[11px] font-medium px-1.5 py-0.5 rounded hover:bg-red-50" title="Borrar">
+                        Borrar
+                      </button>
+                    )}
+                  </div>
+                </td>
+              ))}
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

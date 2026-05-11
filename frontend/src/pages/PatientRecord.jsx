@@ -7,6 +7,7 @@ import ActionBar from '../components/ActionBar'
 import VitalsSummaryCards from '../components/VitalsSummaryCards'
 import VitalsTable from '../components/VitalsTable'
 import NewVitalSignModal from '../components/NewVitalSignModal'
+import EditVitalSignModal from '../components/EditVitalSignModal'
 import InsightsPanel from '../components/InsightsPanel'
 
 function calcAge(birthDate) {
@@ -31,6 +32,7 @@ export default function PatientRecord() {
   const [vitals, setVitals] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editVital, setEditVital] = useState(null)
 
   const fetchData = async () => {
     try {
@@ -75,6 +77,26 @@ export default function PatientRecord() {
     }
   }
 
+  const handleEditVital = async (id, data) => {
+    try {
+      await vitalsApi.update(id, data)
+      setEditVital(null)
+      fetchData()
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error actualizando registro')
+    }
+  }
+
+  const handleDeleteVital = async (id) => {
+    if (!confirm('¿Eliminar este registro de constantes?')) return
+    try {
+      await vitalsApi.delete(id)
+      fetchData()
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error eliminando registro')
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 flex-shrink-0">
@@ -101,7 +123,7 @@ export default function PatientRecord() {
       <div className="flex-1 overflow-auto p-6 pb-24 space-y-4">
         {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} />}
         <VitalsSummaryCards vitals={vitals} />
-        <VitalsTable vitals={vitals} />
+        <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={handleDeleteVital} />
       </div>
 
       <ActionBar patient={patient} admissionId={admission?.id} />
@@ -110,6 +132,14 @@ export default function PatientRecord() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleNewVital}
+        patientName={`${patient.lastName}, ${patient.firstName} · ${age || ''}`}
+      />
+
+      <EditVitalSignModal
+        open={!!editVital}
+        onClose={() => setEditVital(null)}
+        onSubmit={handleEditVital}
+        vitalSign={editVital}
         patientName={`${patient.lastName}, ${patient.firstName} · ${age || ''}`}
       />
     </div>

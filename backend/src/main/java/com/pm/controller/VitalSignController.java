@@ -31,4 +31,15 @@ public class VitalSignController {
     public VitalSignDTO create(@Valid @RequestBody CreateVitalSignRequest request) {
         return vitalSignService.create(request);
     }
+
+    @PutMapping("/{id}")
+    public VitalSignDTO update(@PathVariable Long id, @Valid @RequestBody CreateVitalSignRequest request) {
+        return vitalSignService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        vitalSignService.delete(id);
+    }
 }

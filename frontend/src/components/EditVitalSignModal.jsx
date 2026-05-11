@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 
 const devices = [
@@ -12,29 +12,51 @@ const devices = [
   { value: 'mechanical_ventilation', label: 'Ventilación mecánica' },
 ]
 
-function nowLocal() {
-  const d = new Date()
+function toLocalInput(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }
 
-export default function NewVitalSignModal({ open, onClose, onSubmit, patientName }) {
-  const [form, setForm] = useState({
-    recordedAt: nowLocal(),
-    systolicBp: '', diastolicBp: '', heartRate: '', spo2: '',
-    respiratoryRate: '', temperature: '', painLevel: '',
-    bloodGlucose: '', diuresis: '',
-    consciousnessLevel: 'alerta', notes: '',
-    deviceType: '', flowRate: '', fio2: '', peep: '', ipap: '', epap: '',
-    tidalVolume: '', respiratoryRateSet: '',
-  })
+export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign, patientName }) {
+  const [form, setForm] = useState({})
 
-  if (!open) return null
+  useEffect(() => {
+    if (open && vitalSign) {
+      const rs = vitalSign.respiratorySupport
+      setForm({
+        recordedAt: toLocalInput(vitalSign.recordedAt),
+        systolicBp: vitalSign.systolicBp ?? '',
+        diastolicBp: vitalSign.diastolicBp ?? '',
+        heartRate: vitalSign.heartRate ?? '',
+        spo2: vitalSign.spo2 ?? '',
+        respiratoryRate: vitalSign.respiratoryRate ?? '',
+        temperature: vitalSign.temperature ?? '',
+        painLevel: vitalSign.painLevel ?? '',
+        bloodGlucose: vitalSign.bloodGlucose ?? '',
+        diuresis: vitalSign.diuresis ?? '',
+        consciousnessLevel: vitalSign.consciousnessLevel || 'alerta',
+        notes: vitalSign.notes || '',
+        deviceType: rs?.deviceType || '',
+        flowRate: rs?.flowRate ?? '',
+        fio2: rs?.fio2 ?? '',
+        peep: rs?.peep ?? '',
+        ipap: rs?.ipap ?? '',
+        epap: rs?.epap ?? '',
+        tidalVolume: rs?.tidalVolume ?? '',
+        respiratoryRateSet: rs?.respiratoryRateSet ?? '',
+      })
+    }
+  }, [open, vitalSign])
+
+  if (!open || !vitalSign) return null
 
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value })
 
   const handleSubmit = (e) => {
     e.preventDefault()
     const data = {
+      admissionId: vitalSign.admissionId,
       recordedAt: new Date(form.recordedAt).toISOString(),
       systolicBp: parseInt(form.systolicBp),
       diastolicBp: parseInt(form.diastolicBp),
@@ -56,7 +78,7 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
       tidalVolume: form.tidalVolume ? parseFloat(form.tidalVolume) : null,
       respiratoryRateSet: form.respiratoryRateSet ? parseInt(form.respiratoryRateSet) : null,
     }
-    onSubmit(data)
+    onSubmit(vitalSign.id, data)
   }
 
   const device = form.deviceType
@@ -66,7 +88,7 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl w-[560px] max-h-[85vh] overflow-y-auto shadow-2xl p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-lg font-bold">Nuevo registro de constantes</h3>
+            <h3 className="text-lg font-bold">Editar registro de constantes</h3>
             <p className="text-sm text-slate-500">{patientName}</p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
@@ -190,7 +212,7 @@ export default function NewVitalSignModal({ open, onClose, onSubmit, patientName
 
         <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
           <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Cancelar</button>
-          <button type="submit" className="px-5 py-2.5 rounded-lg text-sm font-medium bg-sky-500 text-white hover:bg-sky-600">Guardar registro</button>
+          <button type="submit" className="px-5 py-2.5 rounded-lg text-sm font-medium bg-sky-500 text-white hover:bg-sky-600">Guardar cambios</button>
         </div>
       </form>
     </div>

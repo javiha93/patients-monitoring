@@ -46,6 +46,8 @@ public class VitalSign {
     @Column(name = "blood_glucose")
     private Integer bloodGlucose;
 
+    private Integer diuresis;
+
     private String notes;
 
     @Column(name = "created_at", updatable = false)

@@ -29,6 +29,7 @@ public class CreateVitalSignRequest {
     private Integer painLevel;
     private String consciousnessLevel;
     private Integer bloodGlucose;
+    private Integer diuresis;
     private String notes;
 
     // Respiratory support (optional)

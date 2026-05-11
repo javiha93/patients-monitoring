@@ -51,6 +51,7 @@ public class VitalSignService {
                 .temperature(req.getTemperature())
                 .painLevel(req.getPainLevel())
                 .bloodGlucose(req.getBloodGlucose())
+                .diuresis(req.getDiuresis())
                 .notes(req.getNotes())
                 .build();
 
@@ -78,5 +79,40 @@ public class VitalSignService {
         }
 
         return VitalSignDTO.fromEntity(vs);
+    }
+
+    @Transactional
+    public VitalSignDTO update(Long id, CreateVitalSignRequest req) {
+        VitalSign vs = vitalSignRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("VitalSign not found: " + id));
+
+        vs.setRecordedAt(req.getRecordedAt());
+        vs.setSystolicBp(req.getSystolicBp());
+        vs.setDiastolicBp(req.getDiastolicBp());
+        vs.setHeartRate(req.getHeartRate());
+        vs.setSpo2(req.getSpo2());
+        vs.setRespiratoryRate(req.getRespiratoryRate());
+        vs.setTemperature(req.getTemperature());
+        vs.setPainLevel(req.getPainLevel());
+        vs.setBloodGlucose(req.getBloodGlucose());
+        vs.setDiuresis(req.getDiuresis());
+        vs.setNotes(req.getNotes());
+
+        if (req.getConsciousnessLevel() != null && !req.getConsciousnessLevel().isBlank()) {
+            vs.setConsciousnessLevel(VitalSign.ConsciousnessLevel.valueOf(req.getConsciousnessLevel()));
+        } else {
+            vs.setConsciousnessLevel(null);
+        }
+
+        vs = vitalSignRepository.save(vs);
+        return VitalSignDTO.fromEntity(vs);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!vitalSignRepository.existsById(id)) {
+            throw new RuntimeException("VitalSign not found: " + id);
+        }
+        vitalSignRepository.deleteById(id);
     }
 }
