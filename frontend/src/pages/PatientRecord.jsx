@@ -10,6 +10,7 @@ import NewVitalSignModal from '../components/NewVitalSignModal'
 import EditVitalSignModal from '../components/EditVitalSignModal'
 import { useToast, ToastContainer } from '../components/Toast'
 import InsightsPanel from '../components/InsightsPanel'
+import NursingAssessmentTab from '../components/NursingAssessmentTab'
 
 function calcAge(birthDate) {
   if (!birthDate) return null
@@ -35,6 +36,7 @@ export default function PatientRecord() {
   const [modalOpen, setModalOpen] = useState(false)
   const { toasts, removeToast, toast } = useToast()
   const [editVital, setEditVital] = useState(null)
+  const [activeTab, setActiveTab] = useState('vitals')
 
   const fetchData = async () => {
     try {
@@ -112,9 +114,11 @@ export default function PatientRecord() {
             {admission ? ` · ${admission.matCategory || ''}` : ''}
           </div>
         </div>
-        <button onClick={() => setModalOpen(true)} className="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-sky-600">
-          <Plus size={16} /> Nuevo registro
-        </button>
+        {activeTab === 'vitals' && (
+          <button onClick={() => setModalOpen(true)} className="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-sky-600">
+            <Plus size={16} /> Nuevo registro
+          </button>
+        )}
         {admission && (
           <button onClick={handleDischarge} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
             Alta hospitalaria
@@ -122,10 +126,30 @@ export default function PatientRecord() {
         )}
       </div>
 
+      {/* Tabs */}
+      <div className="bg-white border-b border-slate-200 px-6 flex gap-0 flex-shrink-0">
+        {[
+          { key: 'vitals', label: 'Constantes vitales' },
+          { key: 'nursing', label: 'Valoración enfermería' },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px
+              ${activeTab === tab.key
+                ? 'border-sky-500 text-sky-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+          >{tab.label}</button>
+        ))}
+      </div>
+
       <div className="flex-1 overflow-auto p-6 pb-24 space-y-4">
-        {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} />}
-        <VitalsSummaryCards vitals={vitals} />
-        <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={handleDeleteVital} />
+        {activeTab === 'vitals' && <>
+          {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} />}
+          <VitalsSummaryCards vitals={vitals} />
+          <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={handleDeleteVital} />
+        </>}
+        {activeTab === 'nursing' && admission && (
+          <NursingAssessmentTab admissionId={admission.id} toast={toast} />
+        )}
       </div>
 
       <ActionBar patient={patient} admissionId={admission?.id} />
