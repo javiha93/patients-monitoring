@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import VitalInput, { validateVitals } from './VitalInput'
 
 const devices = [
   { value: '', label: 'Sin soporte' },
@@ -20,6 +21,7 @@ function toLocalInput(isoStr) {
 
 export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign, patientName }) {
   const [form, setForm] = useState({})
+  const [errors, setErrors] = useState({})
 
   useEffect(() => {
     if (open && vitalSign) {
@@ -46,15 +48,24 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
         tidalVolume: rs?.tidalVolume ?? '',
         respiratoryRateSet: rs?.respiratoryRateSet ?? '',
       })
+      setErrors({})
     }
   }, [open, vitalSign])
 
   if (!open || !vitalSign) return null
 
-  const set = (f) => (e) => setForm({ ...form, [f]: e.target.value })
+  const set = (f) => (e) => {
+    setForm({ ...form, [f]: e.target.value })
+    if (errors[f]) setErrors({ ...errors, [f]: undefined })
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    const errs = validateVitals(form)
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      return
+    }
     const data = {
       admissionId: vitalSign.admissionId,
       recordedAt: form.recordedAt + ':00',
@@ -84,8 +95,8 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
   const device = form.deviceType
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center" onClick={e => e.target === e.currentTarget && onClose()}>
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl w-[560px] max-h-[85vh] overflow-y-auto shadow-2xl p-6">
+    <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && onClose()}>
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl w-full max-w-[560px] max-h-[85vh] overflow-y-auto shadow-2xl p-4 sm:p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-lg font-bold">Editar registro de constantes</h3>
@@ -94,7 +105,7 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">Fecha y hora</label>
             <input type="datetime-local" value={form.recordedAt} onChange={set('recordedAt')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
@@ -103,50 +114,23 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Constantes vitales</div>
         <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">TAS (mmHg)</label>
-            <input type="number" value={form.systolicBp} onChange={set('systolicBp')} placeholder="120" min="40" max="300" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">TAD (mmHg)</label>
-            <input type="number" value={form.diastolicBp} onChange={set('diastolicBp')} placeholder="80" min="20" max="200" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
+          <VitalInput label="TAS (mmHg)" field="systolicBp" form={form} set={set} error={errors.systolicBp} placeholder="120" />
+          <VitalInput label="TAD (mmHg)" field="diastolicBp" form={form} set={set} error={errors.diastolicBp} placeholder="80" />
         </div>
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">FC (bpm)</label>
-            <input type="number" value={form.heartRate} onChange={set('heartRate')} placeholder="80" min="20" max="300" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">SpO2 (%)</label>
-            <input type="number" value={form.spo2} onChange={set('spo2')} placeholder="98" min="30" max="100" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">FR (rpm)</label>
-            <input type="number" value={form.respiratoryRate} onChange={set('respiratoryRate')} placeholder="16" min="4" max="60" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+          <VitalInput label="FC (bpm)" field="heartRate" form={form} set={set} error={errors.heartRate} placeholder="80" />
+          <VitalInput label="SpO2 (%)" field="spo2" form={form} set={set} error={errors.spo2} placeholder="98" />
+          <VitalInput label="FR (rpm)" field="respiratoryRate" form={form} set={set} error={errors.respiratoryRate} placeholder="16" />
         </div>
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">Tª (°C)</label>
-            <input type="number" step="0.1" value={form.temperature} onChange={set('temperature')} placeholder="36.5" min="30" max="43" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">Dolor (0-10)</label>
-            <input type="number" min="0" max="10" value={form.painLevel} onChange={set('painLevel')} placeholder="0" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+          <VitalInput label="Tª (°C)" field="temperature" form={form} set={set} error={errors.temperature} placeholder="36.5" step="0.1" />
+          <VitalInput label="Dolor (0-10)" field="painLevel" form={form} set={set} error={errors.painLevel} placeholder="0" />
         </div>
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Otros registros</div>
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">Glucemia capilar (mg/dL)</label>
-            <input type="number" value={form.bloodGlucose} onChange={set('bloodGlucose')} placeholder="120" min="10" max="700" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">Diuresis (mL)</label>
-            <input type="number" value={form.diuresis} onChange={set('diuresis')} placeholder="200" min="0" max="5000" className="px-2.5 py-2 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" />
-          </div>
+          <VitalInput label="Glucemia capilar (mg/dL)" field="bloodGlucose" form={form} set={set} error={errors.bloodGlucose} placeholder="120" />
+          <VitalInput label="Diuresis (mL)" field="diuresis" form={form} set={set} error={errors.diuresis} placeholder="200" />
         </div>
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Soporte respiratorio</div>
