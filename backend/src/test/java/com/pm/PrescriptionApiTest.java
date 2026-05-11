@@ -278,6 +278,45 @@ class PrescriptionApiTest {
                 .andExpect(jsonPath("$[0].administrations", hasSize(2)));
     }
 
+    // ── KAN-57: Editar administración ──
+
+    @Test
+    @DisplayName("[KAN-57] Editar dosis y observación de administración")
+    void updateAdministration() throws Exception {
+        String resp = mvc.perform(post("/api/prescriptions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(buildRx("Paracetamol", "1000", "mg", "fixed"))))
+                .andReturn().getResponse().getContentAsString();
+        Long rxId = mapper.readTree(resp).get("id").asLong();
+
+        SignAdministrationRequest sign = new SignAdministrationRequest();
+        sign.setPrescriptionId(rxId);
+        sign.setAdministeredAt(LocalDateTime.now());
+        sign.setSignedBy("Enfermera Ana");
+        sign.setDoseGiven("1000");
+        sign.setNote("");
+
+        String adminResp = mvc.perform(post("/api/prescriptions/sign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(sign)))
+                .andReturn().getResponse().getContentAsString();
+        Long adminId = mapper.readTree(adminResp).get("id").asLong();
+
+        // Update dose and note
+        mvc.perform(patch("/api/prescriptions/administration/" + adminId)
+                .param("doseGiven", "500")
+                .param("note", "Reducida por náuseas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.doseGiven").value("500"))
+                .andExpect(jsonPath("$.note").value("Reducida por náuseas"));
+
+        // Verify persisted
+        mvc.perform(get("/api/prescriptions/admission/" + admissionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].administrations[0].doseGiven").value("500"))
+                .andExpect(jsonPath("$[0].administrations[0].note").value("Reducida por náuseas"));
+    }
+
     // ── KAN-58: Insulina ──
 
     @Test

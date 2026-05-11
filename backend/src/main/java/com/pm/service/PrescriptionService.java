@@ -98,6 +98,15 @@ public class PrescriptionService {
     }
 
     @Transactional
+    public AdministrationDTO updateAdministration(Long administrationId, String doseGiven, String note) {
+        MedicationAdministration ma = adminRepo.findById(administrationId)
+                .orElseThrow(() -> new RuntimeException("Administration not found"));
+        if (doseGiven != null) ma.setDoseGiven(doseGiven);
+        if (note != null) ma.setNote(note);
+        return AdministrationDTO.fromEntity(adminRepo.save(ma));
+    }
+
+    @Transactional
     public PrescriptionDTO updateDose(Long prescriptionId, String newAmount, String changedBy, String reason) {
         AdmissionPrescription p = prescriptionRepo.findById(prescriptionId)
                 .orElseThrow(() -> new RuntimeException("Prescription not found"));

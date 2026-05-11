@@ -8,5 +8,7 @@ export const prescriptionApi = {
   updateDose: (id, newAmount, changedBy, reason) =>
     api.patch(`/prescriptions/${id}/dose`, null, { params: { newAmount, changedBy, reason } }),
   sign: (data) => api.post('/prescriptions/sign', data),
+  updateAdministration: (administrationId, data) =>
+    api.patch(`/prescriptions/administration/${administrationId}`, null, { params: data }),
   unsign: (administrationId) => api.delete(`/prescriptions/unsign/${administrationId}`),
 }

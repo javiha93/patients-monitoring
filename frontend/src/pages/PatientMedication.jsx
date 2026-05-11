@@ -170,7 +170,13 @@ export default function PatientMedication() {
         admin={editModal.admin}
         prescription={editModal.prescription}
         onUpdate={async (adminId, data) => {
-          setEditModal({ open: false, admin: null, prescription: null })
+          try {
+            await prescriptionApi.updateAdministration(adminId, data)
+            setEditModal({ open: false, admin: null, prescription: null })
+            fetchData()
+          } catch (e) {
+            alert(e.response?.data?.error || 'Error al actualizar')
+          }
         }}
         onUnsign={async (adminId) => {
           await handleDirectUnsign(adminId)

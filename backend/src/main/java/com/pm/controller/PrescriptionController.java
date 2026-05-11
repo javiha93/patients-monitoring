@@ -53,6 +53,14 @@ public class PrescriptionController {
         return service.signAdministration(request);
     }
 
+    @PatchMapping("/administration/{administrationId}")
+    public AdministrationDTO updateAdministration(
+            @PathVariable Long administrationId,
+            @RequestParam(required = false) String doseGiven,
+            @RequestParam(required = false) String note) {
+        return service.updateAdministration(administrationId, doseGiven, note);
+    }
+
     @DeleteMapping("/unsign/{administrationId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unsign(@PathVariable Long administrationId) {

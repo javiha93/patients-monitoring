@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import MedicationGrid from '../components/MedicationGrid'
 
@@ -42,7 +42,7 @@ describe('KAN-52: Grid de medicación 72h — Estructura', () => {
   })
 
   it('[KAN-52] muestra 72 columnas de horas en formato HH:00', () => {
-    const { container } = render(<MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />)
+    render(<MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />)
     // 08:00 appears 3 times in 72h grid (day 1, day 2, day 3)
     const hours08 = screen.getAllByText('08:00')
     expect(hours08.length).toBe(3)
@@ -112,17 +112,17 @@ describe('KAN-56: Prescripciones — Información del medicamento', () => {
   })
 })
 
-describe('KAN-57: Firma directa — Medicación normal', () => {
-  it('[KAN-57] clic en celda vacía llama onDirectSign (firma directa sin modal)', () => {
+describe('KAN-57: Firma directa — Solo celdas pautadas', () => {
+  it('[KAN-57] clic en celda pautada llama onDirectSign con datos correctos', () => {
     const onDirectSign = vi.fn()
     const { container } = render(
       <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} onDirectSign={onDirectSign} />
     )
-    // Click any empty cell in the med row (not section header)
-    const cells = container.querySelectorAll('tbody td')
-    const emptyCell = Array.from(cells).find(td => td.textContent === '' && td.style.height === '44px')
-    if (emptyCell) {
-      fireEvent.click(emptyCell)
+    // Find a scheduled cell (has data-scheduled attribute)
+    const scheduledCell = container.querySelector('td[data-scheduled="true"]')
+    if (scheduledCell) {
+      fireEvent.click(scheduledCell)
+      expect(onDirectSign).toHaveBeenCalledTimes(1)
       expect(onDirectSign).toHaveBeenCalledWith(expect.objectContaining({
         prescriptionId: 1,
         doseGiven: '1000',
@@ -130,19 +130,36 @@ describe('KAN-57: Firma directa — Medicación normal', () => {
     }
   })
 
-  it('[KAN-57] clic en celda pautada (▶) llama onDirectSign', () => {
+  it('[KAN-57] clic en celda NO pautada NO llama onDirectSign', () => {
     const onDirectSign = vi.fn()
     const { container } = render(
       <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} onDirectSign={onDirectSign} />
     )
-    const scheduledCell = Array.from(container.querySelectorAll('td')).find(td => td.textContent.includes('▶'))
-    if (scheduledCell) {
-      fireEvent.click(scheduledCell)
-      expect(onDirectSign).toHaveBeenCalled()
+    // Find a non-scheduled, non-signed cell
+    const nonScheduledCell = Array.from(container.querySelectorAll('td'))
+      .find(td => !td.dataset.scheduled && !td.dataset.signed && td.style.height === '44px')
+    if (nonScheduledCell) {
+      fireEvent.click(nonScheduledCell)
+      expect(onDirectSign).not.toHaveBeenCalled()
     }
   })
 
-  it('[KAN-57] muestra ✓ y dosis en celda firmada', () => {
+  it('[KAN-57] firma solo una celda, no múltiples', () => {
+    const onDirectSign = vi.fn()
+    const { container } = render(
+      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} onDirectSign={onDirectSign} />
+    )
+    const scheduledCell = container.querySelector('td[data-scheduled="true"]')
+    if (scheduledCell) {
+      fireEvent.click(scheduledCell)
+      // Should be called exactly once, not for multiple past hours
+      expect(onDirectSign).toHaveBeenCalledTimes(1)
+    }
+  })
+})
+
+describe('KAN-57: Celda firmada — Muestra dosis con unidad', () => {
+  it('[KAN-57] muestra ✓ y dosis CON unidad en celda firmada', () => {
     const signedMed = {
       ...fixedMed,
       administrations: [{
@@ -154,10 +171,57 @@ describe('KAN-57: Firma directa — Medicación normal', () => {
       <MedicationGrid prescriptions={[signedMed]} {...defaultProps} />
     )
     expect(container.textContent).toContain('✓')
-    expect(container.textContent).toContain('1000')
+    // Must show dose WITH unit (1000mg, not just 1000)
+    expect(container.textContent).toContain('1000mg')
   })
 
-  it('[KAN-57] muestra punto azul en celda con observación', () => {
+  it('[KAN-57] muestra dosis con unidad "g" correctamente', () => {
+    const medInGrams = {
+      ...fixedMed,
+      amount: '1', unit: 'g',
+      administrations: [{
+        id: 101, administeredAt: '2024-01-10T08:30:00',
+        doseGiven: '1', signedBy: 'Enfermera Ana', note: null,
+      }],
+    }
+    const { container } = render(
+      <MedicationGrid prescriptions={[medInGrams]} {...defaultProps} />
+    )
+    // Must show "1g" not just "1"
+    expect(container.textContent).toContain('1g')
+  })
+})
+
+describe('KAN-57: Celda firmada — Clic abre EditModal (no confirm)', () => {
+  it('[KAN-57] clic en celda firmada llama onOpenEditModal (no confirm dialog)', () => {
+    const onOpenEditModal = vi.fn()
+    const onDirectUnsign = vi.fn()
+    const signedMed = {
+      ...fixedMed,
+      administrations: [{
+        id: 100, administeredAt: '2024-01-10T08:30:00',
+        doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
+      }],
+    }
+    const { container } = render(
+      <MedicationGrid prescriptions={[signedMed]} {...defaultProps}
+        onOpenEditModal={onOpenEditModal} onDirectUnsign={onDirectUnsign} />
+    )
+    const signedCell = container.querySelector('td[data-signed="true"]')
+    if (signedCell) {
+      fireEvent.click(signedCell)
+      // Should open edit modal, NOT call unsign or show confirm
+      expect(onOpenEditModal).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 100, signedBy: 'Enfermera Ana' }),
+        expect.objectContaining({ id: 1, name: 'Paracetamol' })
+      )
+      expect(onDirectUnsign).not.toHaveBeenCalled()
+    }
+  })
+})
+
+describe('KAN-57: Observación — Indicador visual y tooltip', () => {
+  it('[KAN-57] muestra indicador azul en celda con observación', () => {
     const signedWithNote = {
       ...fixedMed,
       administrations: [{
@@ -168,60 +232,80 @@ describe('KAN-57: Firma directa — Medicación normal', () => {
     const { container } = render(
       <MedicationGrid prescriptions={[signedWithNote]} {...defaultProps} />
     )
-    const blueDot = container.querySelector('.bg-blue-500.rounded-full')
-    expect(blueDot).toBeInTheDocument()
+    const dot = container.querySelector('[data-testid="observation-dot"]')
+    expect(dot).toBeInTheDocument()
+    expect(dot.classList.contains('bg-blue-500')).toBe(true)
+  })
+
+  it('[KAN-57] NO muestra indicador azul en celda sin observación', () => {
+    const signedNoNote = {
+      ...fixedMed,
+      administrations: [{
+        id: 100, administeredAt: '2024-01-10T08:30:00',
+        doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
+      }],
+    }
+    const { container } = render(
+      <MedicationGrid prescriptions={[signedNoNote]} {...defaultProps} />
+    )
+    const dot = container.querySelector('[data-testid="observation-dot"]')
+    expect(dot).not.toBeInTheDocument()
+  })
+
+  it('[KAN-57] muestra tooltip con firmante al hacer hover en celda firmada', () => {
+    const signedMed = {
+      ...fixedMed,
+      administrations: [{
+        id: 100, administeredAt: '2024-01-10T08:30:00',
+        doseGiven: '1000', signedBy: 'Enfermera Ana', note: 'Paciente con náuseas',
+      }],
+    }
+    const { container } = render(
+      <MedicationGrid prescriptions={[signedMed]} {...defaultProps} />
+    )
+    // Find the signed cell's parent wrapper (CellTooltip wraps in a div.contents)
+    const signedCell = container.querySelector('td[data-signed="true"]')
+    const wrapper = signedCell?.closest('.contents')
+    if (wrapper) {
+      fireEvent.mouseEnter(wrapper)
+      const tooltip = container.querySelector('[data-testid="cell-tooltip"]')
+      expect(tooltip).toBeInTheDocument()
+      expect(tooltip.textContent).toContain('Enfermera Ana')
+      expect(tooltip.textContent).toContain('1000mg')
+      expect(tooltip.textContent).toContain('Paciente con náuseas')
+    }
   })
 })
 
-describe('KAN-57: Desfirmar — Clic directo en celda firmada', () => {
-  it('[KAN-57] clic en celda firmada llama onDirectUnsign (desfirma directa)', () => {
-    // Mock window.confirm
-    const originalConfirm = window.confirm
-    window.confirm = vi.fn(() => true)
+describe('KAN-57: Siguiente dosis — Solo una celda con ▶', () => {
+  it('[KAN-57] muestra ▶ solo en la SIGUIENTE dosis pautada (no en todas)', () => {
+    // Use a future admission date so scheduled slots are in the future
+    const futureDate = new Date()
+    futureDate.setHours(futureDate.getHours() - 1) // start 1h ago
+    futureDate.setMinutes(0, 0, 0)
+    const futureAdmission = futureDate.toISOString()
 
-    const onDirectUnsign = vi.fn()
-    const signedMed = {
+    // Med with c/8h scheduled at hours that will appear in the 72h window
+    const hour = futureDate.getHours()
+    // Schedule at current hour +1, +9, +17 (so they're in the future)
+    const h1 = (hour + 1) % 24
+    const h2 = (hour + 9) % 24
+    const h3 = (hour + 17) % 24
+    const futureMed = {
       ...fixedMed,
-      administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
-        doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
-      }],
+      scheduledHours: `${h1},${h2},${h3}`,
+      administrations: [],
     }
+
     const { container } = render(
-      <MedicationGrid prescriptions={[signedMed]} {...defaultProps} onDirectUnsign={onDirectUnsign} />
+      <MedicationGrid prescriptions={[futureMed]} admissionDate={futureAdmission}
+        onDirectSign={vi.fn()} onDirectUnsign={vi.fn()}
+        onOpenInsulinModal={vi.fn()} onOpenEditModal={vi.fn()} />
     )
-    const signedCell = Array.from(container.querySelectorAll('td')).find(td => td.textContent.includes('✓'))
-    if (signedCell) {
-      fireEvent.click(signedCell)
-      expect(window.confirm).toHaveBeenCalled()
-      expect(onDirectUnsign).toHaveBeenCalledWith(100)
-    }
 
-    window.confirm = originalConfirm
-  })
-
-  it('[KAN-57] cancelar confirm no desfirma', () => {
-    const originalConfirm = window.confirm
-    window.confirm = vi.fn(() => false)
-
-    const onDirectUnsign = vi.fn()
-    const signedMed = {
-      ...fixedMed,
-      administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
-        doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
-      }],
-    }
-    const { container } = render(
-      <MedicationGrid prescriptions={[signedMed]} {...defaultProps} onDirectUnsign={onDirectUnsign} />
-    )
-    const signedCell = Array.from(container.querySelectorAll('td')).find(td => td.textContent.includes('✓'))
-    if (signedCell) {
-      fireEvent.click(signedCell)
-      expect(onDirectUnsign).not.toHaveBeenCalled()
-    }
-
-    window.confirm = originalConfirm
+    // Only ONE ▶ should appear (the next dose)
+    const arrows = Array.from(container.querySelectorAll('td')).filter(td => td.textContent.includes('▶'))
+    expect(arrows.length).toBe(1)
   })
 })
 
@@ -237,10 +321,9 @@ describe('KAN-58: Insulina — Firma con modal', () => {
         onOpenInsulinModal={onOpenInsulinModal}
       />
     )
-    const cells = container.querySelectorAll('tbody td')
-    const emptyCell = Array.from(cells).find(td => td.style.height === '44px' && !td.textContent.includes('✓'))
-    if (emptyCell) {
-      fireEvent.click(emptyCell)
+    const scheduledCell = container.querySelector('td[data-scheduled="true"]')
+    if (scheduledCell) {
+      fireEvent.click(scheduledCell)
       expect(onOpenInsulinModal).toHaveBeenCalledWith(insulinMed, expect.any(String))
       expect(onDirectSign).not.toHaveBeenCalled()
     }
