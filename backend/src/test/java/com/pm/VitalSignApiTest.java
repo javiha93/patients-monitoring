@@ -34,6 +34,7 @@ class VitalSignApiTest {
     private ObjectMapper mapper;
 
     private Long admissionId;
+    private Long patientId;
 
     @BeforeEach
     void setup() throws Exception {
@@ -52,6 +53,7 @@ class VitalSignApiTest {
                 .content(mapper.writeValueAsString(req)))
                 .andReturn().getResponse().getContentAsString();
 
+        patientId = mapper.readTree(response).get("id").asLong();
         admissionId = mapper.readTree(response).get("activeAdmission").get("id").asLong();
     }
 
@@ -162,5 +164,47 @@ class VitalSignApiTest {
         mvc.perform(get("/api/vitals/admission/" + admissionId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("Historical vitals returns records from previous admissions only")
+    void historicalVitals() throws Exception {
+        // Create a vital in the first admission
+        CreateVitalSignRequest vs1 = baseRequest();
+        vs1.setHeartRate(60);
+        mvc.perform(post("/api/vitals").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(vs1)));
+
+        // Discharge and reopen to create a second admission
+        mvc.perform(post("/api/patients/" + patientId + "/discharge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dischargeDate\":\"" + LocalDateTime.now().toString() + "\"}"));
+
+        String reopenResp = mvc.perform(post("/api/patients/" + patientId + "/reopen")
+                .param("triageLevel", "3"))
+                .andReturn().getResponse().getContentAsString();
+        Long newAdmissionId = mapper.readTree(reopenResp).get("activeAdmission").get("id").asLong();
+
+        // Create a vital in the new admission
+        CreateVitalSignRequest vs2 = new CreateVitalSignRequest();
+        vs2.setAdmissionId(newAdmissionId);
+        vs2.setRecordedAt(LocalDateTime.now());
+        vs2.setHeartRate(90);
+        mvc.perform(post("/api/vitals").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(vs2)));
+
+        // Historical should return only the first admission's vital
+        mvc.perform(get("/api/vitals/patient/" + patientId + "/historical")
+                .param("excludeAdmissionId", newAdmissionId.toString())
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].heartRate").value(60))
+                .andExpect(jsonPath("$.hasMore").value(false));
+
+        // Current admission should still have only its own vital
+        mvc.perform(get("/api/vitals/admission/" + newAdmissionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].heartRate").value(90));
     }
 }

@@ -19,6 +19,7 @@ const mockAssessments = [
 vi.mock('../services/nursingApi', () => ({
   nursingApi: {
     getByAdmission: vi.fn(() => Promise.resolve({ data: mockAssessments })),
+    getHistorical: vi.fn(() => Promise.resolve({ data: { content: [], hasMore: false } })),
     create: vi.fn(() => Promise.resolve({ data: { id: 2 } })),
     update: vi.fn(() => Promise.resolve({ data: { id: 1 } })),
     delete: vi.fn(() => Promise.resolve()),
@@ -27,8 +28,8 @@ vi.mock('../services/nursingApi', () => ({
 
 const mockToast = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }
 
-function renderTab() {
-  return render(<NursingAssessmentTab admissionId={10} toast={mockToast} />)
+function renderTab(props = {}) {
+  return render(<NursingAssessmentTab admissionId={10} patientId={1} toast={mockToast} {...props} />)
 }
 
 describe('KAN-79: Valoración de enfermería', () => {
@@ -282,5 +283,35 @@ describe('KAN-79: Valoración de enfermería', () => {
       Array.from(s.options).some(o => o.value === 'entrada')
     )
     expect(typeSelect).toBeUndefined()
+  })
+
+  it('muestra botón "Ver anteriores" cuando hay patientId', async () => {
+    renderTab()
+    await waitFor(() => {
+      expect(screen.getByText('Ver anteriores')).toBeInTheDocument()
+    })
+  })
+
+  it('clic en "Ver anteriores" carga valoraciones históricas', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    const historicalAssessment = {
+      id: 99, admissionId: 5, recordedAt: '2023-06-01T10:00:00',
+      assessmentType: 'entrada', consciousness: 'somnoliento', glasgowScore: 12,
+      hasPain: false, mood: 'tranquilo', breathingPattern: 'normal', mobility: 'sin_alteraciones',
+    }
+    nursingApi.getHistorical.mockResolvedValueOnce({ data: { content: [historicalAssessment], hasMore: false } })
+    renderTab()
+    await waitFor(() => screen.getByText('Ver anteriores'))
+    fireEvent.click(screen.getByText('Ver anteriores'))
+    await waitFor(() => {
+      expect(nursingApi.getHistorical).toHaveBeenCalledWith(1, 10, 0, 5)
+      expect(screen.getByText('Valoraciones de ingresos anteriores')).toBeInTheDocument()
+    })
+  })
+
+  it('no muestra botón "Ver anteriores" sin patientId', async () => {
+    renderTab({ patientId: undefined })
+    await waitFor(() => screen.getByText('Nueva valoración'))
+    expect(screen.queryByText('Ver anteriores')).not.toBeInTheDocument()
   })
 })

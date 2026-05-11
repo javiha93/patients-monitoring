@@ -4,10 +4,14 @@ import com.pm.dto.*;
 import com.pm.entity.*;
 import com.pm.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +26,17 @@ public class VitalSignService {
                 .stream()
                 .map(VitalSignDTO::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Paginated vitals from previous admissions (excluding excludeAdmissionId).
+     */
+    public Map<String, Object> getHistorical(Long patientId, Long excludeAdmissionId, int page, int size) {
+        Page<VitalSign> result = vitalSignRepository.findHistoricalByPatient(patientId, excludeAdmissionId, PageRequest.of(page, size));
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", result.getContent().stream().map(VitalSignDTO::fromEntity).collect(Collectors.toList()));
+        response.put("hasMore", result.hasNext());
+        return response;
     }
 
     /**

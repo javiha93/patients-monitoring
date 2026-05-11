@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/nursing-assessments")
@@ -18,6 +19,15 @@ public class NursingAssessmentController {
     @GetMapping("/admission/{admissionId}")
     public List<NursingAssessmentDTO> getByAdmission(@PathVariable Long admissionId) {
         return service.getByAdmission(admissionId);
+    }
+
+    @GetMapping("/patient/{patientId}/historical")
+    public Map<String, Object> getHistorical(
+            @PathVariable Long patientId,
+            @RequestParam Long excludeAdmissionId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        return service.getHistorical(patientId, excludeAdmissionId, page, size);
     }
 
     @PostMapping

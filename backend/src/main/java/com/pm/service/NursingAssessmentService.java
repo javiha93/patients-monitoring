@@ -6,12 +6,16 @@ import com.pm.entity.NursingAssessment;
 import com.pm.repository.AdmissionRepository;
 import com.pm.repository.NursingAssessmentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +24,17 @@ public class NursingAssessmentService {
 
     private final NursingAssessmentRepository repository;
     private final AdmissionRepository admissionRepository;
+
+    /**
+     * Paginated assessments from previous admissions (excluding excludeAdmissionId).
+     */
+    public Map<String, Object> getHistorical(Long patientId, Long excludeAdmissionId, int page, int size) {
+        Page<NursingAssessment> result = repository.findHistoricalByPatient(patientId, excludeAdmissionId, PageRequest.of(page, size));
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", result.getContent().stream().map(NursingAssessmentDTO::fromEntity).collect(Collectors.toList()));
+        response.put("hasMore", result.hasNext());
+        return response;
+    }
 
     public List<NursingAssessmentDTO> getByAdmission(Long admissionId) {
         return repository.findByAdmissionIdOrderByRecordedAtDesc(admissionId)

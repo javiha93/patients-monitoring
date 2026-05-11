@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChevronLeft, Plus } from 'lucide-react'
+import { ChevronLeft, Plus, History } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { vitalsApi } from '../services/vitalsApi'
 import ActionBar from '../components/ActionBar'
@@ -39,6 +39,10 @@ export default function PatientRecord() {
   const [editVital, setEditVital] = useState(null)
   const [activeTab, setActiveTab] = useState('vitals')
   const [confirmAction, setConfirmAction] = useState(null) // { message, action }
+  const [historicalVitals, setHistoricalVitals] = useState([])
+  const [historicalVitalsPage, setHistoricalVitalsPage] = useState(0)
+  const [historicalVitalsHasMore, setHistoricalVitalsHasMore] = useState(true)
+  const [loadingHistorical, setLoadingHistorical] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -62,6 +66,21 @@ export default function PatientRecord() {
 
   const age = calcAge(patient.birthDate)
   const admission = patient.activeAdmission
+
+  const loadMoreVitals = useCallback(async () => {
+    if (!patient?.activeAdmission || loadingHistorical) return
+    setLoadingHistorical(true)
+    try {
+      const { data } = await vitalsApi.getHistorical(patient.id, patient.activeAdmission.id, historicalVitalsPage, 10)
+      setHistoricalVitals(prev => [...prev, ...data.content])
+      setHistoricalVitalsHasMore(data.hasMore)
+      setHistoricalVitalsPage(prev => prev + 1)
+    } catch (e) {
+      toast.error('Error cargando registros anteriores')
+    } finally {
+      setLoadingHistorical(false)
+    }
+  }, [patient, historicalVitalsPage, loadingHistorical])
 
   const handleDischarge = async () => {
     try {
@@ -146,9 +165,26 @@ export default function PatientRecord() {
           {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} />}
           <VitalsSummaryCards vitals={vitals} />
           <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} />
+
+          {historicalVitals.length > 0 && (
+            <>
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider pt-4">Registros de ingresos anteriores</h3>
+              <VitalsTable vitals={historicalVitals} />
+            </>
+          )}
+
+          {admission && historicalVitalsHasMore && (
+            <div className="flex justify-center pt-2">
+              <button onClick={loadMoreVitals} disabled={loadingHistorical}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50">
+                <History size={15} />
+                {loadingHistorical ? 'Cargando...' : 'Ver anteriores'}
+              </button>
+            </div>
+          )}
         </>}
         {activeTab === 'nursing' && admission && (
-          <NursingAssessmentTab admissionId={admission.id} toast={toast} />
+          <NursingAssessmentTab admissionId={admission.id} patientId={patient.id} toast={toast} />
         )}
       </div>
 

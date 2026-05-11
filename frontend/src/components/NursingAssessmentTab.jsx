@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Plus, Trash2, Clock, ChevronDown, ChevronUp, HelpCircle, Pencil } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, Trash2, Clock, ChevronDown, ChevronUp, HelpCircle, Pencil, History } from 'lucide-react'
 import { nursingApi } from '../services/nursingApi'
 import GlasgowModal from './GlasgowModal'
 import ConfirmModal from './ConfirmModal'
@@ -101,13 +101,17 @@ function formatTime(dateStr) {
 
 const typeLabels = { entrada: 'Entrada', sucesiva: 'Sucesiva', salida: 'Salida' }
 
-export default function NursingAssessmentTab({ admissionId, toast }) {
+export default function NursingAssessmentTab({ admissionId, patientId, toast }) {
   const [assessments, setAssessments] = useState([])
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [historicalAssessments, setHistoricalAssessments] = useState([])
+  const [historicalPage, setHistoricalPage] = useState(0)
+  const [historicalHasMore, setHistoricalHasMore] = useState(true)
+  const [loadingHistorical, setLoadingHistorical] = useState(false)
 
   const fetch = async () => {
     try {
@@ -117,6 +121,21 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
   }
 
   useEffect(() => { if (admissionId) fetch() }, [admissionId])
+
+  const loadMoreAssessments = useCallback(async () => {
+    if (!patientId || !admissionId || loadingHistorical) return
+    setLoadingHistorical(true)
+    try {
+      const { data } = await nursingApi.getHistorical(patientId, admissionId, historicalPage, 5)
+      setHistoricalAssessments(prev => [...prev, ...data.content])
+      setHistoricalHasMore(data.hasMore)
+      setHistoricalPage(prev => prev + 1)
+    } catch {
+      toast.error('Error cargando valoraciones anteriores')
+    } finally {
+      setLoadingHistorical(false)
+    }
+  }, [patientId, admissionId, historicalPage, loadingHistorical])
 
   const set = (field, val) => setForm(prev => ({ ...prev, [field]: val }))
 
@@ -281,6 +300,23 @@ export default function NursingAssessmentTab({ admissionId, toast }) {
 
       {!formOpen && assessments.length === 0 && (
         <p className="text-slate-400 text-center py-8">No hay valoraciones registradas</p>
+      )}
+
+      {historicalAssessments.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Valoraciones de ingresos anteriores</h3>
+          {historicalAssessments.map(a => <AssessmentCard key={a.id} assessment={a} />)}
+        </div>
+      )}
+
+      {patientId && historicalHasMore && (
+        <div className="flex justify-center pt-2">
+          <button onClick={loadMoreAssessments} disabled={loadingHistorical}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50">
+            <History size={15} />
+            {loadingHistorical ? 'Cargando...' : 'Ver anteriores'}
+          </button>
+        </div>
       )}
 
       <ConfirmModal
