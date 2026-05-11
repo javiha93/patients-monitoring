@@ -151,7 +151,7 @@ export default function PatientList() {
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="px-4 py-3 w-12 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('nivel')}>Nivel{sortIndicator('nivel')}</th>
+                  <th className="px-4 py-3 w-20 cursor-pointer select-none hover:text-slate-700 whitespace-nowrap" onClick={() => handleSort('nivel')}>Nivel{sortIndicator('nivel')}</th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubicación{sortIndicator('ubicacion')}</th>
                   <th className="px-4 py-3">Paciente</th>
                   <th className="px-4 py-3">NHC</th>
