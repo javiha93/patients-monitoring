@@ -166,22 +166,32 @@ const MedicationGrid = forwardRef(function MedicationGrid(
   { prescriptions, admissionDate, onDirectSign, onDirectUnsign, onOpenInsulinModal, onOpenEditModal },
   ref
 ) {
-  const nowRef = useRef(null)
+  const scrollRef = useRef(null)
   const [hoveredCell, setHoveredCell] = useState(null)
   const [tooltip, setTooltip] = useState(null) // { x, y, admin, unit }
 
+  const CELL_W = 56
+  const LABEL_W = 240
+  const VISIBLE_HOURS = 16
+
   const slots = generate72hSlots(admissionDate)
 
+  function scrollToNowPosition(smooth = false) {
+    const container = scrollRef.current
+    if (!container) return
+    const nowIdx = slots.findIndex(s => isCurrentHour(s))
+    if (nowIdx < 0) return
+    // Center the current hour: scroll so nowIdx is in the middle of the visible area
+    const targetScroll = (nowIdx * CELL_W) - ((VISIBLE_HOURS / 2) * CELL_W) + (CELL_W / 2)
+    container.scrollTo({ left: Math.max(0, targetScroll), behavior: smooth ? 'smooth' : 'auto' })
+  }
+
   useImperativeHandle(ref, () => ({
-    scrollToNow() {
-      nowRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-    }
+    scrollToNow() { scrollToNowPosition(true) }
   }))
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      nowRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' })
-    }, 100)
+    const t = setTimeout(() => scrollToNowPosition(false), 100)
     return () => clearTimeout(t)
   }, [])
 
@@ -197,7 +207,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
     else grouped.fixed.push(p)
   }
 
-  let firstMedRendered = false
+
 
   function handleCellClick(e, p, slot, admin) {
     if (admin) {
@@ -237,13 +247,17 @@ const MedicationGrid = forwardRef(function MedicationGrid(
   }
 
   return (
-    <div className="flex-1 overflow-auto pb-16" style={{ scrollbarGutter: 'stable' }}>
-      <table className="border-collapse" style={{ minWidth: 'max-content' }}>
+    <div
+      ref={scrollRef}
+      className="flex-1 overflow-auto pb-16"
+      style={{ scrollbarGutter: 'stable' }}
+    >
+      <table className="border-collapse" style={{ minWidth: LABEL_W + (slots.length * CELL_W) }}>
         <thead className="sticky top-0 z-30">
           <tr>
             <th
               className="sticky left-0 z-40 text-left pl-3 pr-2 py-2 text-xs font-medium text-slate-500"
-              style={{ width: 240, minWidth: 240, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}
+              style={{ width: LABEL_W, minWidth: LABEL_W, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}
             />
             {slots.map((s, i) => {
               const isNow = isCurrentHour(s)
@@ -251,10 +265,9 @@ const MedicationGrid = forwardRef(function MedicationGrid(
               return (
                 <th
                   key={i}
-                  ref={isNow && !firstMedRendered ? nowRef : null}
                   className={`py-2 text-center text-xs font-medium ${isNow ? 'text-blue-700' : 'text-slate-500'}`}
                   style={{
-                    width: 56, minWidth: 56,
+                    width: CELL_W, minWidth: CELL_W,
                     background: isNow ? '#dbeafe' : '#f8fafc',
                     borderBottom: '1px solid #e2e8f0',
                     borderLeft: midnight ? '2px solid #3b82f6' : undefined,
@@ -288,7 +301,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                   const scheduledHours = parseScheduledHours(p.scheduledHours)
                   const frequencyHours = parseFrequencyHours(p.frequency)
                   const isInsulin = section.key === 'insulin'
-                  if (!firstMedRendered) firstMedRendered = true
+
 
                   // Compute dynamic scheduled slot indices based on administrations
                   const scheduledSlotIndices = computeScheduledSlotIndices(
@@ -300,7 +313,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                       <th
                         className="sticky left-0 z-10 text-left align-top"
                         style={{
-                          width: 240, minWidth: 240, background: '#fff',
+                          width: LABEL_W, minWidth: LABEL_W, background: '#fff',
                           padding: '10px 12px', borderBottom: '1px solid #e2e8f0',
                           borderRight: '1px solid #e2e8f0',
                         }}
@@ -346,7 +359,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                             data-signed={admin ? 'true' : undefined}
                             className="text-center align-middle relative cursor-pointer"
                             style={{
-                              width: 56, minWidth: 56, height: 44,
+                              width: CELL_W, minWidth: CELL_W, height: 44,
                               background: isHovered ? hoverBg : bg,
                               borderBottom: '1px solid #e2e8f0',
                               borderRight: '1px solid #e2e8f0',
