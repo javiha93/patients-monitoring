@@ -74,12 +74,13 @@ describe('KAN-79: Valoración de enfermería', () => {
   })
 
   it('campos de dolor ocultos por defecto, visibles al activar toggle', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    nursingApi.getByAdmission.mockResolvedValueOnce({ data: [] })
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
-    // Pain fields hidden by default
+    // Entrada form starts with hasPain=false → pain fields hidden
     expect(screen.queryByText('Localización')).not.toBeInTheDocument()
-    // Click "Presenta dolor" toggle
     fireEvent.click(screen.getByText('Presenta dolor'))
     expect(screen.getByText('Localización')).toBeInTheDocument()
     expect(screen.getByText('Irradiación')).toBeInTheDocument()
@@ -94,10 +95,13 @@ describe('KAN-79: Valoración de enfermería', () => {
     expect(screen.queryByText('Nueva valoración de enfermería')).not.toBeInTheDocument()
   })
 
-  it('botón guardar deshabilitado sin consciencia y glasgow', async () => {
+  it('botón guardar deshabilitado sin consciencia y glasgow (entrada)', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    nursingApi.getByAdmission.mockResolvedValueOnce({ data: [] })
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
+    // Entrada form starts empty → required fields missing
     const saveBtn = screen.getByText('Guardar valoración')
     expect(saveBtn.disabled).toBe(true)
     expect(screen.getByText('* Consciencia y Glasgow son obligatorios')).toBeInTheDocument()
@@ -105,18 +109,17 @@ describe('KAN-79: Valoración de enfermería', () => {
 
   it('guardar habilitado tras rellenar consciencia y glasgow', async () => {
     const { nursingApi } = await import('../services/nursingApi')
+    nursingApi.getByAdmission.mockResolvedValueOnce({ data: [] })
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
-    // Fill consciousness
+    // Entrada form starts empty → fill required fields
     const consciousnessSelect = screen.getAllByRole('combobox').find(s =>
       Array.from(s.options).some(o => o.value === 'alerta')
     )
     fireEvent.change(consciousnessSelect, { target: { value: 'alerta' } })
-    // Fill glasgow
     const glasgowInput = screen.getByPlaceholderText('Ej: 15')
     fireEvent.change(glasgowInput, { target: { value: '15' } })
-    // Now save should be enabled
     const saveBtn = screen.getByText('Guardar valoración')
     expect(saveBtn.disabled).toBe(false)
     fireEvent.click(saveBtn)
@@ -151,14 +154,15 @@ describe('KAN-79: Valoración de enfermería', () => {
   })
 
   it('toggle de seguridad funciona correctamente', async () => {
+    const { nursingApi } = await import('../services/nursingApi')
+    nursingApi.getByAdmission.mockResolvedValueOnce({ data: [] })
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
+    // Entrada form starts with empty defaults → bedRails off
     const railsBtn = screen.getByText('Barandillas')
-    // Initially not active (bg-white)
     expect(railsBtn.className).toContain('bg-white')
     fireEvent.click(railsBtn)
-    // Now active (bg-blue-500)
     expect(railsBtn.className).toContain('bg-blue-500')
   })
 
