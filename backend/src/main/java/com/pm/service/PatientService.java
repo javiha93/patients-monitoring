@@ -175,7 +175,7 @@ public class PatientService {
         }
         Patient p = opt.get();
         boolean hasActive = p.getAdmissions().stream()
-                .anyMatch(a -> a.getDischargedAt() == null);
+                .anyMatch(a -> a.getStatus() == Admission.Status.active);
         if (hasActive) {
             return ResponseEntity.ok(Map.of(
                     "status", "active",
