@@ -15,7 +15,10 @@ vi.mock('../context/AuthContext', () => ({
 }))
 
 vi.mock('../services/insightsApi', () => ({
-  insightsApi: { getByPatientAdmission: vi.fn(() => Promise.resolve({ data: [] })) },
+  insightsApi: {
+    getByPatientAdmission: vi.fn(() => Promise.resolve({ data: [] })),
+    getDismissals: vi.fn(() => Promise.resolve({ data: [] })),
+  },
 }))
 
 // ── NursingAssessmentTab tests ──

@@ -1,4 +1,4 @@
-import { Users, Search, LogOut } from 'lucide-react'
+import { Users, Search, LogOut, FileText } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -35,6 +35,17 @@ export default function Sidebar() {
           )
         })}
       </nav>
+      <div className="border-t border-slate-800">
+        <Link
+          to="/reports"
+          className={`flex items-center gap-3 px-5 py-3 text-sm transition-colors ${
+            location.pathname === '/reports' ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <FileText size={18} />
+          Reportes
+        </Link>
+      </div>
       <div className="px-5 py-4 border-t border-slate-800 text-sm text-slate-400">
         <div className="text-white font-medium">{user?.displayName || 'Usuario'}</div>
         <div className="flex items-center justify-between">

@@ -7,6 +7,7 @@ import PatientHistory from './pages/PatientHistory'
 import PatientMedication from './pages/PatientMedication'
 import PatientTests from './pages/PatientTests'
 import DischargedSearch from './pages/DischargedSearch'
+import Reports from './pages/Reports'
 import Login from './pages/Login'
 
 function AppContent() {
@@ -25,6 +26,7 @@ function AppContent() {
           <Route path="/patient/:id/medication" element={<PatientMedication />} />
           <Route path="/patient/:id/tests" element={<PatientTests />} />
           <Route path="/discharged" element={<DischargedSearch />} />
+          <Route path="/reports" element={<Reports />} />
         </Routes>
       </main>
     </div>

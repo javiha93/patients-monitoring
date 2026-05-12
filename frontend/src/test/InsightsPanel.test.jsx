@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import InsightsPanel from '../components/InsightsPanel'
 
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: { displayName: 'Test User', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
+}))
+
 const mockInsights = [
   { level: 'critical', title: 'Alergia vs prescripción: Metamizol', detail: 'Paciente alérgico a Metamizol', reasoning: 'Cruce directo', analysisType: 'allergy_conflict' },
   { level: 'warning', title: 'Bradicardia + betabloqueante', detail: 'FC mínima: 48 lpm', reasoning: 'Valorar reducción', analysisType: 'bradycardia_beta_blockers' },
@@ -12,6 +16,8 @@ const mockInsights = [
 vi.mock('../services/insightsApi', () => ({
   insightsApi: {
     getByPatientAdmission: vi.fn(() => Promise.resolve({ data: mockInsights })),
+    getDismissals: vi.fn(() => Promise.resolve({ data: [] })),
+    dismiss: vi.fn(() => Promise.resolve({ data: {} })),
   },
 }))
 
