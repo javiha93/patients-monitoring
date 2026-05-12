@@ -1227,7 +1227,7 @@ public class ClinicalInsightsService {
         for (String drug : drugs) {
             String d = drug.toLowerCase();
             for (AdmissionPrescription p : rx) if (p.getName().toLowerCase().contains(d)) return true;
-            if (hab != null) for (Medication m : hab) if (!m.isSuspendedDuringAdmission() && m.getName().toLowerCase().contains(d)) return true;
+            if (hab != null) for (Medication m : hab) if (!Boolean.TRUE.equals(m.getSuspendedDuringAdmission()) && m.getName().toLowerCase().contains(d)) return true;
         }
         return false;
     }
