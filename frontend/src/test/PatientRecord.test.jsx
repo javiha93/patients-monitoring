@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PatientRecord from '../pages/PatientRecord'
 
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
+  useAuth: () => ({ user: { displayName: 'Gregory House', role: 'Medicina' }, loginUser: vi.fn(), logout: vi.fn() }),
 }))
 
 const mockNavigate = vi.fn()

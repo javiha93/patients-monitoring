@@ -146,7 +146,7 @@ export default function PatientRecord() {
             {admission ? ` · ${admission.matCategory || ''}` : ''}
           </div>
         </div>
-        {admission && (
+        {admission && user?.role !== 'Enfermería' && (
           <button onClick={() => setConfirmAction({ message: `¿Confirmas el alta hospitalaria de ${patient.lastName}, ${patient.firstName}?`, action: handleDischarge })} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
             Alta hospitalaria
           </button>

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ChevronLeft, Plus, Trash2, AlertTriangle, PauseCircle, PlayCircle, MessageSquare, X, Scissors, ShieldAlert } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { historyApi } from '../services/historyApi'
+import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 
 function calcAge(bd) {
@@ -51,6 +52,8 @@ const CONDITION_SUGGESTIONS = [
 ]
 export default function PatientHistory() {
   const { id } = useParams()
+  const { user } = useAuth()
+  const isEnfermeria = user?.role === 'Enfermería'
   const [patient, setPatient] = useState(null)
   const [history, setHistory] = useState({ medicalHistory: [], allergies: [], medications: [], immunosuppressions: [], surgicalInterventions: [] })
   const [tab, setTab] = useState('antecedentes')
@@ -222,9 +225,9 @@ export default function PatientHistory() {
                   Antecedentes médicos
                   <span className="ml-2 bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{history.medicalHistory.length}</span>
                 </h3>
-                <button onClick={() => { setShowAddCondition(!showAddCondition); setTimeout(() => inputRef.current?.focus(), 50) }} className="text-sky-500 hover:text-sky-700 text-sm font-medium flex items-center gap-1"><Plus size={14} /> Añadir</button>
+                {!isEnfermeria && <button onClick={() => { setShowAddCondition(!showAddCondition); setTimeout(() => inputRef.current?.focus(), 50) }} className="text-sky-500 hover:text-sky-700 text-sm font-medium flex items-center gap-1"><Plus size={14} /> Añadir</button>}
               </div>
-              {showAddCondition && (
+              {!isEnfermeria && showAddCondition && (
                 <div className="mb-3 p-3 bg-slate-50 rounded-lg">
                   <form onSubmit={handleAddCustomCondition} className="flex gap-2 mb-2">
                     <div className="relative flex-1">
@@ -272,8 +275,8 @@ export default function PatientHistory() {
                     >
                       {mh.label}
                       {mh.notes && <MessageSquare size={12} className="text-slate-400" />}
-                      <button onClick={() => { historyApi.deleteCondition(id, mh.id); fetchData() }}
-                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"><X size={12} /></button>
+                      {!isEnfermeria && <button onClick={() => { historyApi.deleteCondition(id, mh.id); fetchData() }}
+                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"><X size={12} /></button>}
                     </span>
                   ))}
                 </div>
@@ -286,9 +289,9 @@ export default function PatientHistory() {
                   <ShieldAlert size={16} className="text-amber-500" /> Antecedentes inmunodepresivos
                   <span className="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{history.immunosuppressions.length}</span>
                 </h3>
-                <button onClick={() => setShowAddImmuno(!showAddImmuno)} className="text-sky-500 hover:text-sky-700 text-sm font-medium flex items-center gap-1"><Plus size={14} /> Añadir</button>
+                {!isEnfermeria && <button onClick={() => setShowAddImmuno(!showAddImmuno)} className="text-sky-500 hover:text-sky-700 text-sm font-medium flex items-center gap-1"><Plus size={14} /> Añadir</button>}
               </div>
-              {showAddImmuno && (
+              {!isEnfermeria && showAddImmuno && (
                 <form onSubmit={handleAddImmuno} className="grid grid-cols-5 gap-2 mb-3 p-3 bg-slate-50 rounded-lg">
                   <input required value={newImmuno.description} onChange={e => setNewImmuno({ ...newImmuno, description: e.target.value })} placeholder="Descripción (ej: Metotrexato 15mg/sem)" className="col-span-2 px-2 py-1.5 border border-slate-200 rounded text-sm" />
                   <input required type="date" value={newImmuno.eventDate} onChange={e => setNewImmuno({ ...newImmuno, eventDate: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded text-sm" title="Fecha inicio" />
@@ -310,7 +313,7 @@ export default function PatientHistory() {
                         <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-500">Fin: {formatMonthYear(im.endDate)}</span>
                       )}
                       {im.notes && <MessageSquare size={12} className="text-slate-400 cursor-help" title={im.notes} />}
-                      <button onClick={() => { historyApi.deleteImmunosuppression(id, im.id); fetchData() }} className="ml-auto text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
+                      {!isEnfermeria && <button onClick={() => { historyApi.deleteImmunosuppression(id, im.id); fetchData() }} className="ml-auto text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>}
                     </div>
                   ))}
                 </div>
@@ -323,9 +326,9 @@ export default function PatientHistory() {
                   <Scissors size={16} className="text-blue-500" /> Intervenciones quirúrgicas
                   <span className="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{history.surgicalInterventions.length}</span>
                 </h3>
-                <button onClick={() => setShowAddSurgery(!showAddSurgery)} className="text-sky-500 hover:text-sky-700 text-sm font-medium flex items-center gap-1"><Plus size={14} /> Añadir</button>
+                {!isEnfermeria && <button onClick={() => setShowAddSurgery(!showAddSurgery)} className="text-sky-500 hover:text-sky-700 text-sm font-medium flex items-center gap-1"><Plus size={14} /> Añadir</button>}
               </div>
-              {showAddSurgery && (
+              {!isEnfermeria && showAddSurgery && (
                 <form onSubmit={handleAddSurgery} className="grid grid-cols-4 gap-2 mb-3 p-3 bg-slate-50 rounded-lg">
                   <input required value={newSurgery.description} onChange={e => setNewSurgery({ ...newSurgery, description: e.target.value })} placeholder="Intervención (ej: Colecistectomía)" className="col-span-2 px-2 py-1.5 border border-slate-200 rounded text-sm" />
                   <input required type="date" value={newSurgery.interventionDate} onChange={e => setNewSurgery({ ...newSurgery, interventionDate: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded text-sm" />
@@ -341,7 +344,7 @@ export default function PatientHistory() {
                       <span className="text-xs text-slate-400 min-w-[60px]">{formatMonthYear(si.interventionDate)}</span>
                       <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-800 border border-blue-200">{si.description}</span>
                       {si.notes && <MessageSquare size={12} className="text-slate-400 cursor-help" title={si.notes} />}
-                      <button onClick={() => { historyApi.deleteSurgery(id, si.id); fetchData() }} className="ml-auto text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
+                      {!isEnfermeria && <button onClick={() => { historyApi.deleteSurgery(id, si.id); fetchData() }} className="ml-auto text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>}
                     </div>
                   ))}
                 </div>
@@ -355,9 +358,9 @@ export default function PatientHistory() {
                 Medicación crónica del paciente
                 <span className="ml-2 bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{history.medications.length}</span>
               </h3>
-              <button onClick={() => setShowAddMed(!showAddMed)} className="text-sky-500 hover:text-sky-700 text-sm font-medium flex items-center gap-1"><Plus size={14} /> Añadir</button>
+              {!isEnfermeria && <button onClick={() => setShowAddMed(!showAddMed)} className="text-sky-500 hover:text-sky-700 text-sm font-medium flex items-center gap-1"><Plus size={14} /> Añadir</button>}
             </div>
-            {showAddMed && (
+            {!isEnfermeria && showAddMed && (
               <form onSubmit={handleAddMed} className="grid grid-cols-4 gap-2 mb-3 p-3 bg-slate-50 rounded-lg">
                 <input required value={newMed.name} onChange={e => setNewMed({ ...newMed, name: e.target.value })} placeholder="Nombre" className="px-2 py-1.5 border border-slate-200 rounded text-sm" />
                 <input value={newMed.dose} onChange={e => setNewMed({ ...newMed, dose: e.target.value })} placeholder="Dosis" className="px-2 py-1.5 border border-slate-200 rounded text-sm" />
@@ -381,14 +384,22 @@ export default function PatientHistory() {
                       <td className="py-2.5 text-sm text-slate-600">{m.dose}</td>
                       <td className="py-2.5 text-sm text-slate-600">{m.frequency}</td>
                       <td className="py-2.5">
-                        <button onClick={() => { historyApi.toggleSuspended(id, m.id); fetchData() }}
-                          className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${m.suspendedDuringAdmission ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                          {m.suspendedDuringAdmission ? <><PauseCircle size={12} /> Suspendida</> : <><PlayCircle size={12} /> Activa</>}
-                        </button>
+                        {!isEnfermeria ? (
+                          <button onClick={() => { historyApi.toggleSuspended(id, m.id); fetchData() }}
+                            className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${m.suspendedDuringAdmission ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                            {m.suspendedDuringAdmission ? <><PauseCircle size={12} /> Suspendida</> : <><PlayCircle size={12} /> Activa</>}
+                          </button>
+                        ) : (
+                          <span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${m.suspendedDuringAdmission ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                            {m.suspendedDuringAdmission ? <><PauseCircle size={12} /> Suspendida</> : <><PlayCircle size={12} /> Activa</>}
+                          </span>
+                        )}
                       </td>
-                      <td className="py-2.5">
-                        <button onClick={() => { historyApi.deleteMedication(id, m.id); fetchData() }} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
-                      </td>
+                      {!isEnfermeria && (
+                        <td className="py-2.5">
+                          <button onClick={() => { historyApi.deleteMedication(id, m.id); fetchData() }} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

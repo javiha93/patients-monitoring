@@ -157,12 +157,14 @@ export default function PatientMedication() {
         >
           <Clock size={12} /> Ahora
         </button>
-        <button
-          onClick={() => setShowNewRx(true)}
-          className="bg-teal-500 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 hover:bg-teal-600"
-        >
-          <Plus size={14} /> Prescripción
-        </button>
+        {user?.role !== 'Enfermería' && (
+          <button
+            onClick={() => setShowNewRx(true)}
+            className="bg-teal-500 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 hover:bg-teal-600"
+          >
+            <Plus size={14} /> Prescripción
+          </button>
+        )}
       </div>
 
       {/* Insights — allergy conflicts */}
@@ -184,6 +186,7 @@ export default function PatientMedication() {
             onOpenInsulinModal={handleOpenInsulinModal}
             onOpenEditModal={handleOpenEditModal}
             currentUser={currentUser}
+            canSign={user?.role !== 'Medicina'}
           />
         ) : (
           <p className="text-slate-400 text-center mt-12">Sin ingreso activo</p>

@@ -163,7 +163,7 @@ const insulinScaleLabels = [
 // ── Component ──
 
 const MedicationGrid = forwardRef(function MedicationGrid(
-  { prescriptions, admissionDate, onDirectSign, onDirectUnsign, onOpenInsulinModal, onOpenEditModal, currentUser },
+  { prescriptions, admissionDate, onDirectSign, onDirectUnsign, onOpenInsulinModal, onOpenEditModal, currentUser, canSign = true },
   ref
 ) {
   const scrollRef = useRef(null)
@@ -237,6 +237,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
 
 
   function handleCellClick(e, p, slot, admin) {
+    if (!canSign) return
     if (admin) {
       // Signed cell: unsign directly
       onDirectUnsign(admin.id)
@@ -254,6 +255,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
   }
 
   function handleEditClick(e, admin, p) {
+    if (!canSign) return
     e.stopPropagation()
     onOpenEditModal(admin, p)
   }

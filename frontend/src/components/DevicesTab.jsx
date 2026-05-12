@@ -276,6 +276,7 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
 
 const DevicesTab = forwardRef(function DevicesTab({ admissionId, patientId, toast }, ref) {
   const { user } = useAuth()
+  const canEdit = user?.role !== 'Medicina'
   const [devices, setDevices] = useState([])
   const [modalCategory, setModalCategory] = useState(null)
   const [editingId, setEditingId] = useState(null)
@@ -376,21 +377,23 @@ const DevicesTab = forwardRef(function DevicesTab({ admissionId, patientId, toas
 
         return (
           <CategorySection key={catKey} label={cat.label} color={cat.color} count={active.length}>
-            <button onClick={() => openNewForm(catKey)}
-              className="flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 mb-3">
-              <Plus size={15} /> Añadir {cat.types.length === 1 ? cat.types[0].label.toLowerCase() : 'dispositivo'}
-            </button>
+            {canEdit && (
+              <button onClick={() => openNewForm(catKey)}
+                className="flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 mb-3">
+                <Plus size={15} /> Añadir {cat.types.length === 1 ? cat.types[0].label.toLowerCase() : 'dispositivo'}
+              </button>
+            )}
 
             {active.map(d => (
               <DeviceCard key={d.id} device={d}
-                onEdit={() => openEditForm(d)}
-                onRemove={() => handleRemove(d.id)}
-                onDelete={() => setConfirmDelete(d.id)}
+                onEdit={canEdit ? () => openEditForm(d) : undefined}
+                onRemove={canEdit ? () => handleRemove(d.id) : undefined}
+                onDelete={canEdit ? () => setConfirmDelete(d.id) : undefined}
               />
             ))}
 
             {removed.length > 0 && (
-              <RemovedSection devices={removed} onDelete={(id) => setConfirmDelete(id)} />
+              <RemovedSection devices={removed} onDelete={canEdit ? (id) => setConfirmDelete(id) : undefined} />
             )}
 
             {active.length === 0 && removed.length === 0 && (
@@ -492,19 +495,23 @@ function DeviceCard({ device, onEdit, onRemove, onDelete }) {
           {d.region && <span className="text-xs text-slate-500">{REGION_LABELS[d.region] || d.region}{d.subRegion ? ` · ${SUBREGION_LABELS[d.subRegion] || d.subRegion}` : ''}</span>}
           {d.laterality && <span className="text-xs text-slate-500">{LATERALITY_LABELS[d.laterality] || d.laterality}</span>}
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {isActive && (
-            <>
+        {(onEdit || onRemove || onDelete) && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {isActive && onEdit && (
               <button onClick={onEdit} className="p-1 text-slate-400 hover:text-sky-600" title="Editar">
                 <Pencil size={14} />
               </button>
+            )}
+            {isActive && onRemove && (
               <button onClick={onRemove} className="text-xs text-amber-600 hover:text-amber-700 font-medium px-2">Retirar</button>
-            </>
-          )}
-          <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-600" title="Eliminar">
-            <Trash2 size={14} />
-          </button>
-        </div>
+            )}
+            {onDelete && (
+              <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-600" title="Eliminar">
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
         <span className="flex items-center gap-1"><Clock size={11} /> {formatDateTime(d.insertedAt)}</span>
@@ -529,7 +536,7 @@ function RemovedSection({ devices, onDelete }) {
       </button>
       {open && (
         <div className="mt-1">
-          {devices.map(d => <DeviceCard key={d.id} device={d} onDelete={() => onDelete(d.id)} />)}
+          {devices.map(d => <DeviceCard key={d.id} device={d} onDelete={onDelete ? () => onDelete(d.id) : undefined} />)}
         </div>
       )}
     </div>

@@ -105,6 +105,7 @@ const typeLabels = { entrada: 'Entrada', sucesiva: 'Sucesiva', salida: 'Salida' 
 
 export default function NursingAssessmentTab({ admissionId, patientId, toast }) {
   const { user } = useAuth()
+  const canEdit = user?.role !== 'Medicina'
   const [assessments, setAssessments] = useState([])
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -245,7 +246,7 @@ export default function NursingAssessmentTab({ admissionId, patientId, toast }) 
       )}
 
       {/* New assessment button */}
-      {!formOpen && (
+      {canEdit && !formOpen && (
         <button onClick={() => {
           if (assessments.length === 0) {
             setForm({ ...EMPTY_FORM, assessmentType: 'entrada' })
@@ -316,7 +317,7 @@ export default function NursingAssessmentTab({ admissionId, patientId, toast }) 
       {assessments.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Valoraciones anteriores</h3>
-          {assessments.map(a => <AssessmentCard key={a.id} assessment={a} onDelete={(id) => setConfirmDelete(id)} onEdit={handleEdit} />)}
+          {assessments.map(a => <AssessmentCard key={a.id} assessment={a} onDelete={canEdit ? (id) => setConfirmDelete(id) : undefined} onEdit={canEdit ? handleEdit : undefined} />)}
         </div>
       )}
 
