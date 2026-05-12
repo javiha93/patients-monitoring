@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, ChevronDown, Check, Filter, X } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, ChevronDown, Check, Filter, X } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import TriageBadge from '../components/TriageBadge'
 import { useToast, ToastContainer } from '../components/Toast'
@@ -271,6 +271,7 @@ export default function PatientList() {
     { key: 'registros', icon: HeartPulse, color: 'text-red-600', label: 'Registros', route: (id) => `/patient/${id}` },
     { key: 'antecedentes', icon: Bandage, color: 'text-amber-600', label: 'Antecedentes', route: (id) => `/patient/${id}/history` },
     { key: 'medicacion', icon: Pill, color: 'text-teal-600', label: 'Medicación', route: (id) => `/patient/${id}/medication` },
+    { key: 'pruebas', icon: Syringe, color: 'text-violet-600', label: 'Pruebas', route: (id) => `/patient/${id}/tests` },
   ]
 
   return (

@@ -4,6 +4,7 @@ import PatientList from './pages/PatientList'
 import PatientRecord from './pages/PatientRecord'
 import PatientHistory from './pages/PatientHistory'
 import PatientMedication from './pages/PatientMedication'
+import PatientTests from './pages/PatientTests'
 import DischargedSearch from './pages/DischargedSearch'
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
             <Route path="/patient/:id" element={<PatientRecord />} />
             <Route path="/patient/:id/history" element={<PatientHistory />} />
             <Route path="/patient/:id/medication" element={<PatientMedication />} />
+            <Route path="/patient/:id/tests" element={<PatientTests />} />
             <Route path="/discharged" element={<DischargedSearch />} />
           </Routes>
         </main>

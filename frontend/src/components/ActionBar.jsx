@@ -1,4 +1,4 @@
-import { HeartPulse, Bandage, Pill } from 'lucide-react'
+import { HeartPulse, Bandage, Pill, Syringe } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 export default function ActionBar({ patient, admissionId }) {
@@ -9,6 +9,7 @@ export default function ActionBar({ patient, admissionId }) {
     { path: base, icon: HeartPulse, color: 'text-red-600', label: 'Registros' },
     { path: `${base}/history`, icon: Bandage, color: 'text-amber-600', label: 'Antecedentes' },
     { path: `${base}/medication`, icon: Pill, color: 'text-teal-600', label: 'Medicación' },
+    { path: `${base}/tests`, icon: Syringe, color: 'text-violet-600', label: 'Pruebas' },
   ]
 
   return (

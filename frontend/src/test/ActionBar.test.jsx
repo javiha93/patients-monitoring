@@ -12,11 +12,12 @@ function renderBar(path = '/patient/1') {
 }
 
 describe('KAN-5: ActionBar', () => {
-  it('[KAN-5] muestra los 3 botones de acción', () => {
+  it('[KAN-5] muestra los 4 botones de acción', () => {
     renderBar()
     expect(screen.getByTitle('Registros')).toBeInTheDocument()
     expect(screen.getByTitle('Antecedentes')).toBeInTheDocument()
     expect(screen.getByTitle('Medicación')).toBeInTheDocument()
+    expect(screen.getByTitle('Pruebas')).toBeInTheDocument()
   })
 
   it('[KAN-5] muestra nombre y NHC del paciente', () => {
