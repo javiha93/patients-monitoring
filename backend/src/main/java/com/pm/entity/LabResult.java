@@ -26,6 +26,7 @@ public class LabResult {
     private String name;
 
     /** Result value as string to support numeric and text results */
+    @Column(name = "result_value")
     private String value;
 
     /** Unit, e.g. "g/dL", "x10³/µL", "mg/dL" */
