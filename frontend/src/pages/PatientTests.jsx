@@ -53,7 +53,7 @@ export default function PatientTests() {
 
   // New test form
   const [showNew, setShowNew] = useState(false)
-  const [newTest, setNewTest] = useState({ category: 'analitica', label: '', requestedBy: '', notes: '' })
+  const [newTest, setNewTest] = useState({ category: 'analitica', label: '', notes: '' })
 
   // Validate modal
   const [validateModal, setValidateModal] = useState({ open: false, test: null })
@@ -88,8 +88,8 @@ export default function PatientTests() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    await labTestApi.create({ ...newTest, admissionId: admission.id, requestedBy: newTest.requestedBy || user?.displayName || '' })
-    setNewTest({ category: 'analitica', label: '', requestedBy: '', notes: '' })
+    await labTestApi.create({ ...newTest, admissionId: admission.id, requestedBy: user?.displayName || '' })
+    setNewTest({ category: 'analitica', label: '', notes: '' })
     setShowNew(false)
     fetchData()
   }
@@ -205,11 +205,6 @@ export default function PatientTests() {
                 <input required value={newTest.label} onChange={e => setNewTest({ ...newTest, label: e.target.value })}
                   placeholder="Ej: Hemograma + Bioquímica, Hemocultivo x2"
                   className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 font-medium">Solicitado por</label>
-                <input value={newTest.requestedBy} onChange={e => setNewTest({ ...newTest, requestedBy: e.target.value })}
-                  placeholder="Dr. García" className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <button type="button" onClick={() => setShowNew(false)} className="px-4 py-2 text-sm text-slate-500">Cancelar</button>

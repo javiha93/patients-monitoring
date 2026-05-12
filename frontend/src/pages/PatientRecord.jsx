@@ -146,11 +146,6 @@ export default function PatientRecord() {
             {admission ? ` · ${admission.matCategory || ''}` : ''}
           </div>
         </div>
-        {activeTab === 'vitals' && (
-          <button onClick={() => setModalOpen(true)} className="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-sky-600">
-            <Plus size={16} /> Nuevo registro
-          </button>
-        )}
         {admission && (
           <button onClick={() => setConfirmAction({ message: `¿Confirmas el alta hospitalaria de ${patient.lastName}, ${patient.firstName}?`, action: handleDischarge })} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
             Alta hospitalaria
@@ -194,6 +189,11 @@ export default function PatientRecord() {
             'lab_transaminases_hepatotoxic',
           ]} />}
           <VitalsSummaryCards vitals={vitals} />
+          <div className="flex justify-end">
+            <button onClick={() => setModalOpen(true)} className="bg-sky-500 text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-sky-600" title="Nuevo registro">
+              <Plus size={18} />
+            </button>
+          </div>
           <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} activeDrains={activeDrains} />
 
           {historicalVitals.length > 0 && (
