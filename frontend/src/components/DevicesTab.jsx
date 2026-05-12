@@ -10,7 +10,7 @@ const deviceInsightTypes = [
   'sv_latex_change_due', 'sv_silicone_change_due', 'sv_itu_risk',
   'vvc_review_dressing', 'vvc_review_lines', 'picc_review_dressing',
   'sng_aspiration_risk',
-  'drain_prolonged', 'drain_high_output', 'drain_hemorrhagic', 'drain_vacuum_lost',
+  'drain_prolonged', 'drain_hemorrhagic', 'drain_vacuum_lost', 'drain_purulent',
 ]
 
 /* ── Constants ── */

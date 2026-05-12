@@ -103,6 +103,7 @@ const fluidTypeLabels = {
   seroso: 'Seroso',
   serohematico: 'Serohemático',
   hematico: 'Hemático',
+  purulento: 'Purulento',
 }
 
 const drainTypeLabels = {
@@ -233,11 +234,11 @@ export default function VitalsTable({ vitals, onEdit, onDelete, activeDrains }) 
                   }
                   const fluidLabel = fluidTypeLabels[drainOut.fluidType] || drainOut.fluidType
                   const vacuumIcon = drainOut.vacuumActive === false ? ' ⚠' : ''
-                  const isHigh = drainOut.outputMl > 200
                   const isHematico = drainOut.fluidType === 'hematico'
+                  const isPurulento = drainOut.fluidType === 'purulento'
                   return (
                     <td key={v.id}
-                      className={`px-3 py-2.5 text-center text-sm whitespace-nowrap ${isHematico ? 'bg-red-50 text-red-700 font-semibold' : isHigh ? 'bg-amber-50 text-amber-700 font-semibold' : 'text-slate-600'} ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                      className={`px-3 py-2.5 text-center text-sm whitespace-nowrap ${isPurulento ? 'bg-orange-50 text-orange-700 font-semibold' : isHematico ? 'bg-red-50 text-red-700 font-semibold' : 'text-slate-600'} ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
                       onClick={onEdit ? () => onEdit(v) : undefined}
                       onMouseEnter={() => setHoveredCol(v.id)}
                       onMouseLeave={() => setHoveredCol(null)}

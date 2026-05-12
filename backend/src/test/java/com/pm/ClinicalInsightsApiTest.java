@@ -662,33 +662,32 @@ class ClinicalInsightsApiTest {
     }
 
     @Test
-    @DisplayName("Drenaje con débito >200mL genera alerta warning")
-    void drainHighOutput() throws Exception {
+    @DisplayName("Drenaje hemático <36h NO genera alerta (normal post-quirúrgico)")
+    void drainHemorrhagicEarly_noAlert() throws Exception {
         Device drain = deviceRepo.save(Device.builder()
-                .admission(admission).category("elimination").type("redon")
-                .drainNumber(1).region("abdomen").laterality("derecha")
-                .insertedAt(LocalDateTime.now().minusDays(1)).build());
+                .admission(admission).category("elimination").type("jackson_pratt")
+                .drainNumber(1).region("pelvis").laterality("medial")
+                .insertedAt(LocalDateTime.now().minusHours(12)).build());
 
-        // Create a vital sign with drain output
         VitalSign vs = vitalSignRepo.save(VitalSign.builder()
                 .admission(admission).recordedAt(LocalDateTime.now().minusHours(1)).build());
 
         drainOutputRepo.save(DrainOutput.builder()
                 .vitalSign(vs).device(drain).drainNumber(1)
-                .outputMl(350).fluidType("seroso").vacuumActive(true).build());
+                .outputMl(50).fluidType("hematico").vacuumActive(true).build());
 
         String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertTrue(hasInsight(body, "drain_high_output", "warning"));
+        assertFalse(hasInsight(body, "drain_hemorrhagic", null));
     }
 
     @Test
-    @DisplayName("Drenaje hemático genera alerta critical")
-    void drainHemorrhagic() throws Exception {
+    @DisplayName("Drenaje hemático >36h genera alerta critical")
+    void drainHemorrhagicLate() throws Exception {
         Device drain = deviceRepo.save(Device.builder()
                 .admission(admission).category("elimination").type("jackson_pratt")
                 .drainNumber(1).region("pelvis").laterality("medial")
-                .insertedAt(LocalDateTime.now().minusDays(1)).build());
+                .insertedAt(LocalDateTime.now().minusDays(3)).build());
 
         VitalSign vs = vitalSignRepo.save(VitalSign.builder()
                 .admission(admission).recordedAt(LocalDateTime.now().minusHours(1)).build());
@@ -700,6 +699,26 @@ class ClinicalInsightsApiTest {
         String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertTrue(hasInsight(body, "drain_hemorrhagic", "critical"));
+    }
+
+    @Test
+    @DisplayName("Drenaje purulento genera alerta critical inmediata")
+    void drainPurulent() throws Exception {
+        Device drain = deviceRepo.save(Device.builder()
+                .admission(admission).category("elimination").type("redon")
+                .drainNumber(1).region("abdomen").laterality("derecha")
+                .insertedAt(LocalDateTime.now().minusDays(2)).build());
+
+        VitalSign vs = vitalSignRepo.save(VitalSign.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(1)).build());
+
+        drainOutputRepo.save(DrainOutput.builder()
+                .vitalSign(vs).device(drain).drainNumber(1)
+                .outputMl(40).fluidType("purulento").vacuumActive(true).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "drain_purulent", "critical"));
     }
 
     @Test

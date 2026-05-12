@@ -101,9 +101,9 @@ public class ClinicalInsightsService {
         // Drain-specific alerts
         checkDrainProlonged(insights, activeDevices);
         List<DrainOutput> latestDrainOutputs = drainOutputRepo.findLatestByAdmission(admissionId);
-        checkDrainHighOutput(insights, latestDrainOutputs, activeDevices);
         checkDrainHemorrhagic(insights, latestDrainOutputs, activeDevices);
         checkDrainVacuumLost(insights, latestDrainOutputs, activeDevices);
+        checkDrainPurulent(insights, latestDrainOutputs, activeDevices);
 
         // Sort: critical first, then warning, then info
         insights.sort(Comparator.comparingInt(i -> levelOrder(i.getLevel())));
@@ -1119,42 +1119,26 @@ public class ClinicalInsightsService {
         }
     }
 
-    /** 13. Drain output >200mL in last reading */
-    private void checkDrainHighOutput(List<ClinicalInsightDTO> insights, List<DrainOutput> outputs, List<Device> devices) {
-        // Get only the most recent output per device
-        java.util.Set<Long> seen = new java.util.HashSet<>();
-        for (DrainOutput o : outputs) {
-            if (!seen.add(o.getDevice().getId())) continue; // skip older readings
-            if (o.getOutputMl() == null || o.getOutputMl() <= 200) continue;
-            Device d = o.getDevice();
-            insights.add(ClinicalInsightDTO.builder()
-                .level("warning")
-                .title(drainLabel(d) + ": débito elevado (" + o.getOutputMl() + " mL)")
-                .detail("Último débito registrado: " + o.getOutputMl() + " mL. Supera los 200 mL esperados.")
-                .reasoning("Un débito elevado puede indicar sangrado activo o complicación postquirúrgica. Valorar estado hemodinámico y comunicar al equipo quirúrgico")
-                .analysisType("drain_high_output")
-                .build());
-        }
-    }
-
-    /** 14. Drain with hemorrhagic fluid */
+    /** 13. Drain with hemorrhagic fluid — only after 36h post-insertion (hemático is normal early post-op) */
     private void checkDrainHemorrhagic(List<ClinicalInsightDTO> insights, List<DrainOutput> outputs, List<Device> devices) {
         java.util.Set<Long> seen = new java.util.HashSet<>();
         for (DrainOutput o : outputs) {
             if (!seen.add(o.getDevice().getId())) continue;
             if (!"hematico".equals(o.getFluidType())) continue;
             Device d = o.getDevice();
+            long hours = hoursActive(d);
+            if (hours < 36) continue; // Hemático is expected in the first 36h post-insertion
             insights.add(ClinicalInsightDTO.builder()
                 .level("critical")
-                .title(drainLabel(d) + ": contenido hemático")
-                .detail("Último registro del drenaje muestra contenido hemático.")
-                .reasoning("Contenido hemático en drenaje quirúrgico puede indicar sangrado activo. Valorar urgentemente: constantes vitales, hemoglobina, y comunicar al cirujano")
+                .title(drainLabel(d) + ": contenido hemático tras " + (hours / 24) + " días")
+                .detail("Último registro del drenaje muestra contenido hemático a más de 36h de la inserción.")
+                .reasoning("Contenido hemático pasadas las primeras 36h postquirúrgicas puede indicar sangrado activo. Valorar urgentemente: constantes vitales, hemoglobina, y comunicar al cirujano")
                 .analysisType("drain_hemorrhagic")
                 .build());
         }
     }
 
-    /** 15. Drain without vacuum */
+    /** 14. Drain without vacuum */
     private void checkDrainVacuumLost(List<ClinicalInsightDTO> insights, List<DrainOutput> outputs, List<Device> devices) {
         java.util.Set<Long> seen = new java.util.HashSet<>();
         for (DrainOutput o : outputs) {
@@ -1167,6 +1151,23 @@ public class ClinicalInsightsService {
                 .detail("El drenaje no mantiene el vacío en el último registro.")
                 .reasoning("La pérdida de vacío reduce la eficacia del drenaje. Verificar conexiones, posibles fugas o acodamientos. Reestablecer vacío si procede")
                 .analysisType("drain_vacuum_lost")
+                .build());
+        }
+    }
+
+    /** 15. Drain with purulent fluid — immediate critical alert */
+    private void checkDrainPurulent(List<ClinicalInsightDTO> insights, List<DrainOutput> outputs, List<Device> devices) {
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        for (DrainOutput o : outputs) {
+            if (!seen.add(o.getDevice().getId())) continue;
+            if (!"purulento".equals(o.getFluidType())) continue;
+            Device d = o.getDevice();
+            insights.add(ClinicalInsightDTO.builder()
+                .level("critical")
+                .title(drainLabel(d) + ": contenido purulento")
+                .detail("Último registro del drenaje muestra contenido purulento.")
+                .reasoning("Contenido purulento en drenaje sugiere infección del lecho quirúrgico. Valorar cultivo del líquido, analítica con reactantes de fase aguda e inicio de antibioterapia empírica")
+                .analysisType("drain_purulent")
                 .build());
         }
     }

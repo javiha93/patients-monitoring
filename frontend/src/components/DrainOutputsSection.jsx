@@ -10,6 +10,7 @@ const FLUID_TYPES = [
   { value: 'seroso', label: 'Seroso' },
   { value: 'serohematico', label: 'Serohemático' },
   { value: 'hematico', label: 'Hemático' },
+  { value: 'purulento', label: 'Purulento' },
 ]
 
 /**
