@@ -24,6 +24,8 @@ public class ClinicalInsightsService {
     private final NursingAssessmentRepository nursingRepo;
     private final DeviceRepository deviceRepo;
     private final DrainOutputRepository drainOutputRepo;
+    private final LabTestRepository labTestRepo;
+    private final ImmunosuppressionRepository immunoRepo;
 
     public List<ClinicalInsightDTO> analyze(Long patientId, Long admissionId) {
         List<ClinicalInsightDTO> insights = new ArrayList<>();
@@ -104,6 +106,22 @@ public class ClinicalInsightsService {
         checkDrainHemorrhagic(insights, latestDrainOutputs, activeDevices);
         checkDrainVacuumLost(insights, latestDrainOutputs, activeDevices);
         checkDrainPurulent(insights, latestDrainOutputs, activeDevices);
+
+        // Lab-cross alerts (only from results <36h old)
+        Map<String, LabValue> recentLab = getRecentLabValues(admissionId);
+        if (!recentLab.isEmpty()) {
+            List<ImmunosuppressionHistory> immunoHistory = immunoRepo.findByPatientIdOrderByEventDateDesc(patientId);
+            checkLabCreatinineNephrotoxic(insights, recentLab, prescriptions);
+            checkLabHyperkaliemiaRAAS(insights, recentLab, prescriptions, habitual);
+            checkLabCreatinineRising(insights, recentLab, admissionId);
+            checkLabSepsisTriad(insights, recentLab, vitals);
+            checkLabProca(insights, recentLab);
+            checkLabNeutropeniaFever(insights, recentLab, vitals, immunoHistory);
+            checkLabINRAnticoagulant(insights, recentLab, prescriptions, habitual);
+            checkLabThrombocytopenia(insights, recentLab);
+            checkLabAnemiaWithTachycardia(insights, recentLab, vitals);
+            checkLabTransaminasesHepatotoxic(insights, recentLab, prescriptions, habitual);
+        }
 
         // Sort: critical first, then warning, then info
         insights.sort(Comparator.comparingInt(i -> levelOrder(i.getLevel())));
@@ -1170,5 +1188,246 @@ public class ClinicalInsightsService {
                 .analysisType("drain_purulent")
                 .build());
         }
+    }
+
+    // ── LAB-CROSS ALERTS ──
+
+    private record LabValue(String name, double numericValue, String rawValue, String unit, String flag) {}
+
+    private Map<String, LabValue> getRecentLabValues(Long admissionId) {
+        Map<String, LabValue> map = new LinkedHashMap<>();
+        List<LabTest> tests = labTestRepo.findByAdmissionIdOrderByRequestedAtDesc(admissionId);
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(36);
+        for (LabTest t : tests) {
+            if (t.getRequestedAt().isBefore(cutoff)) continue;
+            if (!"partial_results".equals(t.getStatus()) && !"results".equals(t.getStatus())) continue;
+            for (LabResult r : t.getResults()) {
+                String key = r.getName().toLowerCase().trim();
+                if (map.containsKey(key)) continue; // keep most recent
+                try {
+                    double val = Double.parseDouble(r.getValue().replace(",", "."));
+                    map.put(key, new LabValue(r.getName(), val, r.getValue(), r.getUnit(), r.getFlag()));
+                } catch (Exception ignored) {
+                    // non-numeric results (e.g. culture text) — skip
+                }
+            }
+        }
+        return map;
+    }
+
+    private Optional<LabValue> lab(Map<String, LabValue> m, String... keys) {
+        for (String k : keys) {
+            LabValue v = m.get(k.toLowerCase());
+            if (v != null) return Optional.of(v);
+        }
+        return Optional.empty();
+    }
+
+    private boolean rxContains(List<AdmissionPrescription> rx, List<Medication> hab, String... drugs) {
+        for (String drug : drugs) {
+            String d = drug.toLowerCase();
+            for (AdmissionPrescription p : rx) if (p.getName().toLowerCase().contains(d)) return true;
+            if (hab != null) for (Medication m : hab) if (!m.isSuspendedDuringAdmission() && m.getName().toLowerCase().contains(d)) return true;
+        }
+        return false;
+    }
+
+    /** L1. Creatinina elevada + nefrotóxico pautado */
+    private void checkLabCreatinineNephrotoxic(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab, List<AdmissionPrescription> rx) {
+        lab(lab, "creatinina").ifPresent(cr -> {
+            if (cr.numericValue <= 1.2) return;
+            List<String> nephro = List.of("ibuprofeno", "diclofenaco", "ketorolaco", "naproxeno", "gentamicina", "amikacina", "vancomicina", "anfotericina", "aine", "metamizol");
+            List<String> found = new ArrayList<>();
+            for (AdmissionPrescription p : rx) {
+                String n = p.getName().toLowerCase();
+                for (String d : nephro) if (n.contains(d)) { found.add(p.getName()); break; }
+            }
+            if (found.isEmpty()) return;
+            insights.add(ClinicalInsightDTO.builder()
+                .level("critical")
+                .title("Creatinina " + cr.rawValue + " " + cr.unit + " + nefrotóxico pautado")
+                .detail("Creatinina elevada con fármacos nefrotóxicos activos: " + String.join(", ", found))
+                .reasoning("La combinación de función renal deteriorada con nefrotóxicos puede precipitar fracaso renal agudo. Valorar suspensión o ajuste de dosis, hidratación y monitorización de diuresis")
+                .analysisType("lab_creatinine_nephrotoxic")
+                .build());
+        });
+    }
+
+    /** L2. Hiperpotasemia + IECA/ARA-II/espironolactona */
+    private void checkLabHyperkaliemiaRAAS(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab, List<AdmissionPrescription> rx, List<Medication> hab) {
+        lab(lab, "potasio").ifPresent(k -> {
+            if (k.numericValue <= 5.0) return;
+            boolean hasRAAS = rxContains(rx, hab, "enalapril", "ramipril", "lisinopril", "captopril", "losartan", "valsartan", "irbesartan", "candesartan", "olmesartan", "espironolactona", "eplerenona");
+            if (!hasRAAS) return;
+            String level = k.numericValue > 6.0 ? "critical" : "warning";
+            insights.add(ClinicalInsightDTO.builder()
+                .level(level)
+                .title("Potasio " + k.rawValue + " mEq/L + IECA/ARA-II/antialdosterónico")
+                .detail("Hiperpotasemia con fármacos que elevan potasio sérico.")
+                .reasoning("Los IECA, ARA-II y antialdosterónicos reducen la excreción renal de potasio. Con K+ >" + (k.numericValue > 6.0 ? "6.0" : "5.0") + " valorar ECG, suspensión temporal del fármaco y tratamiento activo de la hiperpotasemia")
+                .analysisType("lab_hyperkaliemia_raas")
+                .build());
+        });
+    }
+
+    /** L3. Creatinina en ascenso vs analítica previa */
+    private void checkLabCreatinineRising(List<ClinicalInsightDTO> insights, Map<String, LabValue> recentLab, Long admissionId) {
+        Optional<LabValue> current = lab(recentLab, "creatinina");
+        if (current.isEmpty()) return;
+        double now = current.get().numericValue;
+        // Find previous creatinine from older lab tests (>36h ago)
+        List<LabTest> allTests = labTestRepo.findByAdmissionIdOrderByRequestedAtDesc(admissionId);
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(36);
+        Double previous = null;
+        for (LabTest t : allTests) {
+            if (!t.getRequestedAt().isBefore(cutoff)) continue;
+            if (!"partial_results".equals(t.getStatus()) && !"results".equals(t.getStatus())) continue;
+            for (LabResult r : t.getResults()) {
+                if ("creatinina".equalsIgnoreCase(r.getName().trim())) {
+                    try { previous = Double.parseDouble(r.getValue().replace(",", ".")); } catch (Exception ignored) {}
+                    break;
+                }
+            }
+            if (previous != null) break;
+        }
+        if (previous == null) return;
+        double increase = now - previous;
+        if (increase < 0.3) return; // KDIGO: ≥0.3 mg/dL increase = AKI stage 1
+        insights.add(ClinicalInsightDTO.builder()
+            .level(increase >= 1.0 ? "critical" : "warning")
+            .title("Creatinina en ascenso: " + String.format("%.1f", previous) + " → " + current.get().rawValue + " " + current.get().unit)
+            .detail("Incremento de " + String.format("%.1f", increase) + " mg/dL respecto a analítica previa.")
+            .reasoning("Un aumento de creatinina ≥0.3 mg/dL cumple criterios KDIGO de lesión renal aguda. Valorar causas (prerrenal, nefrotóxicos, obstructiva), optimizar volemia y revisar medicación")
+            .analysisType("lab_creatinine_rising")
+            .build());
+    }
+
+    /** L4. PCR elevada + leucocitosis + fiebre → triada de sepsis */
+    private void checkLabSepsisTriad(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab, List<VitalSign> vitals) {
+        Optional<LabValue> pcr = lab(lab, "pcr", "proteína c reactiva");
+        Optional<LabValue> wbc = lab(lab, "leucocitos");
+        if (pcr.isEmpty() || wbc.isEmpty()) return;
+        if (pcr.get().numericValue <= 10 || wbc.get().numericValue <= 12) return;
+        // Check for recent fever
+        boolean hasFever = vitals.stream()
+            .filter(v -> v.getRecordedAt().isAfter(LocalDateTime.now().minusHours(24)))
+            .anyMatch(v -> v.getTemperature() != null && v.getTemperature() >= 38.0);
+        if (!hasFever) return;
+        insights.add(ClinicalInsightDTO.builder()
+            .level("critical")
+            .title("Triada infecciosa: PCR " + pcr.get().rawValue + " + Leucocitos " + wbc.get().rawValue + " + Fiebre")
+            .detail("PCR >" + pcr.get().rawValue + " mg/L, leucocitos " + wbc.get().rawValue + " x10³/µL y fiebre en las últimas 24h.")
+            .reasoning("La combinación de reactantes de fase aguda elevados con fiebre sugiere infección activa/sepsis. Valorar hemocultivos, foco infeccioso, inicio de antibioterapia empírica y criterios qSOFA")
+            .analysisType("lab_sepsis_triad")
+            .build());
+    }
+
+    /** L5. Procalcitonina elevada */
+    private void checkLabProca(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab) {
+        lab(lab, "procalcitonina", "pct").ifPresent(pct -> {
+            if (pct.numericValue <= 0.5) return;
+            String level = pct.numericValue > 2.0 ? "critical" : "warning";
+            insights.add(ClinicalInsightDTO.builder()
+                .level(level)
+                .title("Procalcitonina elevada: " + pct.rawValue + " ng/mL")
+                .detail("PCT >" + (pct.numericValue > 2.0 ? "2.0" : "0.5") + " ng/mL sugiere infección bacteriana " + (pct.numericValue > 2.0 ? "grave/sepsis" : "probable") + ".")
+                .reasoning("La procalcitonina es un marcador específico de infección bacteriana. Valores >0.5 apoyan inicio de antibioterapia; >2.0 sugieren sepsis. Correlacionar con clínica y hemocultivos")
+                .analysisType("lab_procalcitonin")
+                .build());
+        });
+    }
+
+    /** L6. Leucopenia + fiebre → neutropenia febril (especialmente en inmunodeprimidos) */
+    private void checkLabNeutropeniaFever(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab, List<VitalSign> vitals, List<ImmunosuppressionHistory> immunoHistory) {
+        Optional<LabValue> wbc = lab(lab, "leucocitos");
+        if (wbc.isEmpty() || wbc.get().numericValue >= 4.0) return;
+        boolean hasFever = vitals.stream()
+            .filter(v -> v.getRecordedAt().isAfter(LocalDateTime.now().minusHours(24)))
+            .anyMatch(v -> v.getTemperature() != null && v.getTemperature() >= 38.0);
+        if (!hasFever) return;
+        boolean isImmuno = immunoHistory.stream().anyMatch(i -> i.getEndDate() == null);
+        String level = wbc.get().numericValue < 1.0 || isImmuno ? "critical" : "warning";
+        insights.add(ClinicalInsightDTO.builder()
+            .level(level)
+            .title("Leucopenia " + wbc.get().rawValue + " x10³/µL + Fiebre" + (isImmuno ? " (inmunodeprimido)" : ""))
+            .detail("Leucocitos bajos con fiebre en las últimas 24h." + (isImmuno ? " Paciente con antecedente inmunodepresor activo." : ""))
+            .reasoning("La neutropenia febril es una urgencia oncológica/infecciosa. Requiere hemocultivos urgentes, antibioterapia empírica de amplio espectro y valoración por hematología si procede")
+            .analysisType("lab_neutropenia_fever")
+            .build());
+    }
+
+    /** L7. INR elevado + anticoagulante */
+    private void checkLabINRAnticoagulant(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab, List<AdmissionPrescription> rx, List<Medication> hab) {
+        lab(lab, "inr").ifPresent(inr -> {
+            if (inr.numericValue <= 3.0) return;
+            boolean hasAnticoag = rxContains(rx, hab, "sintrom", "acenocumarol", "warfarina", "aldocumar");
+            if (!hasAnticoag) return;
+            String level = inr.numericValue > 5.0 ? "critical" : "warning";
+            insights.add(ClinicalInsightDTO.builder()
+                .level(level)
+                .title("INR " + inr.rawValue + " + anticoagulante oral")
+                .detail("INR supraterapéutico con anticoagulante cumarínico pautado.")
+                .reasoning("INR >" + (inr.numericValue > 5.0 ? "5.0 implica riesgo hemorrágico grave" : "3.0 indica sobreanticoagulación") + ". Valorar suspensión temporal, vitamina K si INR >5, y vigilar signos de sangrado activo")
+                .analysisType("lab_inr_anticoagulant")
+                .build());
+        });
+    }
+
+    /** L8. Plaquetopenia (<100.000) */
+    private void checkLabThrombocytopenia(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab) {
+        lab(lab, "plaquetas").ifPresent(plt -> {
+            if (plt.numericValue >= 100) return; // x10³/µL
+            String level = plt.numericValue < 50 ? "critical" : "warning";
+            insights.add(ClinicalInsightDTO.builder()
+                .level(level)
+                .title("Plaquetopenia: " + plt.rawValue + " x10³/µL")
+                .detail("Plaquetas <" + (plt.numericValue < 50 ? "50.000" : "100.000") + ". Riesgo hemorrágico " + (plt.numericValue < 50 ? "alto" : "moderado") + ".")
+                .reasoning("Plaquetopenia requiere investigar causa (fármacos, CID, hiperesplenismo). " + (plt.numericValue < 50 ? "Con <50.000 evitar procedimientos invasivos y valorar transfusión si sangrado activo" : "Vigilar evolución y evitar antiagregantes"))
+                .analysisType("lab_thrombocytopenia")
+                .build());
+        });
+    }
+
+    /** L9. Anemia + taquicardia */
+    private void checkLabAnemiaWithTachycardia(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab, List<VitalSign> vitals) {
+        lab(lab, "hemoglobina").ifPresent(hb -> {
+            if (hb.numericValue >= 10.0) return;
+            boolean hasTachy = vitals.stream()
+                .filter(v -> v.getRecordedAt().isAfter(LocalDateTime.now().minusHours(12)))
+                .anyMatch(v -> v.getHeartRate() != null && v.getHeartRate() >= 100);
+            if (!hasTachy) return;
+            String level = hb.numericValue < 7.0 ? "critical" : "warning";
+            insights.add(ClinicalInsightDTO.builder()
+                .level(level)
+                .title("Anemia (Hb " + hb.rawValue + " g/dL) + Taquicardia")
+                .detail("Hemoglobina baja con frecuencia cardíaca ≥100 lpm en las últimas 12h.")
+                .reasoning("La taquicardia compensatoria en contexto de anemia sugiere repercusión hemodinámica. " + (hb.numericValue < 7.0 ? "Hb <7 g/dL: valorar transfusión urgente" : "Valorar causa del sangrado, solicitar pruebas cruzadas y monitorizar"))
+                .analysisType("lab_anemia_tachycardia")
+                .build());
+        });
+    }
+
+    /** L10. Transaminasas elevadas + hepatotóxico */
+    private void checkLabTransaminasesHepatotoxic(List<ClinicalInsightDTO> insights, Map<String, LabValue> lab, List<AdmissionPrescription> rx, List<Medication> hab) {
+        Optional<LabValue> got = lab(lab, "got", "ast", "aspartato aminotransferasa");
+        Optional<LabValue> gpt = lab(lab, "gpt", "alt", "alanina aminotransferasa");
+        // Need at least one elevated
+        boolean gotHigh = got.isPresent() && got.get().numericValue > 40;
+        boolean gptHigh = gpt.isPresent() && gpt.get().numericValue > 40;
+        if (!gotHigh && !gptHigh) return;
+        List<String> hepatotoxic = List.of("paracetamol", "amoxicilina-clavulanico", "amoxicilina/clavulanico", "atorvastatina", "simvastatina", "rosuvastatina", "metformina", "valproico", "carbamazepina", "isoniazida", "rifampicina", "fluconazol");
+        List<String> found = new ArrayList<>();
+        for (String drug : hepatotoxic) {
+            if (rxContains(rx, hab, drug)) found.add(drug);
+        }
+        if (found.isEmpty()) return;
+        String values = (gotHigh ? "GOT " + got.get().rawValue : "") + (gotHigh && gptHigh ? " / " : "") + (gptHigh ? "GPT " + gpt.get().rawValue : "");
+        insights.add(ClinicalInsightDTO.builder()
+            .level("warning")
+            .title("Transaminasas elevadas (" + values + ") + hepatotóxico")
+            .detail("Elevación de transaminasas con fármacos hepatotóxicos activos: " + String.join(", ", found))
+            .reasoning("La hepatotoxicidad farmacológica es una causa frecuente de elevación de transaminasas. Valorar suspensión del fármaco sospechoso, solicitar perfil hepático completo y ecografía si persiste")
+            .analysisType("lab_transaminases_hepatotoxic")
+            .build());
     }
 }

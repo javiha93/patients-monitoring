@@ -39,6 +39,9 @@ class ClinicalInsightsApiTest {
     @Autowired private MedicationRepository medicationRepo;
     @Autowired private DeviceRepository deviceRepo;
     @Autowired private DrainOutputRepository drainOutputRepo;
+    @Autowired private LabTestRepository labTestRepo;
+    @Autowired private LabResultRepository labResultRepo;
+    @Autowired private ImmunosuppressionRepository immunoRepo;
 
     private Patient patient;
     private Admission admission;
@@ -769,6 +772,194 @@ class ClinicalInsightsApiTest {
     }
 
     // Helper to check for an insight by analysisType and optionally level
+    // ── Lab-cross alert helpers ──
+
+    private LabTest createLabTestWithResults(String[][] results) {
+        LabTest lt = labTestRepo.save(LabTest.builder()
+                .admission(admission).category("analitica").label("Test analítica")
+                .status("results").requestedAt(LocalDateTime.now().minusHours(2))
+                .externalId("LAB-TEST-" + System.nanoTime()).build());
+        for (String[] r : results) {
+            labResultRepo.save(LabResult.builder()
+                    .labTest(lt).category(r[0]).name(r[1]).value(r[2]).unit(r[3])
+                    .refRange(r[4]).flag(r[5]).build());
+        }
+        return lt;
+    }
+
+    // ── Lab-cross alert tests ──
+
+    @Test
+    @DisplayName("L1: Creatinina elevada + nefrotóxico genera alerta critical")
+    void labCreatinineNephrotoxic() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Bioquímica", "Creatinina", "2.1", "mg/dL", "0.6-1.2", "high"}
+        });
+        prescriptionRepo.save(AdmissionPrescription.builder()
+                .admission(admission).name("Ibuprofeno").amount("600").unit("mg")
+                .route("VO").frequency("c/8h").category(AdmissionPrescription.Category.fixed).active(true).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_creatinine_nephrotoxic", "critical"));
+    }
+
+    @Test
+    @DisplayName("L2: Hiperpotasemia + IECA genera alerta warning")
+    void labHyperkaliemiaRAAS() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Bioquímica", "Potasio", "5.4", "mEq/L", "3.5-5.0", "high"}
+        });
+        medicationRepo.save(Medication.builder()
+                .patient(patient).name("Enalapril 10mg").dose("10mg").frequency("c/24h")
+                .prescribedSince(LocalDate.now().minusMonths(6)).suspendedDuringAdmission(false).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_hyperkaliemia_raas", "warning"));
+    }
+
+    @Test
+    @DisplayName("L3: Creatinina en ascenso genera alerta warning")
+    void labCreatinineRising() throws Exception {
+        // Old lab (>36h ago)
+        LabTest old = labTestRepo.save(LabTest.builder()
+                .admission(admission).category("analitica").label("Analítica previa")
+                .status("results").requestedAt(LocalDateTime.now().minusHours(48))
+                .externalId("LAB-OLD-" + System.nanoTime()).build());
+        labResultRepo.save(LabResult.builder()
+                .labTest(old).category("Bioquímica").name("Creatinina").value("0.9").unit("mg/dL")
+                .refRange("0.6-1.2").flag("normal").build());
+        // Recent lab
+        createLabTestWithResults(new String[][]{
+            {"Bioquímica", "Creatinina", "1.5", "mg/dL", "0.6-1.2", "high"}
+        });
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_creatinine_rising", "warning"));
+    }
+
+    @Test
+    @DisplayName("L4: PCR + leucocitosis + fiebre genera alerta critical")
+    void labSepsisTriad() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Bioquímica", "PCR", "15.2", "mg/L", "0-5", "high"},
+            {"Hemograma", "Leucocitos", "18.5", "x10³/µL", "4.0-10.0", "high"}
+        });
+        vitalSignRepo.save(VitalSign.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(4))
+                .temperature(38.5).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_sepsis_triad", "critical"));
+    }
+
+    @Test
+    @DisplayName("L5: Procalcitonina >2 genera alerta critical")
+    void labProca() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Bioquímica", "Procalcitonina", "3.5", "ng/mL", "0-0.5", "high"}
+        });
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_procalcitonin", "critical"));
+    }
+
+    @Test
+    @DisplayName("L6: Leucopenia + fiebre + inmunodeprimido genera alerta critical")
+    void labNeutropeniaFever() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Hemograma", "Leucocitos", "0.8", "x10³/µL", "4.0-10.0", "low"}
+        });
+        vitalSignRepo.save(VitalSign.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(6))
+                .temperature(38.3).build());
+        immunoRepo.save(ImmunosuppressionHistory.builder()
+                .patient(patient).description("Metotrexato")
+                .eventDate(LocalDate.now().minusMonths(3)).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_neutropenia_fever", "critical"));
+    }
+
+    @Test
+    @DisplayName("L7: INR >3 + acenocumarol genera alerta warning")
+    void labINRAnticoagulant() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Coagulación", "INR", "4.2", "", "0.8-1.2", "high"}
+        });
+        medicationRepo.save(Medication.builder()
+                .patient(patient).name("Sintrom 4mg").dose("4mg").frequency("según pauta")
+                .prescribedSince(LocalDate.now().minusYears(1)).suspendedDuringAdmission(false).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_inr_anticoagulant", "warning"));
+    }
+
+    @Test
+    @DisplayName("L8: Plaquetas <50 genera alerta critical")
+    void labThrombocytopenia() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Hemograma", "Plaquetas", "35", "x10³/µL", "150-400", "low"}
+        });
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_thrombocytopenia", "critical"));
+    }
+
+    @Test
+    @DisplayName("L9: Anemia + taquicardia genera alerta warning")
+    void labAnemiaTachycardia() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Hemograma", "Hemoglobina", "8.5", "g/dL", "12.0-16.0", "low"}
+        });
+        vitalSignRepo.save(VitalSign.builder()
+                .admission(admission).recordedAt(LocalDateTime.now().minusHours(3))
+                .heartRate(115).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_anemia_tachycardia", "warning"));
+    }
+
+    @Test
+    @DisplayName("L10: Transaminasas elevadas + paracetamol genera alerta warning")
+    void labTransaminasesHepatotoxic() throws Exception {
+        createLabTestWithResults(new String[][]{
+            {"Bioquímica", "GPT", "120", "U/L", "5-40", "high"},
+            {"Bioquímica", "GOT", "95", "U/L", "5-40", "high"}
+        });
+        prescriptionRepo.save(AdmissionPrescription.builder()
+                .admission(admission).name("Paracetamol").amount("1000").unit("mg")
+                .route("VO").frequency("c/8h").category(AdmissionPrescription.Category.fixed).active(true).build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(hasInsight(body, "lab_transaminases_hepatotoxic", "warning"));
+    }
+
+    @Test
+    @DisplayName("Analítica >36h no genera alertas de laboratorio")
+    void labOldResultsNoAlert() throws Exception {
+        LabTest old = labTestRepo.save(LabTest.builder()
+                .admission(admission).category("analitica").label("Analítica antigua")
+                .status("results").requestedAt(LocalDateTime.now().minusHours(48))
+                .externalId("LAB-OLD2-" + System.nanoTime()).build());
+        labResultRepo.save(LabResult.builder()
+                .labTest(old).category("Hemograma").name("Plaquetas").value("30").unit("x10³/µL")
+                .refRange("150-400").flag("low").build());
+
+        String body = mvc.perform(get(insightsUrl())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(hasInsight(body, "lab_thrombocytopenia", null));
+    }
+
     private boolean hasInsight(String json, String analysisType, String expectedLevel) throws Exception {
         var insights = mapper.readTree(json);
         for (var node : insights) {

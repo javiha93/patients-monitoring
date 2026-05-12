@@ -5,6 +5,14 @@ import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
 import ActionBar from '../components/ActionBar'
 import ConfirmModal from '../components/ConfirmModal'
+import InsightsPanel from '../components/InsightsPanel'
+
+const labInsightTypes = [
+  'lab_creatinine_nephrotoxic', 'lab_hyperkaliemia_raas', 'lab_creatinine_rising',
+  'lab_sepsis_triad', 'lab_procalcitonin', 'lab_neutropenia_fever',
+  'lab_inr_anticoagulant', 'lab_thrombocytopenia', 'lab_anemia_tachycardia',
+  'lab_transaminases_hepatotoxic',
+]
 
 function calcAge(bd) {
   if (!bd) return null
@@ -131,6 +139,7 @@ export default function PatientTests() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6 pb-24 space-y-3">
+        {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} includeTypes={labInsightTypes} />}
         {!admission ? (
           <p className="text-slate-400 text-center mt-12">Sin ingreso activo</p>
         ) : tests.length === 0 ? (

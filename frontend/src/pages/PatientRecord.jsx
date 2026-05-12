@@ -185,7 +185,11 @@ export default function PatientRecord() {
             'vvp_prolonged', 'vvp_emergency_change', 'sng_pvc_change_due', 'sng_silicone_change_due',
             'sv_latex_change_due', 'sv_silicone_change_due', 'sv_itu_risk',
             'vvc_review_dressing', 'vvc_review_lines', 'picc_review_dressing', 'sng_aspiration_risk',
-            'drain_prolonged', 'drain_high_output', 'drain_hemorrhagic', 'drain_vacuum_lost',
+            'drain_prolonged', 'drain_high_output', 'drain_hemorrhagic', 'drain_vacuum_lost', 'drain_purulent',
+            'lab_creatinine_nephrotoxic', 'lab_hyperkaliemia_raas', 'lab_creatinine_rising',
+            'lab_sepsis_triad', 'lab_procalcitonin', 'lab_neutropenia_fever',
+            'lab_inr_anticoagulant', 'lab_thrombocytopenia', 'lab_anemia_tachycardia',
+            'lab_transaminases_hepatotoxic',
           ]} />}
           <VitalsSummaryCards vitals={vitals} />
           <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} activeDrains={activeDrains} />
