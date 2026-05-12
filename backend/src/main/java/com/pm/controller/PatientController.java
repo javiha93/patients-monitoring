@@ -5,9 +5,11 @@ import com.pm.service.PatientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/patients")
@@ -55,6 +57,11 @@ public class PatientController {
     @PatchMapping("/admission/{admissionId}/specialty")
     public void updateSpecialty(@PathVariable Long admissionId, @RequestParam String specialty) {
         patientService.updateAdmissionSpecialty(admissionId, specialty);
+    }
+
+    @GetMapping("/search-nhc")
+    public ResponseEntity<?> searchByNhc(@RequestParam String nhc) {
+        return patientService.searchByNhc(nhc);
     }
 
     @PostMapping("/{id}/reopen")

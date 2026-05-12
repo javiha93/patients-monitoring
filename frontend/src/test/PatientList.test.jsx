@@ -3,6 +3,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import PatientList, { naturalCompare, matchesDateFilter } from '../pages/PatientList'
 
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
+}))
+
 afterEach(() => { sessionStorage.clear() })
 
 // Mock navigate

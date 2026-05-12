@@ -7,8 +7,9 @@ export const patientApi = {
   getAdmissions: (id) => api.get(`/patients/${id}/admissions`),
   create: (data) => api.post('/patients', data),
   discharge: (id, data) => api.post(`/patients/${id}/discharge`, data),
-  reopen: (id, triageLevel, matCategory) =>
-    api.post(`/patients/${id}/reopen`, null, { params: { triageLevel, matCategory } }),
+  searchByNhc: (nhc) => api.get('/patients/search-nhc', { params: { nhc } }),
+  reopen: (id, params) =>
+    api.post(`/patients/${id}/reopen`, null, { params }),
   updateLocation: (admissionId, location) =>
     api.patch(`/patients/admission/${admissionId}/location`, null, { params: { location } }),
   updateSpecialty: (admissionId, specialty) =>

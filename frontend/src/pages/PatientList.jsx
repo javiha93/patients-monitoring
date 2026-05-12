@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, ChevronDown, Check, Filter, X } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
+import { useAuth } from '../context/AuthContext'
 import TriageBadge from '../components/TriageBadge'
 import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
@@ -153,6 +154,8 @@ function saveFilters(filters) {
 }
 
 export default function PatientList() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'Administrativo'
   const saved = useRef(loadFilters())
   const [patients, setPatients] = useState([])
   const [view, setView] = useState('table')
@@ -256,7 +259,13 @@ export default function PatientList() {
     setSelectedId(prev => prev === id ? null : id)
   }
 
-  const handleCreate = async (data) => {
+  const handleCreate = async (data, isReopen) => {
+    if (isReopen) {
+      // Reopen was handled inside the modal
+      setModalOpen(false)
+      fetchPatients()
+      return
+    }
     try {
       const { data: patient } = await patientApi.create(data)
       setModalOpen(false)
@@ -294,9 +303,11 @@ export default function PatientList() {
           <button onClick={() => setView('table')} className={`p-2 ${view === 'table' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
           <button onClick={() => setView('cards')} className={`p-2 ${view === 'cards' ? 'bg-slate-100' : ''}`}><LayoutGrid size={16} /></button>
         </div>
-        <button onClick={() => setModalOpen(true)} className="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-sky-600">
-          <Plus size={16} /> Abrir ficha
-        </button>
+        {isAdmin && (
+          <button onClick={() => setModalOpen(true)} className="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-sky-600">
+            <Plus size={16} /> Abrir ficha
+          </button>
+        )}
       </div>
 
       {/* Filter bar */}
@@ -484,14 +495,14 @@ export default function PatientList() {
       <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200 px-6 py-5 flex items-center gap-6 z-50">
         {actions.map(a => {
           const Icon = a.icon
-          const disabled = !selectedId
+          const disabled = !selectedId || isAdmin
           return (
             <button
               key={a.key}
               disabled={disabled}
-              onClick={() => selectedId && navigate(a.route(selectedId))}
+              onClick={() => selectedId && !isAdmin && navigate(a.route(selectedId))}
               className={`${a.color} ${disabled ? 'opacity-30 cursor-not-allowed' : 'opacity-70 hover:opacity-100'} transition-opacity`}
-              title={a.label}
+              title={isAdmin ? 'No disponible para Administrativo' : a.label}
             >
               <Icon size={30} strokeWidth={1.8} />
             </button>
@@ -506,7 +517,7 @@ export default function PatientList() {
         </div>
       </div>
 
-      <NewPatientModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleCreate} />
+      <NewPatientModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleCreate} isAdmin={isAdmin} />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )

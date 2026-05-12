@@ -7,11 +7,14 @@ import com.pm.repository.AdmissionRepository;
 import com.pm.repository.PatientRepository;
 import com.pm.service.NursingAssessmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -162,6 +165,35 @@ public class PatientService {
      * Reopen a discharged patient (create new admission).
      */
     @Transactional
+    /**
+     * Search patient by NHC. Returns status: not_found, active, inactive.
+     */
+    public ResponseEntity<?> searchByNhc(String nhc) {
+        Optional<Patient> opt = patientRepository.findByNhc(nhc);
+        if (opt.isEmpty()) {
+            return ResponseEntity.ok(Map.of("status", "not_found", "nhc", nhc));
+        }
+        Patient p = opt.get();
+        boolean hasActive = p.getAdmissions().stream()
+                .anyMatch(a -> a.getDischargedAt() == null);
+        if (hasActive) {
+            return ResponseEntity.ok(Map.of(
+                    "status", "active",
+                    "patientId", p.getId(),
+                    "firstName", p.getFirstName(),
+                    "lastName", p.getLastName(),
+                    "nhc", p.getNhc()
+            ));
+        }
+        return ResponseEntity.ok(Map.of(
+                "status", "inactive",
+                "patientId", p.getId(),
+                "firstName", p.getFirstName(),
+                "lastName", p.getLastName(),
+                "nhc", p.getNhc()
+        ));
+    }
+
     public PatientDTO reopenPatient(Long patientId, Integer triageLevel, String matCategory, String location, String specialty) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));

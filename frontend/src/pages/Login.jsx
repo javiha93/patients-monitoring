@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { login as loginApi } from '../services/authApi'
 
-const ROLES = ['Enfermería', 'Medicina']
+const ROLES = ['Enfermería', 'Medicina', 'Administrativo']
 
 export default function Login() {
   const { loginUser } = useAuth()

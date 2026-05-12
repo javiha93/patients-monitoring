@@ -169,4 +169,45 @@ class PatientApiTest {
                 .andExpect(jsonPath("$.nhc").value("NHC-001"))
                 .andExpect(jsonPath("$.activeAdmission.location").value("B1"));
     }
+
+    @Test
+    @DisplayName("GET /api/patients/search-nhc — not found")
+    void searchNhcNotFound() throws Exception {
+        mvc.perform(get("/api/patients/search-nhc").param("nhc", "NHC-NONE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("not_found"));
+    }
+
+    @Test
+    @DisplayName("GET /api/patients/search-nhc — active admission")
+    void searchNhcActive() throws Exception {
+        mvc.perform(post("/api/patients")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(buildRequest("NHC-SEARCH", "Test", "Active"))));
+
+        mvc.perform(get("/api/patients/search-nhc").param("nhc", "NHC-SEARCH"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("active"))
+                .andExpect(jsonPath("$.firstName").value("Test"))
+                .andExpect(jsonPath("$.lastName").value("Active"));
+    }
+
+    @Test
+    @DisplayName("GET /api/patients/search-nhc — inactive (discharged) patient")
+    void searchNhcInactive() throws Exception {
+        String response = mvc.perform(post("/api/patients")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(buildRequest("NHC-DISC", "Test", "Discharged"))))
+                .andReturn().getResponse().getContentAsString();
+        Long patientId = mapper.readTree(response).get("id").asLong();
+
+        mvc.perform(post("/api/patients/" + patientId + "/discharge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(new DischargeRequest("Mejoría", "Alta voluntaria"))));
+
+        mvc.perform(get("/api/patients/search-nhc").param("nhc", "NHC-DISC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("inactive"))
+                .andExpect(jsonPath("$.patientId").value(patientId));
+    }
 }
