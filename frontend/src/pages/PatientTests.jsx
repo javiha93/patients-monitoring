@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
+import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import ConfirmModal from '../components/ConfirmModal'
 import InsightsPanel from '../components/InsightsPanel'
@@ -45,6 +46,7 @@ const STATUS_CONFIG = {
 const CATEGORY_ICON = { analitica: FlaskConical, cultivo: Bug }
 export default function PatientTests() {
   const { id } = useParams()
+  const { user } = useAuth()
   const [patient, setPatient] = useState(null)
   const [tests, setTests] = useState([])
   const [loading, setLoading] = useState(true)
@@ -86,7 +88,7 @@ export default function PatientTests() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    await labTestApi.create({ ...newTest, admissionId: admission.id })
+    await labTestApi.create({ ...newTest, admissionId: admission.id, requestedBy: newTest.requestedBy || user?.displayName || '' })
     setNewTest({ category: 'analitica', label: '', requestedBy: '', notes: '' })
     setShowNew(false)
     fetchData()
@@ -95,7 +97,7 @@ export default function PatientTests() {
   const handleValidate = async () => {
     setValidateError('')
     try {
-      await labTestApi.validate(validateModal.test.id, externalId)
+      await labTestApi.validate(validateModal.test.id, externalId, user?.displayName || '')
       setValidateModal({ open: false, test: null })
       setExternalId('')
       fetchData()
@@ -165,7 +167,8 @@ export default function PatientTests() {
                   <div className="font-semibold text-sm">{t.label}</div>
                   <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
                     <span>{fmtDateTime(t.requestedAt)}</span>
-                    {t.requestedBy && <span>· {t.requestedBy}</span>}
+                    {t.requestedBy && <span title={`Solicitado por: ${t.requestedBy}`}>· {t.requestedBy}</span>}
+                    {t.validatedBy && <span className="text-sky-500" title={`Validado por: ${t.validatedBy}`}>· Val: {t.validatedBy}</span>}
                     {t.externalId && <span className="font-mono text-slate-500">ID: {t.externalId}</span>}
                   </div>
                 </div>

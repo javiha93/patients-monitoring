@@ -47,6 +47,9 @@ public class LabTest {
     @Column(name = "requested_by")
     private String requestedBy;
 
+    @Column(name = "validated_by")
+    private String validatedBy;
+
     private String notes;
 
     @OneToMany(mappedBy = "labTest", cascade = CascadeType.ALL, orphanRemoval = true)

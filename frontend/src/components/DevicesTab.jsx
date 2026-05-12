@@ -1,6 +1,7 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp, Clock, Pencil, X } from 'lucide-react'
 import { deviceApi } from '../services/deviceApi'
+import { useAuth } from '../context/AuthContext'
 import ConfirmModal from './ConfirmModal'
 import InsightsPanel from './InsightsPanel'
 
@@ -274,6 +275,7 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
 /* ── Main Component ── */
 
 const DevicesTab = forwardRef(function DevicesTab({ admissionId, patientId, toast }, ref) {
+  const { user } = useAuth()
   const [devices, setDevices] = useState([])
   const [modalCategory, setModalCategory] = useState(null)
   const [editingId, setEditingId] = useState(null)
@@ -308,7 +310,7 @@ const DevicesTab = forwardRef(function DevicesTab({ admissionId, patientId, toas
       if (editingId) {
         await deviceApi.update(editingId, form)
       } else {
-        await deviceApi.create({ ...form, admissionId, insertedAt: form.insertedAt || toLocalISOString() })
+        await deviceApi.create({ ...form, admissionId, insertedAt: form.insertedAt || toLocalISOString(), registeredBy: user?.displayName || '' })
       }
       toast.success(editingId ? 'Dispositivo actualizado' : 'Dispositivo registrado')
       closeModal()
@@ -508,6 +510,7 @@ function DeviceCard({ device, onEdit, onRemove, onDelete }) {
         <span className="flex items-center gap-1"><Clock size={11} /> {formatDateTime(d.insertedAt)}</span>
         {d.removedAt && <span>→ Retirado: {formatDateTime(d.removedAt)}</span>}
         {d.notes && <span className="text-slate-400">· {d.notes}</span>}
+        {d.registeredBy && <span className="text-slate-400" title={`Registrado por: ${d.registeredBy}`}>· {d.registeredBy}</span>}
       </div>
     </div>
   )

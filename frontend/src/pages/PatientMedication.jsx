@@ -4,6 +4,7 @@ import { ChevronLeft, Plus, Clock } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { prescriptionApi } from '../services/prescriptionApi'
 import { vitalsApi } from '../services/vitalsApi'
+import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import InsightsPanel from '../components/InsightsPanel'
 import MedicationGrid from '../components/MedicationGrid'
@@ -39,6 +40,7 @@ function calcAge(birthDate) {
 export default function PatientMedication() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const gridRef = useRef(null)
   const [patient, setPatient] = useState(null)
   const { toasts, removeToast, toast } = useToast()
@@ -46,8 +48,7 @@ export default function PatientMedication() {
   const [vitals, setVitals] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // TODO: replace with real auth context
-  const currentUser = 'Enf. Usuario Actual'
+  const currentUser = user?.displayName || 'Usuario'
   const [showNewRx, setShowNewRx] = useState(false)
   const [newRx, setNewRx] = useState({
     name: '', amount: '', unit: 'mg', route: 'VO', frequency: 'c/8h',
@@ -182,6 +183,7 @@ export default function PatientMedication() {
             onDirectUnsign={handleDirectUnsign}
             onOpenInsulinModal={handleOpenInsulinModal}
             onOpenEditModal={handleOpenEditModal}
+            currentUser={currentUser}
           />
         ) : (
           <p className="text-slate-400 text-center mt-12">Sin ingreso activo</p>

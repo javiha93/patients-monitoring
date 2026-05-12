@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import NursingAssessmentTab from '../components/NursingAssessmentTab'
 
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
+}))
+
 // Mock API
 const mockAssessments = [
   {

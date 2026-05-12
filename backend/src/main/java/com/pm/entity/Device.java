@@ -50,6 +50,9 @@ public class Device {
 
     private String notes;
 
+    @Column(name = "registered_by")
+    private String registeredBy;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

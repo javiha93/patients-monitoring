@@ -3,6 +3,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PatientTests from '../pages/PatientTests'
 
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
+}))
+
 const mockPatient = {
   id: 1, nhc: 'NHC-001', firstName: 'Ana', lastName: 'García',
   birthDate: '1985-03-15', sex: 'female',

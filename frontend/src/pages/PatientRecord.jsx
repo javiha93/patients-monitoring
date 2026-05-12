@@ -4,6 +4,7 @@ import { ChevronLeft, Plus, History } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { vitalsApi } from '../services/vitalsApi'
 import { deviceApi } from '../services/deviceApi'
+import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import VitalsSummaryCards from '../components/VitalsSummaryCards'
 import VitalsTable from '../components/VitalsTable'
@@ -33,6 +34,7 @@ function calcAge(birthDate) {
 export default function PatientRecord() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [patient, setPatient] = useState(null)
   const [vitals, setVitals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -104,7 +106,7 @@ export default function PatientRecord() {
 
   const handleNewVital = async (data) => {
     try {
-      await vitalsApi.create({ ...data, admissionId: admission.id })
+      await vitalsApi.create({ ...data, admissionId: admission.id, recordedBy: user?.displayName || '' })
       setModalOpen(false)
       fetchData()
     } catch (e) {

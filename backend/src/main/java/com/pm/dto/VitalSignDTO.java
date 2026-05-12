@@ -23,6 +23,7 @@ public class VitalSignDTO {
     private String urineSource;
     private String diaperAmount;
     private String notes;
+    private String recordedBy;
     private RespiratorySupportDTO respiratorySupport;
     private List<DrainOutputDTO> drainOutputs;
 
@@ -44,6 +45,7 @@ public class VitalSignDTO {
                 .urineSource(v.getUrineSource())
                 .diaperAmount(v.getDiaperAmount())
                 .notes(v.getNotes())
+                .recordedBy(v.getRecordedBy())
                 .build();
         if (v.getRespiratorySupport() != null) {
             dto.setRespiratorySupport(RespiratorySupportDTO.fromEntity(v.getRespiratorySupport()));

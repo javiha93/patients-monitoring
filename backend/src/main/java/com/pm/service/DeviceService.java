@@ -43,6 +43,7 @@ public class DeviceService {
             .insertedAt(dto.getInsertedAt())
             .removedAt(dto.getRemovedAt())
             .notes(dto.getNotes())
+            .registeredBy(dto.getRegisteredBy())
             .build();
 
         // Auto-assign drain number for drain types

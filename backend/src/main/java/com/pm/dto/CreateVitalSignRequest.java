@@ -44,6 +44,7 @@ public class CreateVitalSignRequest {
     private String urineSource;
     private String diaperAmount;
     private String notes;
+    private String recordedBy;
 
     // Respiratory support (optional)
     private String deviceType;

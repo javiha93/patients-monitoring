@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import DevicesTab from '../components/DevicesTab'
 
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
+}))
+
 const mockDevices = [
   { id: 1, admissionId: 10, category: 'vascular', type: 'via_periferica', gauge: '20G', location: 'mano_derecha', lumens: null, material: null, drainNumber: null, region: null, subRegion: null, laterality: null, insertedAt: '2026-05-11T08:00:00', removedAt: null, notes: '' },
   { id: 2, admissionId: 10, category: 'elimination', type: 'sonda_vesical', gauge: '16Fr', location: null, lumens: 2, material: 'latex', drainNumber: null, region: null, subRegion: null, laterality: null, insertedAt: '2026-05-11T09:00:00', removedAt: '2026-05-11T15:00:00', notes: 'Retirada por mejoría' },

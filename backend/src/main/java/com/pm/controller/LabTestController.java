@@ -41,7 +41,8 @@ public class LabTestController {
             return ResponseEntity.badRequest().body(Map.of("error", "El identificador es obligatorio"));
         }
         try {
-            return ResponseEntity.ok(service.validate(id, externalId.trim()));
+            String validatedBy = body.get("validatedBy");
+            return ResponseEntity.ok(service.validate(id, externalId.trim(), validatedBy));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {

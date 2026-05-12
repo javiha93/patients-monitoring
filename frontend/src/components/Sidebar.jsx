@@ -1,8 +1,10 @@
-import { Users, Search } from 'lucide-react'
+import { Users, Search, LogOut } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()
+  const { user, logout } = useAuth()
 
   const links = [
     { to: '/', icon: Users, label: 'Pacientes' },
@@ -34,8 +36,17 @@ export default function Sidebar() {
         })}
       </nav>
       <div className="px-5 py-4 border-t border-slate-800 text-sm text-slate-400">
-        <div className="text-white font-medium">Usuario</div>
-        <div>Enfermería</div>
+        <div className="text-white font-medium">{user?.displayName || 'Usuario'}</div>
+        <div className="flex items-center justify-between">
+          <span>{user?.role || 'Sin rol'}</span>
+          <button
+            onClick={logout}
+            className="text-slate-500 hover:text-white transition-colors"
+            title="Cerrar sesión"
+          >
+            <LogOut size={14} />
+          </button>
+        </div>
       </div>
     </aside>
   )

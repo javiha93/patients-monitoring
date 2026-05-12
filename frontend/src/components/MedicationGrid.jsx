@@ -163,7 +163,7 @@ const insulinScaleLabels = [
 // ── Component ──
 
 const MedicationGrid = forwardRef(function MedicationGrid(
-  { prescriptions, admissionDate, onDirectSign, onDirectUnsign, onOpenInsulinModal, onOpenEditModal },
+  { prescriptions, admissionDate, onDirectSign, onDirectUnsign, onOpenInsulinModal, onOpenEditModal, currentUser },
   ref
 ) {
   const scrollRef = useRef(null)
@@ -248,7 +248,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
         prescriptionId: p.id,
         administeredAt: toLocalISOString(slot),
         doseGiven: p.amount,
-        signedBy: '',
+        signedBy: currentUser || '',
       })
     }
   }

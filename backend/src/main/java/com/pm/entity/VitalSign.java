@@ -56,6 +56,9 @@ public class VitalSign {
 
     private String notes;
 
+    @Column(name = "recorded_by")
+    private String recordedBy;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

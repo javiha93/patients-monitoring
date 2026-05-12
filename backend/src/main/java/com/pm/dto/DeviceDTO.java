@@ -21,6 +21,7 @@ public class DeviceDTO {
     private LocalDateTime insertedAt;
     private LocalDateTime removedAt;
     private String notes;
+    private String registeredBy;
 
     public static DeviceDTO fromEntity(Device d) {
         return DeviceDTO.builder()
@@ -39,6 +40,7 @@ public class DeviceDTO {
             .insertedAt(d.getInsertedAt())
             .removedAt(d.getRemovedAt())
             .notes(d.getNotes())
+            .registeredBy(d.getRegisteredBy())
             .build();
     }
 }

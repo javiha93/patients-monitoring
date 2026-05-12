@@ -18,6 +18,7 @@ public class LabTestDTO {
     private LocalDateTime validatedAt;
     private LocalDateTime receivedAt;
     private String requestedBy;
+    private String validatedBy;
     private String notes;
     private List<LabResultDTO> results;
 
@@ -33,6 +34,7 @@ public class LabTestDTO {
                 .validatedAt(t.getValidatedAt())
                 .receivedAt(t.getReceivedAt())
                 .requestedBy(t.getRequestedBy())
+                .validatedBy(t.getValidatedBy())
                 .notes(t.getNotes())
                 .results(t.getResults() != null
                         ? t.getResults().stream().map(LabResultDTO::fromEntity).collect(Collectors.toList())

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Trash2, Clock, ChevronDown, ChevronUp, HelpCircle, Pencil, History } from 'lucide-react'
 import { nursingApi } from '../services/nursingApi'
+import { useAuth } from '../context/AuthContext'
 import GlasgowModal from './GlasgowModal'
 import ConfirmModal from './ConfirmModal'
 import InsightsPanel from './InsightsPanel'
@@ -103,6 +104,7 @@ function formatTime(dateStr) {
 const typeLabels = { entrada: 'Entrada', sucesiva: 'Sucesiva', salida: 'Salida' }
 
 export default function NursingAssessmentTab({ admissionId, patientId, toast }) {
+  const { user } = useAuth()
   const [assessments, setAssessments] = useState([])
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -152,7 +154,7 @@ export default function NursingAssessmentTab({ admissionId, patientId, toast }) 
         await nursingApi.update(editingId, { ...form, admissionId })
         toast.success('Valoración actualizada')
       } else {
-        await nursingApi.create({ ...form, admissionId, recordedAt: toLocalISOString() })
+        await nursingApi.create({ ...form, admissionId, recordedAt: toLocalISOString(), recordedBy: user?.displayName || '' })
         toast.success('Valoración guardada')
       }
       setFormOpen(false)
@@ -534,6 +536,7 @@ function AssessmentCard({ assessment, onDelete, onEdit }) {
         <Clock size={14} className="text-slate-400" />
         <span className="text-sm font-medium text-slate-700">{formatTime(a.recordedAt)}</span>
         <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">{typeLabels[a.assessmentType] || a.assessmentType}</span>
+        {a.recordedBy && <span className="text-xs text-sky-600" title={`Registrado por: ${a.recordedBy}`}>{a.recordedBy}</span>}
         <span className="text-xs text-slate-400 flex-1 truncate">{summaryItems.join(' · ')}</span>
         {onEdit && (
           <button onClick={e => { e.stopPropagation(); onEdit(a) }} className="text-slate-300 hover:text-blue-500"><Pencil size={14} /></button>

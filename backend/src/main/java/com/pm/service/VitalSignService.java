@@ -72,6 +72,7 @@ public class VitalSignService {
                 .urineSource(req.getUrineSource())
                 .diaperAmount(req.getDiaperAmount())
                 .notes(req.getNotes())
+                .recordedBy(req.getRecordedBy())
                 .build();
 
         if (req.getConsciousnessLevel() != null && !req.getConsciousnessLevel().isBlank()) {
