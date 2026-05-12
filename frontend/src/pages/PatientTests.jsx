@@ -3,10 +3,12 @@ import { useParams, Link } from 'react-router-dom'
 import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
+import { deviceApi } from '../services/deviceApi'
 import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import ConfirmModal from '../components/ConfirmModal'
 import InsightsPanel from '../components/InsightsPanel'
+import { DeviceFormModal } from '../components/DevicesTab'
 
 const labInsightTypes = [
   'lab_creatinine_nephrotoxic', 'lab_hyperkaliemia_raas', 'lab_creatinine_rising',
@@ -63,6 +65,12 @@ export default function PatientTests() {
   // Results viewer
   const [viewResults, setViewResults] = useState(null) // LabTestDTO with results
 
+  // VVP prompt on first validation
+  const [needsVvp, setNeedsVvp] = useState(false)
+  const [showVvpModal, setShowVvpModal] = useState(false)
+  const [vvpForm, setVvpForm] = useState({})
+  const [vvpSaving, setVvpSaving] = useState(false)
+
   // Delete confirm
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null })
 
@@ -106,6 +114,18 @@ export default function PatientTests() {
     }
   }
 
+  const handleVvpSubmit = async (e) => {
+    e.preventDefault()
+    setVvpSaving(true)
+    try {
+      await deviceApi.create({ ...vvpForm, admissionId: admission.id, insertedAt: new Date().toISOString(), registeredBy: user?.displayName || '' })
+      setShowVvpModal(false)
+      setNeedsVvp(false)
+      setVvpForm({})
+    } catch { /* ignore */ }
+    finally { setVvpSaving(false) }
+  }
+
   const handleDelete = async () => {
     await labTestApi.delete(deleteConfirm.id)
     setDeleteConfirm({ open: false, id: null })
@@ -117,6 +137,16 @@ export default function PatientTests() {
       setValidateModal({ open: true, test })
       setExternalId('')
       setValidateError('')
+      // Check if VVP is needed: first validation and no active VVP
+      const isFirstValidation = !tests.some(t => t.id !== test.id && t.status !== 'pending_validation')
+      if (isFirstValidation && admission) {
+        try {
+          const { data: hasVvp } = await deviceApi.hasActiveByType(admission.id, 'via_periferica')
+          setNeedsVvp(!hasVvp)
+        } catch { setNeedsVvp(false) }
+      } else {
+        setNeedsVvp(false)
+      }
     } else if (test.status === 'partial_results' || test.status === 'results') {
       const { data } = await labTestApi.getById(test.id)
       setViewResults(data)
@@ -233,6 +263,19 @@ export default function PatientTests() {
                 <span>{validateError}</span>
               </div>
             )}
+            {needsVvp && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2" data-testid="vvp-alert">
+                <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium">No hay vía periférica registrada</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Se necesita una vía para la extracción analítica.</p>
+                  <button type="button" onClick={() => { setShowVvpModal(true); setVvpForm({ category: 'vascular', type: 'via_periferica' }) }}
+                    className="mt-1.5 text-xs font-medium text-amber-700 underline hover:text-amber-900">
+                    Registrar vía periférica
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setValidateModal({ open: false, test: null })} className="px-4 py-2 text-sm text-slate-500">Cancelar</button>
               <button onClick={handleValidate} disabled={!externalId.trim()}
@@ -315,6 +358,17 @@ export default function PatientTests() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteConfirm({ open: false, id: null })}
       />
+
+      {/* VVP registration modal */}
+      {showVvpModal && (
+        <DeviceFormModal
+          form={vvpForm}
+          setForm={setVvpForm}
+          saving={vvpSaving}
+          onSubmit={handleVvpSubmit}
+          onClose={() => { setShowVvpModal(false); setVvpForm({}) }}
+        />
+      )}
     </div>
   )
 }
