@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -203,7 +204,7 @@ class PatientApiTest {
 
         mvc.perform(post("/api/patients/" + patientId + "/discharge")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(mapper.writeValueAsString(new DischargeRequest("Mejoría", "Alta voluntaria"))));
+                .content(mapper.writeValueAsString(new DischargeRequest(LocalDateTime.now(), "Alta voluntaria"))));
 
         mvc.perform(get("/api/patients/search-nhc").param("nhc", "NHC-DISC"))
                 .andExpect(status().isOk())
