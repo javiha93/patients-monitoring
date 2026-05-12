@@ -44,6 +44,7 @@ const groupColors = {
   'Respiratorio': 'border-l-sky-300',
   'Dolor': 'border-l-amber-300',
   'Metabólico': 'border-l-emerald-300',
+  'Drenajes': 'border-l-violet-300',
 }
 
 const deviceLabels = {
@@ -98,7 +99,18 @@ export function formatDeviceTooltip(rs) {
   return undefined
 }
 
-export default function VitalsTable({ vitals, onEdit, onDelete }) {
+const fluidTypeLabels = {
+  seroso: 'Seroso',
+  serohematico: 'Serohemático',
+  hematico: 'Hemático',
+}
+
+const drainTypeLabels = {
+  redon: 'Redon',
+  jackson_pratt: 'J-P',
+}
+
+export default function VitalsTable({ vitals, onEdit, onDelete, activeDrains }) {
   const [hoveredCol, setHoveredCol] = useState(null)
 
   if (!vitals || vitals.length === 0) {
@@ -107,6 +119,18 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
 
   // Most recent first
   const sorted = [...vitals].reverse()
+
+  // Build drain rows dynamically from active drains
+  const drainRows = (activeDrains || []).map((drain, i) => ({
+    key: `drain_${drain.id}`,
+    label: `${drainTypeLabels[drain.type] || drain.type} #${drain.drainNumber}`,
+    deviceId: drain.id,
+    drainNumber: drain.drainNumber,
+    group: 'Drenajes',
+    groupFirst: i === 0,
+  }))
+
+  const allRows = [...rows, ...drainRows]
 
   return (
     <div className="overflow-x-auto">
@@ -136,7 +160,7 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {allRows.map(r => (
             <tr key={r.key} className={r.groupFirst ? 'border-t-2 border-t-slate-200' : 'border-t border-slate-100'}>
               <th className={`px-3 py-2.5 text-left text-sm font-semibold text-slate-700 sticky left-0 bg-white z-10 border-l-3 ${groupColors[r.group] || ''}`}>{r.label}</th>
               {sorted.map(v => {
@@ -195,6 +219,36 @@ export default function VitalsTable({ vitals, onEdit, onDelete }) {
                     </td>
                   )
                 }
+                // Drain output row
+                if (r.deviceId) {
+                  const drainOut = (v.drainOutputs || []).find(o => o.deviceId === r.deviceId)
+                  if (!drainOut || drainOut.outputMl == null) {
+                    return (
+                      <td key={v.id} className={`px-3 py-2.5 text-center text-xs text-slate-300 ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                        onClick={onEdit ? () => onEdit(v) : undefined}
+                        onMouseEnter={() => setHoveredCol(v.id)}
+                        onMouseLeave={() => setHoveredCol(null)}
+                      >—</td>
+                    )
+                  }
+                  const fluidLabel = fluidTypeLabels[drainOut.fluidType] || drainOut.fluidType
+                  const vacuumIcon = drainOut.vacuumActive === false ? ' ⚠' : ''
+                  const isHigh = drainOut.outputMl > 200
+                  const isHematico = drainOut.fluidType === 'hematico'
+                  return (
+                    <td key={v.id}
+                      className={`px-3 py-2.5 text-center text-sm whitespace-nowrap ${isHematico ? 'bg-red-50 text-red-700 font-semibold' : isHigh ? 'bg-amber-50 text-amber-700 font-semibold' : 'text-slate-600'} ${onEdit ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                      onClick={onEdit ? () => onEdit(v) : undefined}
+                      onMouseEnter={() => setHoveredCol(v.id)}
+                      onMouseLeave={() => setHoveredCol(null)}
+                      title={`${drainOut.outputMl}mL · ${fluidLabel}${drainOut.vacuumActive === false ? ' · Sin vacío' : ''}`}
+                    >
+                      {drainOut.outputMl}mL
+                      <span className="ml-1 text-[9px] text-slate-400">({fluidLabel}{vacuumIcon})</span>
+                    </td>
+                  )
+                }
+
                 const val = v[r.key]
                 return (
                   <td

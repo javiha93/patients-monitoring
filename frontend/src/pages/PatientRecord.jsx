@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ChevronLeft, Plus, History } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { vitalsApi } from '../services/vitalsApi'
+import { deviceApi } from '../services/deviceApi'
 import ActionBar from '../components/ActionBar'
 import VitalsSummaryCards from '../components/VitalsSummaryCards'
 import VitalsTable from '../components/VitalsTable'
@@ -44,6 +45,7 @@ export default function PatientRecord() {
   const [historicalVitalsPage, setHistoricalVitalsPage] = useState(0)
   const [historicalVitalsHasMore, setHistoricalVitalsHasMore] = useState(true)
   const [loadingHistorical, setLoadingHistorical] = useState(false)
+  const [activeDrains, setActiveDrains] = useState([])
 
   const fetchData = async () => {
     try {
@@ -55,6 +57,11 @@ export default function PatientRecord() {
         // Check if historical vitals exist
         const { data: hist } = await vitalsApi.getHistorical(p.id, p.activeAdmission.id, 0, 1)
         setHistoricalVitalsHasMore(hist.content.length > 0)
+        // Fetch active drains for vitals table
+        try {
+          const { data: drains } = await deviceApi.getActiveDrains(p.activeAdmission.id)
+          setActiveDrains(drains)
+        } catch { setActiveDrains([]) }
       }
     } catch {
       navigate('/')
@@ -181,7 +188,7 @@ export default function PatientRecord() {
             'drain_prolonged', 'drain_high_output', 'drain_hemorrhagic', 'drain_vacuum_lost',
           ]} />}
           <VitalsSummaryCards vitals={vitals} />
-          <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} />
+          <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} activeDrains={activeDrains} />
 
           {historicalVitals.length > 0 && (
             <>

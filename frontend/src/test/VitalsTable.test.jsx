@@ -157,3 +157,44 @@ describe('KAN-59: Diuresis display in VitalsTable', () => {
     expect(screen.getByText('400mL')).toBeInTheDocument()
   })
 })
+
+describe('Drain output rows in VitalsTable', () => {
+  const drains = [
+    { id: 10, type: 'redon', drainNumber: 1, region: 'abdomen', laterality: 'derecha' },
+    { id: 11, type: 'jackson_pratt', drainNumber: 2, region: 'pelvis', laterality: 'medial' },
+  ]
+
+  it('muestra filas de drenaje cuando hay drenajes activos', () => {
+    const vital = mkVital({
+      drainOutputs: [
+        { deviceId: 10, drainNumber: 1, outputMl: 120, fluidType: 'seroso', vacuumActive: true },
+        { deviceId: 11, drainNumber: 2, outputMl: 45, fluidType: 'serohematico', vacuumActive: true },
+      ],
+    })
+    render(<VitalsTable vitals={[vital]} activeDrains={drains} />)
+    expect(screen.getByText('Redon #1')).toBeInTheDocument()
+    expect(screen.getByText('J-P #2')).toBeInTheDocument()
+    expect(screen.getByText('120mL')).toBeInTheDocument()
+    expect(screen.getByText('45mL')).toBeInTheDocument()
+  })
+
+  it('muestra — cuando no hay datos de drenaje en una constante', () => {
+    const vital = mkVital({ drainOutputs: [] })
+    render(<VitalsTable vitals={[vital]} activeDrains={drains} />)
+    expect(screen.getByText('Redon #1')).toBeInTheDocument()
+    // The drain cells should show dashes
+    const dashes = screen.getAllByText('—')
+    expect(dashes.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('resalta débito hemático en rojo', () => {
+    const vital = mkVital({
+      drainOutputs: [
+        { deviceId: 10, drainNumber: 1, outputMl: 80, fluidType: 'hematico', vacuumActive: true },
+      ],
+    })
+    render(<VitalsTable vitals={[vital]} activeDrains={drains} />)
+    const cell = screen.getByText('80mL').closest('td')
+    expect(cell.className).toContain('bg-red-50')
+  })
+})

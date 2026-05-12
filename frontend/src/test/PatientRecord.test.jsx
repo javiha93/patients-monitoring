@@ -58,6 +58,7 @@ vi.mock('../services/deviceApi', () => ({
     update: vi.fn(() => Promise.resolve({ data: {} })),
     delete: vi.fn(() => Promise.resolve()),
     hasActiveByType: vi.fn(() => Promise.resolve({ data: false })),
+    getActiveDrains: vi.fn(() => Promise.resolve({ data: [] })),
   },
 }))
 
