@@ -2,6 +2,7 @@ package com.pm.service;
 
 import com.pm.dto.*;
 import com.pm.entity.Admission;
+import com.pm.entity.Device;
 import com.pm.entity.Patient;
 import com.pm.repository.AdmissionRepository;
 import com.pm.repository.PatientRepository;
@@ -204,7 +205,36 @@ public class PatientService {
             throw new RuntimeException("Patient already has an active admission");
         }
 
-        openAdmission(patient, triageLevel, matCategory, location, specialty);
+        // Find the most recent discharged admission to carry over active devices
+        List<Admission> previous = admissionRepository.findByPatientIdOrderByAdmissionDateDesc(patientId);
+        Admission lastAdmission = previous.isEmpty() ? null : previous.get(0);
+
+        Admission newAdmission = openAdmission(patient, triageLevel, matCategory, location, specialty);
+
+        // Copy active (non-removed) devices from previous admission
+        if (lastAdmission != null) {
+            List<Device> activeDevices = deviceService.getActiveDevices(lastAdmission.getId());
+            for (Device d : activeDevices) {
+                Device copy = Device.builder()
+                        .admission(newAdmission)
+                        .category(d.getCategory())
+                        .type(d.getType())
+                        .gauge(d.getGauge())
+                        .location(d.getLocation())
+                        .lumens(d.getLumens())
+                        .material(d.getMaterial())
+                        .drainNumber(d.getDrainNumber())
+                        .region(d.getRegion())
+                        .subRegion(d.getSubRegion())
+                        .laterality(d.getLaterality())
+                        .insertedAt(d.getInsertedAt())
+                        .notes(d.getNotes())
+                        .registeredBy(d.getRegisteredBy())
+                        .build();
+                deviceService.saveDevice(copy);
+            }
+        }
+
         return getPatient(patientId);
     }
 
@@ -218,7 +248,7 @@ public class PatientService {
                 .collect(Collectors.toList());
     }
 
-    private void openAdmission(Patient patient, Integer triageLevel, String matCategory, String location, String specialty) {
+    private Admission openAdmission(Patient patient, Integer triageLevel, String matCategory, String location, String specialty) {
         Admission admission = Admission.builder()
                 .patient(patient)
                 .admissionDate(LocalDateTime.now())
@@ -228,6 +258,6 @@ public class PatientService {
                 .specialty(specialty)
                 .status(Admission.Status.active)
                 .build();
-        admissionRepository.save(admission);
+        return admissionRepository.save(admission);
     }
 }

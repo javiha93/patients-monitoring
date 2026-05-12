@@ -111,7 +111,7 @@ const drainTypeLabels = {
   jackson_pratt: 'J-P',
 }
 
-export default function VitalsTable({ vitals, onEdit, onDelete, activeDrains }) {
+export default function VitalsTable({ vitals, onEdit, onDelete, activeDrains, currentUser }) {
   const [hoveredCol, setHoveredCol] = useState(null)
 
   if (!vitals || vitals.length === 0) {
@@ -148,7 +148,7 @@ export default function VitalsTable({ vitals, onEdit, onDelete, activeDrains }) 
               >
                 <div>{formatTime(v.recordedAt)}</div>
                 {v.recordedBy && <div className="text-[10px] font-normal text-sky-600">{v.recordedBy}</div>}
-                {onDelete && hoveredCol === v.id && (
+                {onDelete && hoveredCol === v.id && (!currentUser || v.recordedBy === currentUser) && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(v.id) }}
                     className="absolute -top-1 -right-1 bg-white border border-red-200 rounded-full p-0.5 shadow-sm text-red-400 hover:text-red-600 hover:bg-red-50"

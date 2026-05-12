@@ -194,7 +194,7 @@ export default function PatientRecord() {
               <Plus size={18} />
             </button>
           </div>
-          <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} activeDrains={activeDrains} />
+          <VitalsTable vitals={vitals} onEdit={setEditVital} onDelete={(id) => setConfirmAction({ message: '¿Eliminar este registro de constantes?', action: () => handleDeleteVital(id) })} activeDrains={activeDrains} currentUser={user?.displayName} />
 
           {historicalVitals.length > 0 && (
             <>

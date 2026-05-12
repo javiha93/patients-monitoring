@@ -20,6 +20,14 @@ public class DeviceService {
     private final DeviceRepository deviceRepo;
     private final AdmissionRepository admissionRepo;
 
+    public List<Device> getActiveDevices(Long admissionId) {
+        return deviceRepo.findByAdmissionIdAndRemovedAtIsNull(admissionId);
+    }
+
+    public Device saveDevice(Device device) {
+        return deviceRepo.save(device);
+    }
+
     public List<DeviceDTO> getByAdmission(Long admissionId) {
         return deviceRepo.findByAdmissionIdOrderByInsertedAtDesc(admissionId)
             .stream().map(DeviceDTO::fromEntity).collect(Collectors.toList());
