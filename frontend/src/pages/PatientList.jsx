@@ -139,21 +139,40 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+const STORAGE_KEY = 'patientListFilters'
+
+function loadFilters() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+function saveFilters(filters) {
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters))
+}
+
 export default function PatientList() {
+  const saved = useRef(loadFilters())
   const [patients, setPatients] = useState([])
   const [view, setView] = useState('table')
   const { toasts, removeToast, toast } = useToast()
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(saved.current?.search ?? '')
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
-  const [sortKey, setSortKey] = useState(null)
-  const [sortDir, setSortDir] = useState('asc')
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [filterSpecialties, setFilterSpecialties] = useState([])   // multi-select
-  const [filterLevels, setFilterLevels] = useState([])             // multi-select
-  const [filterDate, setFilterDate] = useState(null)               // single select
+  const [sortKey, setSortKey] = useState(saved.current?.sortKey ?? null)
+  const [sortDir, setSortDir] = useState(saved.current?.sortDir ?? 'asc')
+  const [filtersOpen, setFiltersOpen] = useState(saved.current?.filtersOpen ?? false)
+  const [filterSpecialties, setFilterSpecialties] = useState(saved.current?.filterSpecialties ?? [])
+  const [filterLevels, setFilterLevels] = useState(saved.current?.filterLevels ?? [])
+  const [filterDate, setFilterDate] = useState(saved.current?.filterDate ?? null)
   const navigate = useNavigate()
+
+  // Persist filter state to sessionStorage
+  useEffect(() => {
+    saveFilters({ search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterDate })
+  }, [search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterDate])
 
   const activeFilterCount = filterSpecialties.length + filterLevels.length + (filterDate ? 1 : 0)
 
@@ -461,7 +480,7 @@ export default function PatientList() {
       </div>
 
       {/* Action Bar */}
-      <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200 px-6 py-3 flex items-center gap-5 z-50">
+      <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200 px-6 py-5 flex items-center gap-6 z-50">
         {actions.map(a => {
           const Icon = a.icon
           const disabled = !selectedId
@@ -473,11 +492,11 @@ export default function PatientList() {
               className={`${a.color} ${disabled ? 'opacity-30 cursor-not-allowed' : 'opacity-70 hover:opacity-100'} transition-opacity`}
               title={a.label}
             >
-              <Icon size={22} />
+              <Icon size={30} strokeWidth={1.8} />
             </button>
           )
         })}
-        <div className="text-sm text-slate-500">
+        <div className="text-base text-slate-500">
           {selectedPatient ? (
             <><strong className="text-slate-900">{selectedPatient.lastName}, {selectedPatient.firstName}</strong> · {selectedPatient.nhc}</>
           ) : (

@@ -12,7 +12,7 @@ export default function ActionBar({ patient, admissionId }) {
   ]
 
   return (
-    <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200 px-6 py-3 flex items-center gap-5 z-50">
+    <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200 px-6 py-5 flex items-center gap-6 z-50">
       {tabs.map(t => {
         const Icon = t.icon
         const active = location.pathname === t.path
@@ -23,11 +23,11 @@ export default function ActionBar({ patient, admissionId }) {
             className={`${t.color} ${active ? 'opacity-100' : 'opacity-50'} hover:opacity-80 transition-opacity`}
             title={t.label}
           >
-            <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+            <Icon size={30} strokeWidth={active ? 2.2 : 1.8} />
           </Link>
         )
       })}
-      <div className="text-sm text-slate-500">
+      <div className="text-base text-slate-500">
         <strong className="text-slate-900">{patient?.lastName}, {patient?.firstName}</strong> · {patient?.nhc}
       </div>
     </div>
