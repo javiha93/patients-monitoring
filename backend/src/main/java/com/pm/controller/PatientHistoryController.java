@@ -61,4 +61,30 @@ public class PatientHistoryController {
     public void deleteMedication(@PathVariable Long patientId, @PathVariable Long id) {
         service.deleteMedication(id);
     }
+
+    // --- Immunosuppression ---
+    @PostMapping("/immunosuppressions")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ImmunosuppressionDTO addImmunosuppression(@PathVariable Long patientId, @RequestBody ImmunosuppressionDTO dto) {
+        return service.addImmunosuppression(patientId, dto);
+    }
+
+    @DeleteMapping("/immunosuppressions/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteImmunosuppression(@PathVariable Long patientId, @PathVariable Long id) {
+        service.deleteImmunosuppression(id);
+    }
+
+    // --- Surgical Interventions ---
+    @PostMapping("/surgeries")
+    @ResponseStatus(HttpStatus.CREATED)
+    public SurgicalInterventionDTO addSurgery(@PathVariable Long patientId, @RequestBody SurgicalInterventionDTO dto) {
+        return service.addSurgicalIntervention(patientId, dto);
+    }
+
+    @DeleteMapping("/surgeries/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteSurgery(@PathVariable Long patientId, @PathVariable Long id) {
+        service.deleteSurgicalIntervention(id);
+    }
 }

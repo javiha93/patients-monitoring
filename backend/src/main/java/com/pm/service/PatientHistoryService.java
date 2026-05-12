@@ -18,6 +18,8 @@ public class PatientHistoryService {
     private final MedicalHistoryRepository medicalHistoryRepository;
     private final AllergyRepository allergyRepository;
     private final MedicationRepository medicationRepository;
+    private final ImmunosuppressionRepository immunosuppressionRepository;
+    private final SurgicalInterventionRepository surgicalInterventionRepository;
 
     public PatientHistoryDTO getFullHistory(Long patientId) {
         return PatientHistoryDTO.builder()
@@ -27,6 +29,10 @@ public class PatientHistoryService {
                         .stream().map(AllergyDTO::fromEntity).collect(Collectors.toList()))
                 .medications(medicationRepository.findByPatientIdOrderByNameAsc(patientId)
                         .stream().map(MedicationDTO::fromEntity).collect(Collectors.toList()))
+                .immunosuppressions(immunosuppressionRepository.findByPatientIdOrderByEventDateDesc(patientId)
+                        .stream().map(ImmunosuppressionDTO::fromEntity).collect(Collectors.toList()))
+                .surgicalInterventions(surgicalInterventionRepository.findByPatientIdOrderByInterventionDateDesc(patientId)
+                        .stream().map(SurgicalInterventionDTO::fromEntity).collect(Collectors.toList()))
                 .build();
     }
 
@@ -90,5 +96,42 @@ public class PatientHistoryService {
     @Transactional
     public void deleteMedication(Long id) {
         medicationRepository.deleteById(id);
+    }
+
+    // --- Immunosuppression CRUD ---
+    @Transactional
+    public ImmunosuppressionDTO addImmunosuppression(Long patientId, ImmunosuppressionDTO dto) {
+        Patient p = patientRepository.findById(patientId).orElseThrow(() -> new RuntimeException("Patient not found"));
+        ImmunosuppressionHistory e = ImmunosuppressionHistory.builder()
+                .patient(p)
+                .description(dto.getDescription())
+                .eventDate(dto.getEventDate())
+                .endDate(dto.getEndDate())
+                .notes(dto.getNotes())
+                .build();
+        return ImmunosuppressionDTO.fromEntity(immunosuppressionRepository.save(e));
+    }
+
+    @Transactional
+    public void deleteImmunosuppression(Long id) {
+        immunosuppressionRepository.deleteById(id);
+    }
+
+    // --- Surgical Intervention CRUD ---
+    @Transactional
+    public SurgicalInterventionDTO addSurgicalIntervention(Long patientId, SurgicalInterventionDTO dto) {
+        Patient p = patientRepository.findById(patientId).orElseThrow(() -> new RuntimeException("Patient not found"));
+        SurgicalIntervention e = SurgicalIntervention.builder()
+                .patient(p)
+                .description(dto.getDescription())
+                .interventionDate(dto.getInterventionDate())
+                .notes(dto.getNotes())
+                .build();
+        return SurgicalInterventionDTO.fromEntity(surgicalInterventionRepository.save(e));
+    }
+
+    @Transactional
+    public void deleteSurgicalIntervention(Long id) {
+        surgicalInterventionRepository.deleteById(id);
     }
 }

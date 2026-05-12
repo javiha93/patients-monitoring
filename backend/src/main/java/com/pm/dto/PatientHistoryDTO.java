@@ -11,4 +11,6 @@ public class PatientHistoryDTO {
     private List<MedicalHistoryDTO> medicalHistory;
     private List<AllergyDTO> allergies;
     private List<MedicationDTO> medications;
+    private List<ImmunosuppressionDTO> immunosuppressions;
+    private List<SurgicalInterventionDTO> surgicalInterventions;
 }
