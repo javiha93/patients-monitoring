@@ -38,7 +38,17 @@ vi.mock('../services/labTestApi', () => ({
   },
 }))
 
+vi.mock('../services/deviceApi', () => ({
+  deviceApi: {
+    hasActiveByType: vi.fn(() => Promise.resolve({ data: true })),
+    create: vi.fn(() => Promise.resolve({ data: { id: 1 } })),
+    getByAdmission: vi.fn(() => Promise.resolve({ data: [] })),
+    getActiveDrains: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}))
+
 import { labTestApi as mockLabTestApi } from '../services/labTestApi'
+import { deviceApi as mockDeviceApi } from '../services/deviceApi'
 
 function renderPage() {
   return render(
@@ -108,5 +118,56 @@ describe('PatientTests: Pruebas de laboratorio', () => {
     renderPage()
     await waitFor(() => screen.getByText('Hemocultivo x2'))
     expect(screen.getByText(/LAB-001/)).toBeInTheDocument()
+  })
+})
+
+describe('PatientTests: VVP prompt on first validation', () => {
+  const onlyPendingTests = [
+    { id: 1, category: 'analitica', label: 'Hemograma', status: 'pending_validation', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: null, results: [] },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: onlyPendingTests })
+  })
+
+  it('muestra alerta VVP cuando no hay vía periférica activa en primera validación', async () => {
+    mockDeviceApi.hasActiveByType.mockResolvedValue({ data: false })
+    renderPage()
+    await waitFor(() => screen.getByText('Hemograma'))
+    fireEvent.click(screen.getByText('Hemograma'))
+    await waitFor(() => screen.getByTestId('vvp-alert'))
+    expect(screen.getByText('No hay vía periférica registrada')).toBeInTheDocument()
+    expect(screen.getByText('Registrar vía periférica')).toBeInTheDocument()
+  })
+
+  it('no muestra alerta VVP cuando ya existe vía periférica activa', async () => {
+    mockDeviceApi.hasActiveByType.mockResolvedValue({ data: true })
+    renderPage()
+    await waitFor(() => screen.getByText('Hemograma'))
+    fireEvent.click(screen.getByText('Hemograma'))
+    await waitFor(() => screen.getByText('Validar prueba'))
+    expect(screen.queryByTestId('vvp-alert')).not.toBeInTheDocument()
+  })
+
+  it('no muestra alerta VVP cuando ya hay pruebas validadas previamente', async () => {
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: mockTests })
+    mockDeviceApi.hasActiveByType.mockResolvedValue({ data: false })
+    renderPage()
+    await waitFor(() => screen.getByText('Hemograma + Bioquímica'))
+    fireEvent.click(screen.getByText('Hemograma + Bioquímica'))
+    await waitFor(() => screen.getByText('Validar prueba'))
+    expect(screen.queryByTestId('vvp-alert')).not.toBeInTheDocument()
+  })
+
+  it('abre modal de registro de dispositivo al clicar "Registrar vía periférica"', async () => {
+    mockDeviceApi.hasActiveByType.mockResolvedValue({ data: false })
+    renderPage()
+    await waitFor(() => screen.getByText('Hemograma'))
+    fireEvent.click(screen.getByText('Hemograma'))
+    await waitFor(() => screen.getByTestId('vvp-alert'))
+    fireEvent.click(screen.getByText('Registrar vía periférica'))
+    await waitFor(() => screen.getByText('Nuevo dispositivo'))
+    expect(screen.getByText('Nuevo dispositivo')).toBeInTheDocument()
   })
 })

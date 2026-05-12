@@ -360,15 +360,15 @@ export default function PatientTests() {
       />
 
       {/* VVP registration modal */}
-      {showVvpModal && (
-        <DeviceFormModal
-          form={vvpForm}
-          setForm={setVvpForm}
-          saving={vvpSaving}
-          onSubmit={handleVvpSubmit}
-          onClose={() => { setShowVvpModal(false); setVvpForm({}) }}
-        />
-      )}
+      <DeviceFormModal
+        open={showVvpModal}
+        form={vvpForm}
+        set={(field, val) => setVvpForm(prev => ({ ...prev, [field]: val }))}
+        category="vascular"
+        saving={vvpSaving}
+        onSubmit={handleVvpSubmit}
+        onCancel={() => { setShowVvpModal(false); setVvpForm({}) }}
+      />
     </div>
   )
 }
