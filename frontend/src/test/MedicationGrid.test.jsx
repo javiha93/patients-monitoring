@@ -487,8 +487,8 @@ describe('KAN-52: Grid — Ancho fijo de celdas y scroll', () => {
     const { container } = render(
       <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
     )
-    const scrollContainer = container.firstChild
-    expect(scrollContainer.classList.contains('overflow-x-auto')).toBe(true)
+    const scrollContainer = container.querySelector('.overflow-x-auto')
+    expect(scrollContainer).toBeTruthy()
     expect(scrollContainer.style.minWidth).toBe('0')
   })
 

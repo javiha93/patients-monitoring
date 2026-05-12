@@ -5,3 +5,19 @@
 body {
   font-family: 'Inter', system-ui, sans-serif;
 }
+
+/* Always show scrollbar on medication grid */
+.med-grid-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.med-grid-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.med-grid-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+.med-grid-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}

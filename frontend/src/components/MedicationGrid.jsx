@@ -169,22 +169,33 @@ const MedicationGrid = forwardRef(function MedicationGrid(
   const scrollRef = useRef(null)
   const [hoveredCell, setHoveredCell] = useState(null)
   const [tooltip, setTooltip] = useState(null) // { x, y, admin, unit }
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
 
   const CELL_W = 56
   const LABEL_W = 240
-  const VISIBLE_HOURS = 16
+  const SCROLL_STEP = CELL_W * 6 // scroll 6 hours at a time
 
   const slots = generate72hSlots(admissionDate)
+
+  function updateScrollButtons() {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 0)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+  }
+
+  function scrollBy(dir) {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollBy({ left: dir * SCROLL_STEP, behavior: 'smooth' })
+  }
 
   function scrollToNowPosition(smooth = false) {
     const container = scrollRef.current
     if (!container) return
     const nowIdx = slots.findIndex(s => isCurrentHour(s))
     if (nowIdx < 0) return
-    // The now column's left edge in the table = LABEL_W + nowIdx * CELL_W
-    // We want it centered in the visible area.
-    // Visible width of the scroll container = container.clientWidth
-    // Target scrollLeft = position of now column - half the visible area + half a cell
     const nowLeft = LABEL_W + (nowIdx * CELL_W)
     const visibleWidth = container.clientWidth
     const targetScroll = nowLeft - (visibleWidth / 2) + (CELL_W / 2)
@@ -196,8 +207,19 @@ const MedicationGrid = forwardRef(function MedicationGrid(
   }))
 
   useEffect(() => {
-    const t = setTimeout(() => scrollToNowPosition(false), 100)
+    const t = setTimeout(() => { scrollToNowPosition(false); updateScrollButtons() }, 100)
     return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.addEventListener('scroll', updateScrollButtons)
+    window.addEventListener('resize', updateScrollButtons)
+    return () => {
+      el.removeEventListener('scroll', updateScrollButtons)
+      window.removeEventListener('resize', updateScrollButtons)
+    }
   }, [])
 
   if (!prescriptions || prescriptions.length === 0) {
@@ -252,11 +274,31 @@ const MedicationGrid = forwardRef(function MedicationGrid(
   }
 
   return (
-    <div
-      ref={scrollRef}
-      className="flex-1 overflow-x-auto overflow-y-auto pb-16"
-      style={{ minWidth: 0 }}
-    >
+    <div className="flex-1 flex flex-col relative" style={{ minWidth: 0 }}>
+      {/* Scroll arrow buttons */}
+      {canScrollLeft && (
+        <button
+          onClick={() => scrollBy(-1)}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-40 w-8 h-16 bg-white/90 border border-slate-200 rounded-r-lg shadow-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white transition-colors"
+          title="Horas anteriores"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+      )}
+      {canScrollRight && (
+        <button
+          onClick={() => scrollBy(1)}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-40 w-8 h-16 bg-white/90 border border-slate-200 rounded-l-lg shadow-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white transition-colors"
+          title="Horas siguientes"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      )}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-x-auto overflow-y-auto pb-16 med-grid-scroll"
+        style={{ minWidth: 0, scrollbarWidth: 'thin', scrollbarColor: '#94a3b8 #f1f5f9' }}
+      >
       <table className="border-collapse" style={{ width: LABEL_W + (slots.length * CELL_W), tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: LABEL_W }} />
@@ -424,6 +466,8 @@ const MedicationGrid = forwardRef(function MedicationGrid(
           })}
         </tbody>
       </table>
+
+      </div>
 
       {/* Tooltip rendered as portal outside the table to avoid layout shifts */}
       {tooltip && (
