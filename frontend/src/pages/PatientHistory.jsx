@@ -155,8 +155,8 @@ export default function PatientHistory() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 flex-shrink-0">
-        <Link to={`/patient/${id}`} className="text-slate-400 hover:text-slate-700 flex items-center gap-1 text-sm">
-          <ChevronLeft size={18} /> Ficha
+        <Link to="/" className="text-slate-400 hover:text-slate-700 flex items-center gap-1 text-sm">
+          <ChevronLeft size={18} /> Lista
         </Link>
         <div className="flex-1">
           <div className="text-lg font-bold">{patient.lastName}, {patient.firstName}</div>
