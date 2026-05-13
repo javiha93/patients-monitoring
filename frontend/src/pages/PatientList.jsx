@@ -129,13 +129,15 @@ function AssignmentCell({ patient, user, onUpdate, toast }) {
     const name = user.displayName
     try {
       if (isNurse) {
-        if (p.assignedNurse && p.assignedNurse !== name) {
+        if (p.assignedNurse === name) return // already assigned to me
+        if (p.assignedNurse) {
           if (!window.confirm(`Este paciente ya tiene asignado/a a ${p.assignedNurse}. ¿Quieres reemplazarlo/a?`)) return
         }
         await patientApi.assignNurse(p.admissionId, name)
         onUpdate({ assignedNurse: name })
       } else {
-        if (p.assignedDoctor && p.assignedDoctor !== name) {
+        if (p.assignedDoctor === name) return // already assigned to me
+        if (p.assignedDoctor) {
           if (!window.confirm(`Este paciente ya tiene asignado/a a ${p.assignedDoctor}. ¿Quieres reemplazarlo/a?`)) return
         }
         await patientApi.assignDoctor(p.admissionId, name)
@@ -166,17 +168,17 @@ function AssignmentCell({ patient, user, onUpdate, toast }) {
   if (!hasAny && !canAssign) return <span className="text-slate-300">—</span>
 
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      {/* Nurse row */}
+    <div className="group/assign flex items-center justify-center gap-1">
+      {/* Nurse badge */}
       {p.assignedNurse ? (
-        <div className="flex items-center gap-1">
+        <div className="relative">
           <span
             title={`Enf: ${p.assignedNurse}`}
             className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-100 text-teal-700 text-xs font-bold cursor-default"
           >{nurseInitials}</span>
           {isNurse && p.assignedNurse === user.displayName && (
-            <button onClick={() => handleUnassign('nurse')} title="Desasignar" className="text-slate-300 hover:text-red-400 transition-colors">
-              <X size={12} />
+            <button onClick={() => handleUnassign('nurse')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
+              <X size={10} />
             </button>
           )}
         </div>
@@ -186,16 +188,16 @@ function AssignmentCell({ patient, user, onUpdate, toast }) {
           className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-teal-300 text-teal-300 text-xs font-bold cursor-default"
         >{getInitials(p.previousNurse)}</span>
       ) : null}
-      {/* Doctor row */}
+      {/* Doctor badge */}
       {p.assignedDoctor ? (
-        <div className="flex items-center gap-1">
+        <div className="relative">
           <span
             title={`Med: ${p.assignedDoctor}`}
             className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold cursor-default"
           >{doctorInitials}</span>
           {isDoctor && p.assignedDoctor === user.displayName && (
-            <button onClick={() => handleUnassign('doctor')} title="Desasignar" className="text-slate-300 hover:text-red-400 transition-colors">
-              <X size={12} />
+            <button onClick={() => handleUnassign('doctor')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
+              <X size={10} />
             </button>
           )}
         </div>
@@ -205,12 +207,12 @@ function AssignmentCell({ patient, user, onUpdate, toast }) {
           className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-blue-300 text-blue-300 text-xs font-bold cursor-default"
         >{getInitials(p.previousDoctor)}</span>
       ) : null}
-      {/* Assign button — only if user's role slot is empty, visible on hover */}
-      {canAssign && ((isNurse && !p.assignedNurse) || (isDoctor && !p.assignedDoctor)) && (
+      {/* Assign button — always available for user's role, confirms if already assigned */}
+      {canAssign && (
         <button
           onClick={handleAssign}
           title="Asignarme"
-          className="w-7 h-7 rounded-full border border-dashed border-slate-300 flex items-center justify-center text-slate-300 opacity-0 group-hover/assign:opacity-100 hover:!opacity-100 hover:border-blue-400 hover:text-blue-500 transition-all mt-0.5"
+          className="w-7 h-7 rounded-full border border-dashed border-slate-300 flex items-center justify-center text-slate-300 opacity-0 group-hover/assign:opacity-100 hover:border-blue-400 hover:text-blue-500 transition-all"
         ><Plus size={14} /></button>
       )}
     </div>
@@ -752,7 +754,7 @@ export default function PatientList() {
                         <div className="flex items-center justify-end gap-1">
                           {p.pendingLabs && p.pendingLabs.length > 0 ? (
                             <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
-                              <Syringe size={16} className="text-red-500" />
+                              <Syringe size={16} className="text-orange-500" />
                             </span>
                           ) : p.hasCompletedLabs && (
                             <span title="Analíticas realizadas" data-testid="completed-lab-icon">
@@ -770,7 +772,7 @@ export default function PatientList() {
                           )}
                           {p.hasPendingXray ? (
                             <span title="Radiografía pendiente" data-testid="pending-xray-icon">
-                              <XRayIcon size={16} className="text-red-500" />
+                              <XRayIcon size={16} className="text-blue-500" />
                             </span>
                           ) : p.hasCompletedXray && (
                             <span title="Radiografía realizada" data-testid="completed-xray-icon">
@@ -825,7 +827,7 @@ export default function PatientList() {
                     <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
                     {p.pendingLabs && p.pendingLabs.length > 0 ? (
                       <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
-                        <Syringe size={14} className="text-red-500" />
+                        <Syringe size={14} className="text-orange-500" />
                       </span>
                     ) : p.hasCompletedLabs && (
                       <span title="Analíticas realizadas" data-testid="completed-lab-icon">
@@ -842,7 +844,7 @@ export default function PatientList() {
                       </span>
                     )}
                     {p.hasPendingXray ? (
-                      <span title="Radiografía pendiente"><XRayIcon size={14} className="text-red-500" /></span>
+                      <span title="Radiografía pendiente"><XRayIcon size={14} className="text-blue-500" /></span>
                     ) : p.hasCompletedXray && (
                       <span title="Radiografía realizada"><XRayIcon size={14} className="text-slate-300" /></span>
                     )}
