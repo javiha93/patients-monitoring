@@ -1,141 +1,125 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 /**
- * Interactive SVG body map for selecting X-ray regions.
- * Anatomically proportioned human silhouette with hover tooltips
- * connected by leader lines (like the screenshot reference).
+ * Dual-view interactive body map: front (anterior) + side (lateral).
+ * Front view for most regions; lateral view for spine and side-specific areas.
+ * Tooltip rendered as HTML overlay to avoid SVG clipping.
  */
 
-const REGIONS = [
-  // Head
-  { key: 'craneo', label: 'Cráneo', d: 'M91,12 Q91,2 100,2 Q109,2 109,12 L109,22 Q109,28 100,28 Q91,28 91,22 Z' },
-  { key: 'senos', label: 'Senos paranasales', d: 'M95,16 L105,16 L105,24 L95,24 Z' },
-  { key: 'mandibula', label: 'Mandíbula', d: 'M94,24 L106,24 L104,30 L96,30 Z' },
-  // Neck
-  { key: 'cervical', label: 'C. cervical', d: 'M96,30 L104,30 L105,40 L95,40 Z' },
-  // Shoulders
-  { key: 'hombro_izq', label: 'Hombro izq.', d: 'M70,46 Q78,40 92,42 L88,54 Q78,50 70,54 Z' },
-  { key: 'hombro_der', label: 'Hombro der.', d: 'M108,42 Q122,40 130,46 L130,54 Q122,50 112,54 Z' },
-  // Chest
-  { key: 'torax', label: 'Tórax', d: 'M86,42 L114,42 L114,76 L86,76 Z' },
-  { key: 'costillas', label: 'Costillas', d: 'M80,52 L86,46 L86,76 L82,76 Z M114,46 L120,52 L118,76 L114,76 Z' },
-  { key: 'esternon', label: 'Esternón', d: 'M97,44 L103,44 L103,72 L97,72 Z' },
-  { key: 'dorsal', label: 'C. dorsal', d: 'M97,44 L103,44 L103,76 L97,76 Z' },
-  // Abdomen
-  { key: 'abdomen', label: 'Abdomen', d: 'M84,76 L116,76 L116,102 L84,102 Z' },
-  { key: 'lumbar', label: 'C. lumbar', d: 'M97,76 L103,76 L103,102 L97,102 Z' },
-  // Pelvis
-  { key: 'pelvis', label: 'Pelvis', d: 'M82,102 L118,102 Q118,118 100,122 Q82,118 82,102 Z' },
-  { key: 'sacro', label: 'Sacro-coxis', d: 'M97,102 L103,102 L103,116 L97,116 Z' },
-  // Hips
-  { key: 'cadera_izq', label: 'Cadera izq.', d: 'M82,104 L96,104 Q92,120 86,122 Q82,118 82,104 Z' },
-  { key: 'cadera_der', label: 'Cadera der.', d: 'M104,104 L118,104 Q118,118 114,122 Q108,120 104,104 Z' },
-  // Upper arms
-  { key: 'humero_izq', label: 'Húmero izq.', d: 'M64,54 L72,52 L68,86 L60,88 Z' },
-  { key: 'humero_der', label: 'Húmero der.', d: 'M128,52 L136,54 L140,88 L132,86 Z' },
-  // Elbows
-  { key: 'codo_izq', label: 'Codo izq.', d: 'M58,88 L68,86 L66,98 L56,100 Z' },
-  { key: 'codo_der', label: 'Codo der.', d: 'M132,86 L142,88 L144,100 L134,98 Z' },
-  // Forearms
-  { key: 'antebrazo_izq', label: 'Antebrazo izq.', d: 'M54,100 L64,98 L60,130 L50,132 Z' },
-  { key: 'antebrazo_der', label: 'Antebrazo der.', d: 'M136,98 L146,100 L150,132 L140,130 Z' },
-  // Wrists
-  { key: 'muneca_izq', label: 'Muñeca izq.', d: 'M48,132 L60,130 L58,140 L46,142 Z' },
-  { key: 'muneca_der', label: 'Muñeca der.', d: 'M140,130 L152,132 L154,142 L142,140 Z' },
-  // Hands
-  { key: 'mano_izq', label: 'Mano izq.', d: 'M42,142 L58,140 L56,164 L38,164 Z' },
-  { key: 'mano_der', label: 'Mano der.', d: 'M142,140 L158,142 L162,164 L144,164 Z' },
-  // Thighs
-  { key: 'femur_izq', label: 'Fémur izq.', d: 'M84,122 L98,122 L96,178 L86,178 Z' },
-  { key: 'femur_der', label: 'Fémur der.', d: 'M102,122 L116,122 L114,178 L104,178 Z' },
-  // Knees
-  { key: 'rodilla_izq', label: 'Rodilla izq.', d: 'M84,178 L98,178 L97,196 L85,196 Z' },
-  { key: 'rodilla_der', label: 'Rodilla der.', d: 'M102,178 L116,178 L115,196 L103,196 Z' },
-  // Lower legs
-  { key: 'tibia_izq', label: 'Tibia-peroné izq.', d: 'M86,196 L96,196 L94,244 L88,244 Z' },
-  { key: 'tibia_der', label: 'Tibia-peroné der.', d: 'M104,196 L114,196 L112,244 L106,244 Z' },
-  // Ankles
-  { key: 'tobillo_izq', label: 'Tobillo izq.', d: 'M86,244 L96,244 L96,254 L86,254 Z' },
-  { key: 'tobillo_der', label: 'Tobillo der.', d: 'M104,244 L114,244 L114,254 L104,254 Z' },
-  // Feet
-  { key: 'pie_izq', label: 'Pie izq.', d: 'M80,254 L96,254 L96,266 Q88,268 78,266 Z' },
-  { key: 'pie_der', label: 'Pie der.', d: 'M104,254 L120,254 Q122,266 112,268 L104,266 Z' },
+/* ─── FRONT VIEW ─── */
+const FRONT_SILHOUETTE = `
+  M150,18 C150,8 156,2 165,2 C174,2 180,8 180,18 L180,32
+  C180,40 175,44 170,46 L170,52
+  C180,52 198,54 210,58 C222,62 228,68 232,76
+  L240,100 L246,118 L252,140 L258,158 L264,178
+  C266,184 264,186 260,186
+  L256,178 L250,160 L244,142 L238,124 L232,106
+  C228,94 224,86 218,78
+  L214,86 L210,100 L208,120 L208,148
+  C208,156 210,162 212,168
+  L214,180 L216,200 L218,230 L220,250
+  C222,260 224,268 224,274
+  L224,290 L226,300 L232,310
+  C234,314 232,318 226,318
+  L210,318 C206,318 204,314 206,310
+  L210,300 L210,290 L208,274
+  C208,268 206,260 204,250
+  L202,230 L200,200 L198,180
+  C196,170 194,162 192,156
+  L190,148 L188,130 L186,120
+  C184,114 182,112 180,112
+  L165,112
+  L150,112
+  C148,112 146,114 144,120
+  L142,130 L140,148
+  L138,156 C136,162 134,170 132,180
+  L130,200 L128,230 L126,250
+  C124,260 122,268 122,274
+  L120,290 L120,300 L124,310
+  C126,314 124,318 118,318
+  L104,318 C98,318 96,314 98,310
+  L104,300 L106,290 L106,274
+  C106,268 108,260 110,250
+  L112,230 L114,200 L116,180
+  C118,162 120,156 122,148
+  L122,120 L120,100 L116,86
+  L112,78 C106,86 102,94 98,106
+  L92,124 L86,142 L80,160 L74,178
+  L70,186 C66,186 64,184 66,178
+  L72,158 L78,140 L84,118 L90,100
+  L98,76 C102,68 108,62 120,58
+  C132,54 150,52 160,52
+  L160,46 C155,44 150,40 150,32 Z
+`
+
+const FRONT_REGIONS = [
+  { key: 'craneo', label: 'Cráneo', d: 'M150,6 C150,2 156,0 165,0 C174,0 180,2 180,6 L180,26 C180,32 176,36 165,36 C154,36 150,32 150,26 Z' },
+  { key: 'senos', label: 'Senos paranasales', d: 'M157,18 L173,18 L173,30 L157,30 Z' },
+  { key: 'cervical', label: 'C. cervical', d: 'M158,36 L172,36 L172,52 L158,52 Z' },
+  { key: 'hombro_izq', label: 'Hombro izq.', d: 'M120,56 Q140,52 158,54 L154,70 Q138,64 120,68 Z' },
+  { key: 'hombro_der', label: 'Hombro der.', d: 'M172,54 Q190,52 210,56 L210,68 Q192,64 176,70 Z' },
+  { key: 'torax', label: 'Tórax', d: 'M140,54 L190,54 L190,100 L140,100 Z' },
+  { key: 'costillas', label: 'Costillas', d: 'M130,68 L140,58 L140,100 L134,100 Z M190,58 L200,68 L196,100 L190,100 Z' },
+  { key: 'esternon', label: 'Esternón', d: 'M160,56 L170,56 L170,94 L160,94 Z' },
+  { key: 'abdomen', label: 'Abdomen', d: 'M136,100 L194,100 L194,140 L136,140 Z' },
+  { key: 'pelvis', label: 'Pelvis', d: 'M132,140 L198,140 Q198,164 165,168 Q132,164 132,140 Z' },
+  { key: 'cadera_izq', label: 'Cadera izq.', d: 'M132,142 L158,142 Q150,164 140,168 Q132,162 132,142 Z' },
+  { key: 'cadera_der', label: 'Cadera der.', d: 'M172,142 L198,142 Q198,162 190,168 Q180,164 172,142 Z' },
+  { key: 'humero_izq', label: 'Húmero izq.', d: 'M108,68 L122,66 L116,100 L104,102 Z' },
+  { key: 'humero_der', label: 'Húmero der.', d: 'M208,66 L222,68 L226,102 L214,100 Z' },
+  { key: 'codo_izq', label: 'Codo izq.', d: 'M100,102 L116,100 L112,118 L96,120 Z' },
+  { key: 'codo_der', label: 'Codo der.', d: 'M214,100 L230,102 L234,120 L218,118 Z' },
+  { key: 'antebrazo_izq', label: 'Antebrazo izq.', d: 'M90,120 L112,118 L106,152 L84,154 Z' },
+  { key: 'antebrazo_der', label: 'Antebrazo der.', d: 'M218,118 L240,120 L246,154 L224,152 Z' },
+  { key: 'muneca_izq', label: 'Muñeca izq.', d: 'M80,154 L106,152 L104,166 L78,168 Z' },
+  { key: 'muneca_der', label: 'Muñeca der.', d: 'M224,152 L250,154 L252,168 L226,166 Z' },
+  { key: 'mano_izq', label: 'Mano izq.', d: 'M70,168 L104,166 L100,194 L64,194 Z' },
+  { key: 'mano_der', label: 'Mano der.', d: 'M226,166 L260,168 L266,194 L230,194 Z' },
+  { key: 'femur_izq', label: 'Fémur izq.', d: 'M134,168 L162,168 L158,240 L138,240 Z' },
+  { key: 'femur_der', label: 'Fémur der.', d: 'M168,168 L196,168 L192,240 L172,240 Z' },
+  { key: 'rodilla_izq', label: 'Rodilla izq.', d: 'M136,240 L160,240 L160,260 L136,260 Z' },
+  { key: 'rodilla_der', label: 'Rodilla der.', d: 'M170,240 L194,240 L194,260 L170,260 Z' },
+  { key: 'tibia_izq', label: 'Tibia izq.', d: 'M138,260 L158,260 L154,306 L142,306 Z' },
+  { key: 'tibia_der', label: 'Tibia der.', d: 'M172,260 L192,260 L188,306 L176,306 Z' },
+  { key: 'tobillo_izq', label: 'Tobillo izq.', d: 'M140,306 L156,306 L156,316 L140,316 Z' },
+  { key: 'tobillo_der', label: 'Tobillo der.', d: 'M174,306 L190,306 L190,316 L174,316 Z' },
+  { key: 'pie_izq', label: 'Pie izq.', d: 'M130,316 L156,316 Q156,326 140,328 L128,326 Z' },
+  { key: 'pie_der', label: 'Pie der.', d: 'M174,316 L200,316 L202,326 Q190,328 174,326 Z' },
 ]
 
-// Smooth anatomical human silhouette
-const BODY_SILHOUETTE = `
-  M100,2
-  C108,2 112,6 112,14 L112,22
-  C112,30 106,32 104,32
-  L105,40
-  C114,40 124,42 130,46
-  C136,50 138,54 140,60
-  L144,88
-  L148,100
-  L154,132
-  L158,142
-  L164,166
-  L158,168
-  L152,144
-  L148,134
-  L144,120
-  L140,100
-  L136,88
-  L132,72
-  C128,56 126,52 124,50
-  L120,52
-  L118,76
-  L118,102
-  Q118,120 116,122
-  L114,178
-  L115,196
-  L112,244
-  L114,254
-  Q122,266 114,270
-  L104,270
-  L104,254
-  L106,244
-  L104,196
-  L104,178
-  L102,122
-  L100,122
-  L98,122
-  L96,178
-  L96,196
-  L94,244
-  L96,254
-  L96,270
-  L86,270
-  Q78,266 86,254
-  L88,244
-  L85,196
-  L86,178
-  L84,122
-  Q82,120 82,102
-  L82,76
-  L80,52
-  L76,50
-  C74,52 72,56 68,72
-  L64,88
-  L60,100
-  L56,120
-  L52,134
-  L48,144
-  L42,168
-  L36,166
-  L42,142
-  L46,132
-  L52,100
-  L56,88
-  L60,60
-  C62,54 64,50 70,46
-  C76,42 86,40 95,40
-  L96,32
-  C94,32 88,30 88,22
-  L88,14
-  C88,6 92,2 100,2
+/* ─── LATERAL VIEW ─── */
+const LATERAL_SILHOUETTE = `
+  M60,18 C60,8 66,2 74,2 C82,2 88,8 88,18 L88,28
+  C88,36 84,40 80,42
+  L82,48 C90,50 96,54 100,60
+  L104,76 L106,100 L106,140
+  Q106,160 104,168
+  L104,200 L106,240 L108,260
+  L110,290 L112,300 L118,310
+  C120,314 118,318 112,318
+  L96,318 C92,318 90,314 92,310
+  L96,300 L96,290 L94,274
+  L92,260 L90,240 L88,200
+  L86,180 L84,168
+  Q82,160 80,148
+  L78,120 L74,100 L70,80
+  C66,68 62,60 56,54
+  L52,50 L50,42
+  C46,40 42,36 42,28
+  L42,18 C42,8 48,2 56,2
   Z
 `
+
+const LATERAL_REGIONS = [
+  { key: 'craneo', label: 'Cráneo', d: 'M42,6 C42,0 50,0 60,0 L74,0 C84,0 88,4 88,10 L88,28 C88,34 84,38 78,38 L52,38 C46,38 42,34 42,28 Z' },
+  { key: 'cervical', label: 'C. cervical', d: 'M56,38 L78,38 L80,52 L54,52 Z' },
+  { key: 'dorsal', label: 'C. dorsal', d: 'M72,52 L84,52 L86,100 L74,100 Z' },
+  { key: 'lumbar', label: 'C. lumbar', d: 'M74,100 L86,100 L86,140 L74,140 Z' },
+  { key: 'sacro', label: 'Sacro-coxis', d: 'M74,140 L86,140 L86,160 L76,160 Z' },
+  { key: 'torax', label: 'Tórax', d: 'M54,52 L72,52 L74,100 L56,100 Z' },
+  { key: 'abdomen', label: 'Abdomen', d: 'M56,100 L74,100 L74,140 L58,140 Z' },
+  { key: 'pelvis', label: 'Pelvis', d: 'M58,140 L86,140 Q88,164 72,168 Q56,164 58,140 Z' },
+]
 
 function getCenter(d) {
   const nums = d.match(/[\d.]+/g)?.map(Number) || []
@@ -144,82 +128,110 @@ function getCenter(d) {
     if (i + 1 < nums.length) { xs.push(nums[i]); ys.push(nums[i + 1]) }
   }
   return {
-    x: xs.reduce((a, b) => a + b, 0) / xs.length,
-    y: ys.reduce((a, b) => a + b, 0) / ys.length,
+    x: xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0,
+    y: ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 0,
   }
 }
 
-function LeaderLabel({ region, color = '#3b82f6', bgFill = '#eff6ff', strokeColor = '#3b82f6', fontWeight = '600', textColor = '#1d4ed8' }) {
-  const { x: cx, y: cy } = getCenter(region.d)
-  const isRight = cx >= 100
-  const labelX = isRight ? 148 : 52
-  const textAnchor = isRight ? 'start' : 'end'
-  const textX = isRight ? labelX + 4 : labelX - 4
-  const w = region.label.length * 5.2 + 12
-  const rectX = isRight ? labelX : labelX - w
-
+function BodySvg({ silhouette, regions, selected, hovered, setHovered, onSelect, viewBox }) {
   return (
-    <g>
-      <line x1={cx} y1={cy} x2={labelX} y2={cy} stroke={strokeColor} strokeWidth="0.6" opacity="0.6" />
-      <circle cx={cx} cy={cy} r="2" fill={color} />
-      <rect x={rectX} y={cy - 9} width={w} height={17} rx="4" fill={bgFill} stroke={strokeColor} strokeWidth="0.5" />
-      <text x={textX} y={cy + 1} fontSize="7.5" fill={textColor} textAnchor={textAnchor} dominantBaseline="middle" fontWeight={fontWeight} fontFamily="system-ui, sans-serif">{region.label}</text>
-    </g>
+    <svg viewBox={viewBox} className="w-full h-full select-none" style={{ maxHeight: '420px' }}>
+      <path d={silhouette} fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" strokeLinejoin="round" />
+      {regions.map(r => {
+        const isSel = selected === r.key
+        const isHov = hovered === r.key
+        return (
+          <path
+            key={r.key}
+            d={r.d}
+            fill={isSel ? 'rgba(59,130,246,0.4)' : isHov ? 'rgba(59,130,246,0.2)' : 'transparent'}
+            stroke={isSel ? '#3b82f6' : isHov ? '#93c5fd' : 'transparent'}
+            strokeWidth={isSel ? 2 : 1}
+            className="cursor-pointer"
+            style={{ transition: 'fill 0.12s, stroke 0.12s' }}
+            onMouseEnter={() => setHovered(r.key)}
+            onMouseLeave={() => setHovered(null)}
+            onClick={() => onSelect(r.key)}
+          />
+        )
+      })}
+    </svg>
   )
 }
 
 export default function BodyMap({ selected, onSelect }) {
   const [hovered, setHovered] = useState(null)
-  const hoveredRegion = REGIONS.find(r => r.key === hovered)
-  const selectedRegion = REGIONS.find(r => r.key === selected)
+  const [view, setView] = useState('front') // 'front' | 'lateral'
+  const containerRef = useRef(null)
+
+  const allRegions = [...FRONT_REGIONS, ...LATERAL_REGIONS]
+  const activeLabel = (hovered || selected)
+    ? allRegions.find(r => r.key === (hovered || selected))?.label
+    : null
 
   return (
-    <div className="relative flex justify-center">
-      <svg viewBox="20 -6 160 284" className="w-full max-w-[280px] h-auto select-none">
-        {/* Body silhouette */}
-        <path
-          d={BODY_SILHOUETTE}
-          fill="#e8ecf1"
-          stroke="#b0bac9"
-          strokeWidth="0.8"
-          strokeLinejoin="round"
-        />
+    <div className="flex flex-col items-center gap-2" ref={containerRef}>
+      {/* View toggle */}
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+        <button
+          onClick={() => setView('front')}
+          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+            view === 'front' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >Frontal</button>
+        <button
+          onClick={() => setView('lateral')}
+          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+            view === 'lateral' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >Lateral</button>
+      </div>
 
-        {/* Clickable regions */}
-        {REGIONS.map(r => {
-          const isSel = selected === r.key
-          const isHov = hovered === r.key
-          return (
-            <path
-              key={r.key}
-              d={r.d}
-              fill={isSel ? 'rgba(59,130,246,0.4)' : isHov ? 'rgba(59,130,246,0.18)' : 'transparent'}
-              stroke={isSel ? '#3b82f6' : isHov ? '#93c5fd' : 'transparent'}
-              strokeWidth={isSel ? 1.5 : 1}
-              className="cursor-pointer"
-              style={{ transition: 'fill 0.15s, stroke 0.15s' }}
-              onMouseEnter={() => setHovered(r.key)}
-              onMouseLeave={() => setHovered(null)}
-              onClick={() => onSelect(r.key)}
-            />
-          )
-        })}
+      {/* Tooltip bar */}
+      <div className={`h-7 flex items-center justify-center px-3 rounded-lg text-xs font-medium transition-all ${
+        activeLabel
+          ? (hovered && hovered !== selected ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700')
+          : 'text-slate-400'
+      }`}>
+        {activeLabel || 'Selecciona una zona del cuerpo'}
+      </div>
 
-        {/* Leader line labels */}
-        {hoveredRegion && hovered !== selected && (
-          <LeaderLabel region={hoveredRegion} color="#64748b" bgFill="white" strokeColor="#cbd5e1" fontWeight="400" textColor="#334155" />
+      {/* Body SVGs */}
+      <div className="w-full" style={{ maxWidth: view === 'front' ? '240px' : '140px' }}>
+        {view === 'front' ? (
+          <BodySvg
+            silhouette={FRONT_SILHOUETTE}
+            regions={FRONT_REGIONS}
+            selected={selected}
+            hovered={hovered}
+            setHovered={setHovered}
+            onSelect={onSelect}
+            viewBox="50 -4 240 336"
+          />
+        ) : (
+          <BodySvg
+            silhouette={LATERAL_SILHOUETTE}
+            regions={LATERAL_REGIONS}
+            selected={selected}
+            hovered={hovered}
+            setHovered={setHovered}
+            onSelect={onSelect}
+            viewBox="30 -4 100 336"
+          />
         )}
-        {selectedRegion && (
-          <LeaderLabel region={selectedRegion} />
-        )}
-      </svg>
+      </div>
+
+      {/* Hint */}
+      {view === 'lateral' && (
+        <p className="text-xs text-slate-400 text-center">Vista lateral — ideal para columna</p>
+      )}
     </div>
   )
 }
 
-/** Get the label for a body map region key */
 export function getBodyMapLabel(key) {
-  return REGIONS.find(r => r.key === key)?.label || key
+  const all = [...FRONT_REGIONS, ...LATERAL_REGIONS]
+  return all.find(r => r.key === key)?.label || key
 }
 
-export const BODY_MAP_REGIONS = REGIONS.map(r => r.key)
+export const BODY_MAP_REGIONS = [...new Set([...FRONT_REGIONS, ...LATERAL_REGIONS].map(r => r.key))]
