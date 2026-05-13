@@ -52,6 +52,14 @@ public class LabTest {
 
     private String notes;
 
+    /** JSON array of requested parameter codes, e.g. ["hemograma","bioquimica_basica"] */
+    @Column(name = "requested_parameters", length = 2000)
+    private String requestedParameters;
+
+    /** Sample type: sangre, orina, esputo, heces */
+    @Column(name = "sample_type")
+    private String sampleType;
+
     @OneToMany(mappedBy = "labTest", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("category, name")
     @Builder.Default

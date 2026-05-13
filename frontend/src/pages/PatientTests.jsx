@@ -9,6 +9,7 @@ import ActionBar from '../components/ActionBar'
 import ConfirmModal from '../components/ConfirmModal'
 import InsightsPanel from '../components/InsightsPanel'
 import { DeviceFormModal } from '../components/DevicesTab'
+import NewLabTestModal from '../components/NewLabTestModal'
 
 const labInsightTypes = [
   'lab_creatinine_nephrotoxic', 'lab_hyperkaliemia_raas', 'lab_creatinine_rising',
@@ -53,9 +54,8 @@ export default function PatientTests() {
   const [tests, setTests] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // New test form
+  // New test modal
   const [showNew, setShowNew] = useState(false)
-  const [newTest, setNewTest] = useState({ category: 'analitica', label: '', notes: '' })
 
   // Validate modal
   const [validateModal, setValidateModal] = useState({ open: false, test: null })
@@ -94,10 +94,8 @@ export default function PatientTests() {
   const age = calcAge(patient.birthDate)
   const admission = patient.activeAdmission
 
-  const handleCreate = async (e) => {
-    e.preventDefault()
-    await labTestApi.create({ ...newTest, admissionId: admission.id, requestedBy: user?.displayName || '' })
-    setNewTest({ category: 'analitica', label: '', notes: '' })
+  const handleCreate = async (testData) => {
+    await labTestApi.create({ ...testData, admissionId: admission.id, requestedBy: user?.displayName || '' })
     setShowNew(false)
     fetchData()
   }
@@ -218,31 +216,7 @@ export default function PatientTests() {
 
       {/* New test modal */}
       {showNew && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowNew(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold mb-3">Solicitar prueba de laboratorio</h3>
-            <form onSubmit={handleCreate} className="space-y-3">
-              <div>
-                <label className="text-xs text-slate-500 font-medium">Tipo</label>
-                <select value={newTest.category} onChange={e => setNewTest({ ...newTest, category: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                  <option value="analitica">Analítica</option>
-                  <option value="cultivo">Cultivo</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 font-medium">Descripción</label>
-                <input required value={newTest.label} onChange={e => setNewTest({ ...newTest, label: e.target.value })}
-                  placeholder="Ej: Hemograma + Bioquímica, Hemocultivo x2"
-                  className="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <button type="button" onClick={() => setShowNew(false)} className="px-4 py-2 text-sm text-slate-500">Cancelar</button>
-                <button type="submit" className="bg-violet-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-600">Solicitar</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <NewLabTestModal onSubmit={handleCreate} onClose={() => setShowNew(false)} />
       )}
 
       {/* Validate modal */}

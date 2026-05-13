@@ -46,6 +46,8 @@ public class LabTestService {
                 .requestedAt(dto.getRequestedAt() != null ? dto.getRequestedAt() : LocalDateTime.now())
                 .requestedBy(dto.getRequestedBy())
                 .notes(dto.getNotes())
+                .requestedParameters(dto.getRequestedParameters())
+                .sampleType(dto.getSampleType())
                 .build();
         return LabTestDTO.fromEntity(labTestRepo.save(t));
     }
