@@ -157,6 +157,16 @@ function buildPendingLabTooltip(pendingLabs) {
   }).join('\n')
 }
 
+function buildRecentEcgTooltip(recentEcgs) {
+  if (!recentEcgs || recentEcgs.length === 0) return 'ECG realizado'
+  return recentEcgs.map(ecg => {
+    const time = ecg.completedAt
+      ? new Date(ecg.completedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      : ''
+    return `ECG ${time}${ecg.completedBy ? ' — ' + ecg.completedBy : ''}`
+  }).join('\n')
+}
+
 const STORAGE_KEY = 'patientListFilters'
 
 function loadFilters() {
@@ -474,14 +484,22 @@ export default function PatientList() {
                       <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
                       <td className="px-2 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {p.pendingLabs && p.pendingLabs.length > 0 && (
+                          {p.pendingLabs && p.pendingLabs.length > 0 ? (
                             <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
                               <Syringe size={16} className="text-red-500" />
                             </span>
+                          ) : p.hasCompletedLabs && (
+                            <span title="Analíticas realizadas" data-testid="completed-lab-icon">
+                              <Syringe size={16} className="text-slate-300" />
+                            </span>
                           )}
-                          {p.hasPendingEcg && (
+                          {p.hasPendingEcg ? (
                             <span title="ECG pendiente" data-testid="pending-ecg-icon">
                               <Activity size={16} className="text-red-500" />
+                            </span>
+                          ) : p.hasCompletedEcg && (
+                            <span title={buildRecentEcgTooltip(p.recentEcgs)} data-testid="completed-ecg-icon">
+                              <Activity size={16} className="text-slate-300" />
                             </span>
                           )}
                         </div>
@@ -512,14 +530,22 @@ export default function PatientList() {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
-                    {p.pendingLabs && p.pendingLabs.length > 0 && (
+                    {p.pendingLabs && p.pendingLabs.length > 0 ? (
                       <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
                         <Syringe size={14} className="text-red-500" />
                       </span>
+                    ) : p.hasCompletedLabs && (
+                      <span title="Analíticas realizadas" data-testid="completed-lab-icon">
+                        <Syringe size={14} className="text-slate-300" />
+                      </span>
                     )}
-                    {p.hasPendingEcg && (
+                    {p.hasPendingEcg ? (
                       <span title="ECG pendiente" data-testid="pending-ecg-icon">
                         <Activity size={14} className="text-red-500" />
+                      </span>
+                    ) : p.hasCompletedEcg && (
+                      <span title={buildRecentEcgTooltip(p.recentEcgs)} data-testid="completed-ecg-icon">
+                        <Activity size={14} className="text-slate-300" />
                       </span>
                     )}
                     {p.location && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{p.location}</span>}

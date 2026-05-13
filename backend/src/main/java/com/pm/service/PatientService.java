@@ -40,14 +40,31 @@ public class PatientService {
         // Batch-fetch all pending_validation lab tests across active admissions
         Map<Long, List<LabTest>> pendingByAdmission = new HashMap<>();
         Set<Long> admissionsWithPendingEcg = new HashSet<>();
+        Set<Long> admissionsWithCompletedLabs = new HashSet<>();
+        Set<Long> admissionsWithCompletedEcg = new HashSet<>();
+        Map<Long, List<com.pm.entity.Ecg>> recentEcgsByAdmission = new HashMap<>();
         if (!admissionIds.isEmpty()) {
             List<LabTest> pendingTests = labTestRepository.findByAdmissionIdInAndStatusAndParentIsNull(
                     admissionIds, "pending_validation");
             for (LabTest lt : pendingTests) {
                 pendingByAdmission.computeIfAbsent(lt.getAdmission().getId(), k -> new ArrayList<>()).add(lt);
             }
+            // Completed labs (any status other than pending_validation)
+            labTestRepository.findByAdmissionIdInAndStatusNotAndParentIsNull(admissionIds, "pending_validation")
+                    .forEach(lt -> admissionsWithCompletedLabs.add(lt.getAdmission().getId()));
+
             ecgRepository.findByAdmissionIdInAndStatus(admissionIds, "pending")
                     .forEach(ecg -> admissionsWithPendingEcg.add(ecg.getAdmission().getId()));
+            // Completed ECGs in last 24h for tooltip
+            LocalDateTime last24h = LocalDateTime.now().minusHours(24);
+            ecgRepository.findByAdmissionIdInAndStatusAndCompletedAtAfter(admissionIds, "completed", last24h)
+                    .forEach(ecg -> {
+                        admissionsWithCompletedEcg.add(ecg.getAdmission().getId());
+                        recentEcgsByAdmission.computeIfAbsent(ecg.getAdmission().getId(), k -> new ArrayList<>()).add(ecg);
+                    });
+            // Also check for completed ECGs older than 24h (for the grey icon, not tooltip)
+            ecgRepository.findByAdmissionIdInAndStatus(admissionIds, "completed")
+                    .forEach(ecg -> admissionsWithCompletedEcg.add(ecg.getAdmission().getId()));
         }
 
         return activeAdmissions.stream().map(a -> {
@@ -80,6 +97,22 @@ public class PatientService {
             }
 
             dto.setHasPendingEcg(admissionsWithPendingEcg.contains(a.getId()));
+
+            // Grey icons: completed but no pending
+            boolean hasPending = pending != null && !pending.isEmpty();
+            dto.setHasCompletedLabs(!hasPending && admissionsWithCompletedLabs.contains(a.getId()));
+            dto.setHasCompletedEcg(!admissionsWithPendingEcg.contains(a.getId()) && admissionsWithCompletedEcg.contains(a.getId()));
+
+            // Recent ECGs for tooltip
+            List<com.pm.entity.Ecg> recent = recentEcgsByAdmission.get(a.getId());
+            if (recent != null && !recent.isEmpty()) {
+                dto.setRecentEcgs(recent.stream().map(ecg ->
+                    PatientListDTO.RecentEcgInfo.builder()
+                            .completedAt(ecg.getCompletedAt())
+                            .completedBy(ecg.getCompletedBy())
+                            .build()
+                ).collect(Collectors.toList()));
+            }
 
             return dto;
         }).collect(Collectors.toList());

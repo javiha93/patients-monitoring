@@ -606,3 +606,44 @@ describe('Pending ECG indicator in patient list', () => {
     expect(screen.getAllByTestId('pending-ecg-icon')).toHaveLength(1)
   })
 })
+
+describe('Grey icons for completed labs/ECGs', () => {
+  beforeEach(() => sessionStorage.clear())
+
+  it('muestra jeringuilla gris cuando hay labs completadas sin pendientes', async () => {
+    const patients = [{ ...mockPatients[0], hasCompletedLabs: true, pendingLabs: null, hasPendingEcg: false, hasCompletedEcg: false }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByTestId('completed-lab-icon')).toBeInTheDocument()
+    expect(screen.queryByTestId('pending-lab-icon')).not.toBeInTheDocument()
+  })
+
+  it('muestra Activity gris cuando hay ECGs completados sin pendientes', async () => {
+    const patients = [{
+      ...mockPatients[0], hasCompletedEcg: true, hasPendingEcg: false, pendingLabs: null, hasCompletedLabs: false,
+      recentEcgs: [{ completedAt: '2024-01-10T10:00:00', completedBy: 'Javier Herrada' }],
+    }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const icon = screen.getByTestId('completed-ecg-icon')
+    expect(icon).toBeInTheDocument()
+    expect(icon.getAttribute('title')).toContain('Javier Herrada')
+    expect(screen.queryByTestId('pending-ecg-icon')).not.toBeInTheDocument()
+  })
+
+  it('no muestra gris si hay pendientes (rojo tiene prioridad)', async () => {
+    const patients = [{
+      ...mockPatients[0], hasCompletedLabs: true, hasPendingEcg: true, hasCompletedEcg: true,
+      pendingLabs: [{ requestedAt: '2024-01-10T09:00:00', requestedParameters: '["hemograma"]', validatedSamples: null }],
+    }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByTestId('pending-lab-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('pending-ecg-icon')).toBeInTheDocument()
+    expect(screen.queryByTestId('completed-lab-icon')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('completed-ecg-icon')).not.toBeInTheDocument()
+  })
+})

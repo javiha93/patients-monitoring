@@ -25,6 +25,11 @@ public class EcgService {
                 .stream().map(EcgDTO::fromEntitySummary).collect(Collectors.toList());
     }
 
+    public List<EcgDTO> getHistorical(Long patientId, Long excludeAdmissionId) {
+        return ecgRepo.findByAdmissionPatientIdAndAdmissionIdNotOrderByRequestedAtDesc(patientId, excludeAdmissionId)
+                .stream().map(EcgDTO::fromEntitySummary).collect(Collectors.toList());
+    }
+
     public EcgDTO getById(Long id) {
         return EcgDTO.fromEntity(ecgRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("ECG not found")));

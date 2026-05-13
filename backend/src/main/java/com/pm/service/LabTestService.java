@@ -29,6 +29,11 @@ public class LabTestService {
                 .stream().map(LabTestDTO::fromEntity).collect(Collectors.toList());
     }
 
+    public List<LabTestDTO> getHistorical(Long patientId, Long excludeAdmissionId) {
+        return labTestRepo.findByAdmissionPatientIdAndAdmissionIdNotAndParentIsNullOrderByRequestedAtDesc(patientId, excludeAdmissionId)
+                .stream().map(LabTestDTO::fromEntity).collect(Collectors.toList());
+    }
+
     public LabTestDTO getById(Long id) {
         return LabTestDTO.fromEntity(labTestRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lab test not found")));

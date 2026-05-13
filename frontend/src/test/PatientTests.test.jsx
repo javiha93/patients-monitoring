@@ -31,6 +31,7 @@ vi.mock('../services/patientApi', () => ({
 vi.mock('../services/labTestApi', () => ({
   labTestApi: {
     getByAdmission: vi.fn(() => Promise.resolve({ data: [] })),
+    getHistorical: vi.fn(() => Promise.resolve({ data: [] })),
     getById: vi.fn(() => Promise.resolve({ data: {} })),
     create: vi.fn(() => Promise.resolve({ data: { id: 4 } })),
     update: vi.fn(() => Promise.resolve({ data: {} })),
@@ -51,6 +52,7 @@ vi.mock('../services/deviceApi', () => ({
 vi.mock('../services/ecgApi', () => ({
   ecgApi: {
     getByAdmission: vi.fn(() => Promise.resolve({ data: [] })),
+    getHistorical: vi.fn(() => Promise.resolve({ data: [] })),
     getById: vi.fn(() => Promise.resolve({ data: {} })),
     create: vi.fn(() => Promise.resolve({ data: { id: 1 } })),
     complete: vi.fn(() => Promise.resolve({ data: {} })),
@@ -330,5 +332,47 @@ describe('PatientTests: ECG section', () => {
     await waitFor(() => screen.getByText('Solicitar ECG'))
     fireEvent.click(screen.getByText('Solicitar ECG'))
     await waitFor(() => expect(mockEcgApi.create).toHaveBeenCalled())
+  })
+})
+
+describe('PatientTests: historical data buttons', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('muestra botón de analíticas de ingresos anteriores', async () => {
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockEcgApi.getByAdmission.mockResolvedValue({ data: [] })
+    renderPage()
+    await waitFor(() => screen.getByText('Analíticas de ingresos anteriores'))
+    expect(screen.getByText('Analíticas de ingresos anteriores')).toBeInTheDocument()
+    expect(screen.getByText('ECGs de ingresos anteriores')).toBeInTheDocument()
+  })
+
+  it('carga analíticas históricas al clicar el botón', async () => {
+    const historical = [
+      { id: 99, category: 'analitica', label: 'Hemograma antiguo', status: 'results', requestedAt: '2023-06-01T09:00:00', externalId: 'OLD-001', results: [], requestedParameters: '["hemograma"]', sampleType: 'sangre' },
+    ]
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockLabTestApi.getHistorical.mockResolvedValue({ data: historical })
+    mockEcgApi.getByAdmission.mockResolvedValue({ data: [] })
+    renderPage()
+    await waitFor(() => screen.getByText('Analíticas de ingresos anteriores'))
+    fireEvent.click(screen.getByText('Analíticas de ingresos anteriores'))
+    await waitFor(() => screen.getByText('Hemograma antiguo'))
+    expect(screen.getByText('Hemograma antiguo')).toBeInTheDocument()
+    expect(screen.getByText('ID: OLD-001')).toBeInTheDocument()
+  })
+
+  it('carga ECGs históricos al clicar el botón', async () => {
+    const historical = [
+      { id: 88, status: 'completed', requestedAt: '2023-06-01T09:00:00', completedAt: '2023-06-01T10:00:00', completedBy: 'Dr. López' },
+    ]
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockEcgApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockEcgApi.getHistorical.mockResolvedValue({ data: historical })
+    renderPage()
+    await waitFor(() => screen.getByText('ECGs de ingresos anteriores'))
+    fireEvent.click(screen.getByText('ECGs de ingresos anteriores'))
+    await waitFor(() => screen.getByText('ECGs de ingresos anteriores', { selector: 'h3' }))
+    expect(screen.getByText('· Dr. López')).toBeInTheDocument()
   })
 })

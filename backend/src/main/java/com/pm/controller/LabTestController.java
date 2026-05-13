@@ -23,6 +23,11 @@ public class LabTestController {
         return service.getByAdmission(admissionId);
     }
 
+    @GetMapping("/patient/{patientId}/historical")
+    public List<LabTestDTO> getHistorical(@PathVariable Long patientId, @RequestParam Long excludeAdmissionId) {
+        return service.getHistorical(patientId, excludeAdmissionId);
+    }
+
     @GetMapping("/{id}")
     public LabTestDTO getById(@PathVariable Long id) {
         return service.getById(id);

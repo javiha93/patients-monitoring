@@ -2,6 +2,7 @@ import api from './api'
 
 export const labTestApi = {
   getByAdmission: (admissionId) => api.get(`/lab-tests/admission/${admissionId}`),
+  getHistorical: (patientId, excludeAdmissionId) => api.get(`/lab-tests/patient/${patientId}/historical`, { params: { excludeAdmissionId } }),
   getById: (id) => api.get(`/lab-tests/${id}`),
   create: (data) => api.post('/lab-tests', data),
   update: (id, data) => api.put(`/lab-tests/${id}`, data),

@@ -33,6 +33,21 @@ public class PatientListDTO {
     /** True if the patient has at least one pending ECG */
     private boolean hasPendingEcg;
 
+    /** True if the patient has completed labs in this admission (and no pending) */
+    private boolean hasCompletedLabs;
+
+    /** True if the patient has completed ECGs in this admission (and no pending) */
+    private boolean hasCompletedEcg;
+
+    /** Recent completed ECGs (last 24h) for tooltip — only when hasCompletedEcg */
+    private List<RecentEcgInfo> recentEcgs;
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class RecentEcgInfo {
+        private LocalDateTime completedAt;
+        private String completedBy;
+    }
+
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class PendingLabInfo {
         private LocalDateTime requestedAt;

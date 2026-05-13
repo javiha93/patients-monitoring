@@ -21,6 +21,11 @@ public class EcgController {
         return service.getByAdmission(admissionId);
     }
 
+    @GetMapping("/patient/{patientId}/historical")
+    public List<EcgDTO> getHistorical(@PathVariable Long patientId, @RequestParam Long excludeAdmissionId) {
+        return service.getHistorical(patientId, excludeAdmissionId);
+    }
+
     @GetMapping("/{id}")
     public EcgDTO getById(@PathVariable Long id) {
         return service.getById(id);
