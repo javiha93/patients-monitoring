@@ -491,3 +491,77 @@ describe('KAN-78: Filtros colapsables', () => {
     })
   })
 })
+
+import { patientApi } from '../services/patientApi'
+
+describe('Pending lab indicator in patient list', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  it('muestra icono Syringe rojo cuando el paciente tiene pruebas pendientes', async () => {
+    const patientsWithPending = [
+      {
+        ...mockPatients[0],
+        pendingLabs: [
+          { requestedAt: '2024-01-10T09:00:00', requestedParameters: '["hemograma","glucosa"]', validatedSamples: null },
+        ],
+      },
+      { ...mockPatients[1], pendingLabs: null },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsWithPending })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const icons = screen.getAllByTestId('pending-lab-icon')
+    expect(icons).toHaveLength(1)
+  })
+
+  it('no muestra icono cuando no hay pruebas pendientes', async () => {
+    const patientsNoPending = mockPatients.map(p => ({ ...p, pendingLabs: null }))
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsNoPending })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.queryByTestId('pending-lab-icon')).not.toBeInTheDocument()
+  })
+
+  it('tooltip muestra hora y muestras pendientes', async () => {
+    const patientsWithPending = [
+      {
+        ...mockPatients[0],
+        pendingLabs: [
+          { requestedAt: '2024-01-10T09:00:00', requestedParameters: '["hemograma","glucosa"]', validatedSamples: null },
+        ],
+      },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsWithPending })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const icon = screen.getByTestId('pending-lab-icon')
+    expect(icon.getAttribute('title')).toContain('09:00')
+    expect(icon.getAttribute('title')).toContain('Tubo hemograma')
+    expect(icon.getAttribute('title')).toContain('Tubo bioquímica')
+  })
+
+  it('tooltip muestra solo muestras pendientes en validación parcial', async () => {
+    const patientsWithPartial = [
+      {
+        ...mockPatients[0],
+        pendingLabs: [
+          {
+            requestedAt: '2024-01-10T09:00:00',
+            requestedParameters: '["hemograma","glucosa","orina_sistematico"]',
+            validatedSamples: '["tubo_hemograma","tubo_bioquimica"]',
+          },
+        ],
+      },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsWithPartial })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const icon = screen.getByTestId('pending-lab-icon')
+    const tooltip = icon.getAttribute('title')
+    expect(tooltip).toContain('Muestra de orina')
+    expect(tooltip).not.toContain('Tubo hemograma')
+    expect(tooltip).not.toContain('Tubo bioquímica')
+  })
+})

@@ -3,8 +3,10 @@ package com.pm.service;
 import com.pm.dto.*;
 import com.pm.entity.Admission;
 import com.pm.entity.Device;
+import com.pm.entity.LabTest;
 import com.pm.entity.Patient;
 import com.pm.repository.AdmissionRepository;
+import com.pm.repository.LabTestRepository;
 import com.pm.repository.PatientRepository;
 import com.pm.service.NursingAssessmentService;
 import lombok.RequiredArgsConstructor;
@@ -13,9 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +24,7 @@ public class PatientService {
 
     private final PatientRepository patientRepository;
     private final AdmissionRepository admissionRepository;
+    private final LabTestRepository labTestRepository;
     private final NursingAssessmentService nursingAssessmentService;
     private final DeviceService deviceService;
 
@@ -32,9 +33,21 @@ public class PatientService {
      */
     public List<PatientListDTO> listActivePatients() {
         List<Admission> activeAdmissions = admissionRepository.findByStatus(Admission.Status.active);
+        List<Long> admissionIds = activeAdmissions.stream().map(Admission::getId).collect(Collectors.toList());
+
+        // Batch-fetch all pending_validation lab tests across active admissions
+        Map<Long, List<LabTest>> pendingByAdmission = new HashMap<>();
+        if (!admissionIds.isEmpty()) {
+            List<LabTest> pendingTests = labTestRepository.findByAdmissionIdInAndStatusAndParentIsNull(
+                    admissionIds, "pending_validation");
+            for (LabTest lt : pendingTests) {
+                pendingByAdmission.computeIfAbsent(lt.getAdmission().getId(), k -> new ArrayList<>()).add(lt);
+            }
+        }
+
         return activeAdmissions.stream().map(a -> {
             Patient p = a.getPatient();
-            return PatientListDTO.builder()
+            PatientListDTO dto = PatientListDTO.builder()
                     .id(p.getId())
                     .nhc(p.getNhc())
                     .firstName(p.getFirstName())
@@ -49,6 +62,19 @@ public class PatientService {
                     .specialty(a.getSpecialty())
                     .status(a.getStatus().name())
                     .build();
+
+            List<LabTest> pending = pendingByAdmission.get(a.getId());
+            if (pending != null && !pending.isEmpty()) {
+                dto.setPendingLabs(pending.stream().map(lt ->
+                    PatientListDTO.PendingLabInfo.builder()
+                            .requestedAt(lt.getRequestedAt())
+                            .requestedParameters(lt.getRequestedParameters())
+                            .validatedSamples(lt.getValidatedSamples())
+                            .build()
+                ).collect(Collectors.toList()));
+            }
+
+            return dto;
         }).collect(Collectors.toList());
     }
 

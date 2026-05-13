@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, ChevronDown, Check, Filter, X } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { useAuth } from '../context/AuthContext'
+import { getSamplesNeeded, SAMPLE_ICONS } from '../constants/labCatalog'
 import TriageBadge from '../components/TriageBadge'
 import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
@@ -138,6 +139,22 @@ function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+/** Build tooltip text for pending lab tests */
+function buildPendingLabTooltip(pendingLabs) {
+  if (!pendingLabs || pendingLabs.length === 0) return ''
+  return pendingLabs.map(lab => {
+    const time = lab.requestedAt
+      ? new Date(lab.requestedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      : ''
+    const params = lab.requestedParameters ? JSON.parse(lab.requestedParameters) : []
+    const allSamples = getSamplesNeeded(params)
+    const validatedSet = lab.validatedSamples ? new Set(JSON.parse(lab.validatedSamples)) : new Set()
+    const pending = allSamples.filter(s => !validatedSet.has(s.key))
+    const sampleNames = (pending.length > 0 ? pending : allSamples).map(s => s.label).join(', ')
+    return `${time} — ${sampleNames}`
+  }).join('\n')
 }
 
 const STORAGE_KEY = 'patientListFilters'
@@ -405,6 +422,7 @@ export default function PatientList() {
                   <th className="px-4 py-3">NHC</th>
                   <th className="px-4 py-3">Edad</th>
                   <th className="px-4 py-3">Motivo</th>
+                  <th className="px-2 py-3 w-8"></th>
                   <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ingreso')}>Ingreso{sortIndicator('ingreso')}</th>
                 </tr>
               </thead>
@@ -454,6 +472,13 @@ export default function PatientList() {
                       <td className="px-4 py-3 text-sm text-slate-500">{p.nhc}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
                       <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
+                      <td className="px-2 py-3 text-center">
+                        {p.pendingLabs && p.pendingLabs.length > 0 && (
+                          <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
+                            <Syringe size={16} className="text-red-500 inline-block" />
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-slate-500">{formatDate(p.admissionDate)}</td>
                     </tr>
                   )
@@ -480,6 +505,11 @@ export default function PatientList() {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
+                    {p.pendingLabs && p.pendingLabs.length > 0 && (
+                      <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
+                        <Syringe size={14} className="text-red-500" />
+                      </span>
+                    )}
                     {p.location && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{p.location}</span>}
                     {p.specialty && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{p.specialty}</span>}
                   </div>
