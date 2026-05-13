@@ -412,6 +412,8 @@ const HISOPO_CODES = new Set([
   'pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs', 'pcr_panel_respiratorio',
   'ag_rapido_covid', 'ag_rapido_gripe', 'ag_rapido_estreptococo',
 ])
+const GASOMETRIA_ARTERIAL_CODES = new Set(['gasometria_arterial'])
+const GASOMETRIA_VENOSA_CODES = new Set(['gasometria_venosa', 'lactato'])
 const GASOMETRIA_CODES = new Set([
   'gasometria_arterial', 'gasometria_venosa', 'lactato',
 ])
@@ -426,7 +428,8 @@ export const SAMPLE_ICONS = {
   tubo_bioquimica:  { key: 'tubo_bioquimica',  label: 'Tubo bioquímica',  color: '#D4A017', icon: '🟡' },
   tubo_hemograma:   { key: 'tubo_hemograma',   label: 'Tubo hemograma',   color: '#7C3AED', icon: '🟣' },
   tubo_coagulacion: { key: 'tubo_coagulacion', label: 'Tubo coagulación', color: '#3B82F6', icon: '🔵' },
-  gasometria:       { key: 'gasometria',       label: 'Gasometría',       color: '#EF4444', icon: '🔴' },
+  gasometria_arterial: { key: 'gasometria_arterial', label: 'Gasometría arterial', color: '#EF4444', icon: '🔴' },
+  gasometria_venosa:   { key: 'gasometria_venosa',   label: 'Gasometría venosa',   color: '#3B82F6', icon: '🔵' },
   hisopo:           { key: 'hisopo',           label: 'Hisopo / bastoncillo', color: '#F59E0B', icon: '🧹' },
   orina:            { key: 'orina',            label: 'Muestra de orina', color: '#F59E0B', icon: '🧪' },
   heces:            { key: 'heces',            label: 'Muestra de heces', color: '#92400E', icon: '🔬' },
@@ -454,7 +457,8 @@ export function getSamplesNeeded(paramCodes) {
 
   if ([...codes].some(c => TUBE_HEMOGRAMA.has(c))) result.push(SAMPLE_ICONS.tubo_hemograma)
   if ([...codes].some(c => TUBE_COAGULACION.has(c))) result.push(SAMPLE_ICONS.tubo_coagulacion)
-  if ([...codes].some(c => GASOMETRIA_CODES.has(c))) result.push(SAMPLE_ICONS.gasometria)
+  if ([...codes].some(c => GASOMETRIA_ARTERIAL_CODES.has(c))) result.push(SAMPLE_ICONS.gasometria_arterial)
+  if ([...codes].some(c => GASOMETRIA_VENOSA_CODES.has(c))) result.push(SAMPLE_ICONS.gasometria_venosa)
   if ([...codes].some(c => HISOPO_CODES.has(c))) result.push(SAMPLE_ICONS.hisopo)
 
   // Non-blood samples

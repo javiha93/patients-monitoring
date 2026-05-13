@@ -32,9 +32,25 @@ describe('getSamplesNeeded', () => {
     expect(keys).toContain('tubo_coagulacion')
   })
 
-  it('returns gasometría for gasometria_arterial', () => {
+  it('returns gasometría arterial (roja) for gasometria_arterial', () => {
     const result = getSamplesNeeded(['gasometria_arterial'])
-    expect(result).toContainEqual(SAMPLE_ICONS.gasometria)
+    expect(result).toContainEqual(SAMPLE_ICONS.gasometria_arterial)
+  })
+
+  it('returns gasometría venosa (azul) for gasometria_venosa', () => {
+    const result = getSamplesNeeded(['gasometria_venosa'])
+    expect(result).toContainEqual(SAMPLE_ICONS.gasometria_venosa)
+  })
+
+  it('returns gasometría venosa for lactato', () => {
+    const result = getSamplesNeeded(['lactato'])
+    expect(result).toContainEqual(SAMPLE_ICONS.gasometria_venosa)
+  })
+
+  it('returns both gasometrías when both types requested', () => {
+    const result = getSamplesNeeded(['gasometria_arterial', 'gasometria_venosa'])
+    expect(result).toContainEqual(SAMPLE_ICONS.gasometria_arterial)
+    expect(result).toContainEqual(SAMPLE_ICONS.gasometria_venosa)
   })
 
   it('returns hisopo for PCR COVID', () => {
