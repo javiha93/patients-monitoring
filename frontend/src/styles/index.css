@@ -21,3 +21,15 @@ body {
 .med-grid-scroll::-webkit-scrollbar-thumb:hover {
   background: #64748b;
 }
+
+/* Body map hover effect */
+.rbh polygon {
+  cursor: pointer;
+  transition: fill 0.1s ease, opacity 0.1s ease;
+  stroke: #b0bec5;
+  stroke-width: 0.3;
+}
+.rbh polygon:hover {
+  fill: #93bbfd !important;
+  opacity: 0.85;
+}
