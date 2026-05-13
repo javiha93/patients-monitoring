@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText, Pencil, HeartPulse, History, Scan } from 'lucide-react'
+import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText, Pencil, HeartPulse, History, Radiation, Magnet } from 'lucide-react'
+import XRayIcon from '../components/XRayIcon'
 import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
 import { deviceApi } from '../services/deviceApi'
@@ -8,6 +9,13 @@ import { ecgApi } from '../services/ecgApi'
 import { radiologyApi } from '../services/radiologyApi'
 import NewRadiologyModal from '../components/NewRadiologyModal'
 import { TYPE_LABELS, getRegionLabel } from '../constants/radiologyCatalog'
+
+function RadiologyTypeIcon({ type, size = 20, className = '' }) {
+  if (type === 'xray') return <XRayIcon size={size} className={className} />
+  if (type === 'ct') return <Radiation size={size} className={className} />
+  if (type === 'mri') return <Magnet size={size} className={className} />
+  return <XRayIcon size={size} className={className} />
+}
 import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import ConfirmModal from '../components/ConfirmModal'
@@ -581,7 +589,7 @@ export default function PatientTests() {
           <div className="mt-6">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-slate-600 flex items-center gap-2">
-                <Scan size={16} className="text-indigo-500" />
+                <XRayIcon size={16} className="text-indigo-500" />
                 Radiología
               </h3>
               <button onClick={() => setRadiologyModalOpen(true)} className="text-xs text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1">
@@ -590,7 +598,7 @@ export default function PatientTests() {
             </div>
             {radiologyOrders.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-                <Scan size={36} className="mx-auto text-indigo-200 mb-2" />
+                <div className="mx-auto w-9 text-indigo-200 mb-2"><XRayIcon size={36} className="mx-auto" /></div>
                 <p className="text-sm text-slate-400">No hay pruebas de imagen solicitadas</p>
               </div>
             ) : (
@@ -607,7 +615,7 @@ export default function PatientTests() {
                       className={`bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 ${isCompleted ? 'cursor-pointer hover:ring-2 hover:ring-indigo-300' : ''} transition-all`}
                     >
                       <div className={`w-10 h-10 rounded-full bg-${color}-50 flex items-center justify-center flex-shrink-0`}>
-                        <Scan size={20} className={`text-${color}-500`} />
+                        <RadiologyTypeIcon type={order.type} size={20} className={`text-${color}-500`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm flex items-center gap-2">
@@ -661,7 +669,7 @@ export default function PatientTests() {
                       className={`bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 ${isCompleted ? 'cursor-pointer hover:ring-2 hover:ring-indigo-300' : ''}`}
                     >
                       <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                        <Scan size={20} className="text-indigo-500" />
+                        <RadiologyTypeIcon type={order.type} size={20} className="text-indigo-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm">{typeLabel}: {regionLabel}</div>

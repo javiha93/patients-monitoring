@@ -1,37 +1,33 @@
 import { useState } from 'react'
-import { X, Zap } from 'lucide-react'
-import { BODY_AREAS, XRAY_REGIONS, CT_REGIONS, MRI_REGIONS, TYPE_LABELS } from '../constants/radiologyCatalog'
+import { X, Zap, Radiation, Magnet } from 'lucide-react'
+import XRayIcon from './XRayIcon'
+import BodyMap, { getBodyMapLabel } from './BodyMap'
+import { CT_REGIONS, MRI_REGIONS, TYPE_LABELS, XRAY_REGIONS } from '../constants/radiologyCatalog'
 
 /**
  * Modal for requesting radiology studies.
- * - X-ray: visual body area → region → projection selector
+ * - X-ray: interactive body map → projection selector
  * - CT/MRI: region list + contrast toggle
  */
 export default function NewRadiologyModal({ open, onClose, onSubmit }) {
-  const [type, setType] = useState(null) // 'xray' | 'ct' | 'mri'
-  const [bodyArea, setBodyArea] = useState(null) // for xray
+  const [type, setType] = useState(null)
   const [region, setRegion] = useState(null)
   const [projection, setProjection] = useState(null)
   const [contrast, setContrast] = useState(false)
   const [priority, setPriority] = useState('normal')
   const [notes, setNotes] = useState('')
-  const [laterality, setLaterality] = useState(null) // for CT/MRI regions that need it
 
   const reset = () => {
-    setType(null); setBodyArea(null); setRegion(null); setProjection(null)
-    setContrast(false); setPriority('normal'); setNotes(''); setLaterality(null)
+    setType(null); setRegion(null); setProjection(null)
+    setContrast(false); setPriority('normal'); setNotes('')
   }
 
   const handleClose = () => { reset(); onClose() }
 
   const handleSubmit = () => {
-    let bodyRegion = region
-    if ((type === 'ct' || type === 'mri') && laterality) {
-      bodyRegion = `${region}_${laterality}`
-    }
     onSubmit({
       type,
-      bodyRegion,
+      bodyRegion: region,
       projection: type === 'xray' ? projection : null,
       contrast,
       priority,
@@ -44,12 +40,21 @@ export default function NewRadiologyModal({ open, onClose, onSubmit }) {
 
   if (!open) return null
 
-  // Find selected xray region info
-  const selectedXrayRegion = bodyArea && XRAY_REGIONS[bodyArea]?.find(r => r.key === region)
+  // Find xray projections for selected region
+  const getXrayProjections = () => {
+    if (!region) return []
+    for (const area of Object.values(XRAY_REGIONS)) {
+      const found = area.find(r => r.key === region)
+      if (found) return found.projections
+    }
+    return ['AP', 'Lateral'] // fallback for body map regions not in catalog
+  }
+
+  const xrayProjections = type === 'xray' ? getXrayProjections() : []
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={handleClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <h2 className="text-lg font-bold text-slate-800">Solicitar prueba de imagen</h2>
@@ -61,92 +66,84 @@ export default function NewRadiologyModal({ open, onClose, onSubmit }) {
           <div>
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tipo de estudio</div>
             <div className="grid grid-cols-3 gap-2">
-              {[
-                { key: 'xray', label: 'Radiografía', icon: '📷', color: 'blue' },
-                { key: 'ct', label: 'TAC', icon: '🔄', color: 'purple' },
-                { key: 'mri', label: 'Resonancia', icon: '🧲', color: 'indigo' },
-              ].map(t => (
-                <button
-                  key={t.key}
-                  onClick={() => { setType(t.key); setBodyArea(null); setRegion(null); setProjection(null); setLaterality(null) }}
-                  className={`p-3 rounded-xl border-2 text-center transition-all
-                    ${type === t.key
-                      ? `border-${t.color}-500 bg-${t.color}-50 ring-1 ring-${t.color}-200`
-                      : 'border-slate-200 hover:border-slate-300'}`}
-                >
-                  <div className="text-2xl mb-1">{t.icon}</div>
-                  <div className="text-sm font-medium">{t.label}</div>
-                </button>
-              ))}
+              <button
+                onClick={() => { setType('xray'); setRegion(null); setProjection(null) }}
+                className={`p-4 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-2
+                  ${type === 'xray' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+              >
+                <XRayIcon size={32} className={type === 'xray' ? 'text-blue-600' : 'text-slate-400'} />
+                <div className="text-sm font-medium">Radiografía</div>
+              </button>
+              <button
+                onClick={() => { setType('ct'); setRegion(null); setProjection(null) }}
+                className={`p-4 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-2
+                  ${type === 'ct' ? 'border-purple-500 bg-purple-50 ring-1 ring-purple-200' : 'border-slate-200 hover:border-slate-300'}`}
+              >
+                <Radiation size={32} className={type === 'ct' ? 'text-purple-600' : 'text-slate-400'} />
+                <div className="text-sm font-medium">TAC</div>
+              </button>
+              <button
+                onClick={() => { setType('mri'); setRegion(null); setProjection(null) }}
+                className={`p-4 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-2
+                  ${type === 'mri' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}
+              >
+                <Magnet size={32} className={type === 'mri' ? 'text-indigo-600' : 'text-slate-400'} />
+                <div className="text-sm font-medium">Resonancia</div>
+              </button>
             </div>
           </div>
 
-          {/* Step 2: Region selection */}
+          {/* Step 2: X-ray body map */}
           {type === 'xray' && (
-            <>
-              {/* Body area tabs */}
-              <div>
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Zona corporal</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {BODY_AREAS.map(a => (
-                    <button
-                      key={a.key}
-                      onClick={() => { setBodyArea(a.key); setRegion(null); setProjection(null) }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                        ${bodyArea === a.key ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                    >{a.label}</button>
-                  ))}
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                Selecciona la zona — pasa el ratón por el cuerpo
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <BodyMap
+                    selected={region}
+                    onSelect={(key) => { setRegion(key); setProjection(null) }}
+                  />
+                </div>
+                <div className="flex-1 flex flex-col justify-center">
+                  {region ? (
+                    <div className="space-y-3">
+                      <div className="bg-blue-50 rounded-xl p-3 text-center">
+                        <div className="text-sm font-bold text-blue-700">{getBodyMapLabel(region)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Proyección</div>
+                        <div className="flex flex-wrap gap-2">
+                          {xrayProjections.map(p => (
+                            <button
+                              key={p}
+                              onClick={() => setProjection(p)}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all
+                                ${projection === p
+                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                  : 'border-slate-200 text-slate-600 hover:border-blue-300'}`}
+                            >{p}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-slate-400 text-sm">
+                      <p>Pasa el ratón por el cuerpo</p>
+                      <p className="text-xs mt-1">y haz clic en la zona deseada</p>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Region cards within selected body area */}
-              {bodyArea && (
-                <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Región</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {XRAY_REGIONS[bodyArea].map(r => (
-                      <button
-                        key={r.key}
-                        onClick={() => { setRegion(r.key); setProjection(null) }}
-                        className={`p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3
-                          ${region === r.key
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-slate-200 hover:border-blue-300'}`}
-                      >
-                        <span className="text-xl">{r.icon}</span>
-                        <span className="text-sm font-medium">{r.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Projection selection */}
-              {selectedXrayRegion && (
-                <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Proyección</div>
-                  <div className="flex gap-2">
-                    {selectedXrayRegion.projections.map(p => (
-                      <button
-                        key={p}
-                        onClick={() => setProjection(p)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all
-                          ${projection === p
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-slate-200 text-slate-600 hover:border-blue-300'}`}
-                      >{p}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+            </div>
           )}
 
           {/* CT region selection */}
           {type === 'ct' && (
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Región</div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {CT_REGIONS.map(r => (
                   <button
                     key={r.key}
@@ -165,7 +162,7 @@ export default function NewRadiologyModal({ open, onClose, onSubmit }) {
           {type === 'mri' && (
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Región</div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {MRI_REGIONS.map(r => (
                   <button
                     key={r.key}
@@ -182,20 +179,18 @@ export default function NewRadiologyModal({ open, onClose, onSubmit }) {
 
           {/* Contrast toggle (CT/MRI only) */}
           {(type === 'ct' || type === 'mri') && region && (
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={contrast}
-                  onChange={e => setContrast(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
-                />
-                <span className="text-sm font-medium text-slate-700">Con contraste</span>
-              </label>
-            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={contrast}
+                onChange={e => setContrast(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
+              />
+              <span className="text-sm font-medium text-slate-700">Con contraste</span>
+            </label>
           )}
 
-          {/* Priority + Notes (shown when region is selected) */}
+          {/* Priority + Notes */}
           {region && (
             <>
               <div>
@@ -217,7 +212,6 @@ export default function NewRadiologyModal({ open, onClose, onSubmit }) {
                   ><Zap size={14} /> Urgente</button>
                 </div>
               </div>
-
               <div>
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Notas clínicas</div>
                 <textarea

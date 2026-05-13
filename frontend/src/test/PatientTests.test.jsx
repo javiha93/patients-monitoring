@@ -438,15 +438,14 @@ describe('Radiología', () => {
     expect(screen.getByText('Resonancia')).toBeInTheDocument()
   })
 
-  it('modal de radiografía muestra zonas corporales al seleccionar tipo', async () => {
+  it('modal de radiografía muestra mapa corporal al seleccionar tipo', async () => {
     renderPage()
     await waitFor(() => screen.getByText('Solicitar imagen'))
     fireEvent.click(screen.getByText('Solicitar imagen'))
     await waitFor(() => screen.getByText('Radiografía'))
     fireEvent.click(screen.getByText('Radiografía'))
-    expect(screen.getByText('Cabeza y cuello')).toBeInTheDocument()
-    expect(screen.getByText('Tórax')).toBeInTheDocument()
-    expect(screen.getByText('Extremidad superior')).toBeInTheDocument()
+    expect(screen.getByText(/Selecciona la zona/)).toBeInTheDocument()
+    expect(screen.getByText(/Pasa el ratón por el cuerpo/)).toBeInTheDocument()
   })
 
   it('carga radiología histórica', async () => {
