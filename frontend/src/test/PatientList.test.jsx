@@ -57,7 +57,7 @@ describe('KAN-5: Listado de pacientes', () => {
   it('[KAN-5] muestra la columna Ubicación en la tabla', async () => {
     renderList()
     await waitFor(() => {
-      expect(screen.getByText(/^Ubicación/)).toBeInTheDocument()
+      expect(screen.getByText(/^Ubic/)).toBeInTheDocument()
     })
   })
 
@@ -147,7 +147,7 @@ describe('KAN-7: Búsqueda y filtrado', () => {
 describe('KAN-5: Ordenación en modo tabla', () => {
   function getRowNames(container) {
     const rows = container.querySelectorAll('tbody tr')
-    // Column order: Nivel(0), Ubicación(1), Especialidad(2), Paciente(3)
+    // Column order: Nivel(0), Ubic(1), Esp(2), Paciente(3), Motivo(4), Icons(5), Ingreso(6)
     return Array.from(rows).map(r => r.querySelectorAll('td')[3]?.textContent)
   }
 
@@ -161,9 +161,9 @@ describe('KAN-5: Ordenación en modo tabla', () => {
 
     const names = getRowNames(container)
     // triageLevel: Ruiz=1, García=2, López=4
-    expect(names[0]).toBe('Ruiz, María')
-    expect(names[1]).toBe('García, Ana')
-    expect(names[2]).toBe('López, Carlos')
+    expect(names[0]).toContain('Ruiz, María')
+    expect(names[1]).toContain('García, Ana')
+    expect(names[2]).toContain('López, Carlos')
   })
 
   it('[KAN-5] segundo clic en Nivel ordena descendente', async () => {
@@ -176,23 +176,23 @@ describe('KAN-5: Ordenación en modo tabla', () => {
 
     const names = getRowNames(container)
     // desc: López=4, García=2, Ruiz=1
-    expect(names[0]).toBe('López, Carlos')
-    expect(names[1]).toBe('García, Ana')
-    expect(names[2]).toBe('Ruiz, María')
+    expect(names[0]).toContain('López, Carlos')
+    expect(names[1]).toContain('García, Ana')
+    expect(names[2]).toContain('Ruiz, María')
   })
 
   it('[KAN-5] ordena por ubicación ascendente (natural sort: B2 antes de B10)', async () => {
     const { container } = renderList()
     await waitFor(() => screen.getByText('García, Ana'))
 
-    const ubicacionHeader = screen.getByText(/^Ubicación/)
+    const ubicacionHeader = screen.getByText(/^Ubic/)
     fireEvent.click(ubicacionHeader)
 
     const names = getRowNames(container)
     // natural sort: García=B1, Ruiz=B2, López=B10
-    expect(names[0]).toBe('García, Ana')
-    expect(names[1]).toBe('Ruiz, María')
-    expect(names[2]).toBe('López, Carlos')
+    expect(names[0]).toContain('García, Ana')
+    expect(names[1]).toContain('Ruiz, María')
+    expect(names[2]).toContain('López, Carlos')
   })
 
   it('[KAN-5] ordena por ingreso ascendente', async () => {
@@ -204,9 +204,9 @@ describe('KAN-5: Ordenación en modo tabla', () => {
 
     const names = getRowNames(container)
     // admissionDate: Ruiz=09, García=10, López=11
-    expect(names[0]).toBe('Ruiz, María')
-    expect(names[1]).toBe('García, Ana')
-    expect(names[2]).toBe('López, Carlos')
+    expect(names[0]).toContain('Ruiz, María')
+    expect(names[1]).toContain('García, Ana')
+    expect(names[2]).toContain('López, Carlos')
   })
 
   it('[KAN-5] ordena por ingreso descendente', async () => {
@@ -219,9 +219,9 @@ describe('KAN-5: Ordenación en modo tabla', () => {
 
     const names = getRowNames(container)
     // desc: López=11, García=10, Ruiz=09
-    expect(names[0]).toBe('López, Carlos')
-    expect(names[1]).toBe('García, Ana')
-    expect(names[2]).toBe('Ruiz, María')
+    expect(names[0]).toContain('López, Carlos')
+    expect(names[1]).toContain('García, Ana')
+    expect(names[2]).toContain('Ruiz, María')
   })
 
   it('[KAN-5] muestra indicador de dirección en cabecera activa', async () => {
@@ -280,32 +280,35 @@ describe('KAN-5: Columna Especialidad', () => {
   it('[KAN-5] muestra la columna Especialidad en la tabla', async () => {
     renderList()
     await waitFor(() => {
-      expect(screen.getByText(/^Especialidad/)).toBeInTheDocument()
+      expect(screen.getByText(/^Esp/)).toBeInTheDocument()
     })
   })
 
-  it('[KAN-5] muestra la especialidad actual del paciente', async () => {
+  it('[KAN-5] muestra la especialidad actual del paciente (abreviada)', async () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
-    // García has specialty Medicina
-    const btns = screen.getAllByRole('button').filter(b => b.textContent.includes('Medicina'))
+    // García has specialty Medicina → shown as "Med"
+    const btns = screen.getAllByRole('button').filter(b => b.textContent.includes('Med'))
     expect(btns.length).toBeGreaterThanOrEqual(1)
+    // Full name in tooltip
+    const medBtn = btns.find(b => b.getAttribute('title') === 'Medicina')
+    expect(medBtn).toBeTruthy()
   })
 
   it('[KAN-5] ordena por especialidad ascendente', async () => {
     const { container } = renderList()
     await waitFor(() => screen.getByText('García, Ana'))
 
-    const espHeader = screen.getByText(/^Especialidad/)
+    const espHeader = screen.getByText(/^Esp/)
     fireEvent.click(espHeader)
 
     const rows = container.querySelectorAll('tbody tr')
-    // Column order: Nivel(0), Ubicación(1), Especialidad(2), Paciente(3)
+    // Column order: Nivel(0), Ubic(1), Esp(2), Paciente(3), Motivo(4), Icons(5), Ingreso(6)
     const names = Array.from(rows).map(r => r.querySelectorAll('td')[3]?.textContent)
     // Cirugía < Medicina < Traumatología → López, García, Ruiz
-    expect(names[0]).toBe('López, Carlos')
-    expect(names[1]).toBe('García, Ana')
-    expect(names[2]).toBe('Ruiz, María')
+    expect(names[0]).toContain('López, Carlos')
+    expect(names[1]).toContain('García, Ana')
+    expect(names[2]).toContain('Ruiz, María')
   })
 })
 

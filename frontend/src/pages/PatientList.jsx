@@ -66,7 +66,7 @@ export function naturalCompare(a, b) {
 }
 
 /* ── Custom dropdown component ── */
-function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28' }) {
+function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28', displayValue, tooltip }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -76,21 +76,23 @@ function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28' 
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const shown = displayValue !== undefined ? displayValue : value
+
   return (
     <div ref={ref} className={`relative ${width}`}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between gap-1 px-2 py-1 rounded-md text-sm border transition-colors
+        title={tooltip || value || ''}
+        className={`w-full flex items-center justify-center gap-1 px-1.5 py-1 rounded-md text-sm transition-colors
           ${value
-            ? 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-400'
-            : 'bg-white border-dashed border-slate-300 text-slate-400 hover:border-slate-400'}`}
+            ? 'text-slate-700 hover:bg-slate-100'
+            : 'text-slate-400 hover:bg-slate-50'}`}
       >
-        <span className="truncate">{value || placeholder}</span>
-        <ChevronDown size={14} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="truncate">{shown || placeholder}</span>
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg py-1 max-h-52 overflow-y-auto">
+        <div className="absolute z-50 mt-1 min-w-[8rem] bg-white border border-slate-200 rounded-lg shadow-lg py-1 max-h-52 overflow-y-auto">
           <button
             onClick={() => { onChange(''); setOpen(false) }}
             className="w-full text-left px-3 py-1.5 text-sm text-slate-400 hover:bg-slate-50"
@@ -107,6 +109,15 @@ function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28' 
       )}
     </div>
   )
+}
+
+const SPECIALTY_INITIALS = {
+  'Medicina': 'Med',
+  'Traumatología': 'Trau',
+  'Cirugía': 'Cir',
+  'Ginecología': 'Gin',
+  'Pediatría': 'Ped',
+  'Oftalmología': 'Oft',
 }
 
 function calcAge(birthDate) {
@@ -423,17 +434,15 @@ export default function PatientList() {
         ) : view === 'table' ? (
           <div className="bg-white rounded-xl shadow-sm overflow-visible">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-4 py-3 w-20 cursor-pointer select-none hover:text-slate-700 whitespace-nowrap" onClick={() => handleSort('nivel')}>Nivel{sortIndicator('nivel')}</th>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubicación{sortIndicator('ubicacion')}</th>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Especialidad{sortIndicator('especialidad')}</th>
+                  <th className="px-2 py-3 w-16 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubic.{sortIndicator('ubicacion')}</th>
+                  <th className="px-2 py-3 w-14 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Esp.{sortIndicator('especialidad')}</th>
                   <th className="px-4 py-3">Paciente</th>
-                  <th className="px-4 py-3">NHC</th>
-                  <th className="px-4 py-3">Edad</th>
                   <th className="px-4 py-3">Motivo</th>
-                  <th className="px-2 py-3 w-8"></th>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ingreso')}>Ingreso{sortIndicator('ingreso')}</th>
+                  <th className="px-2 py-3 w-8 text-right"></th>
+                  <th className="px-4 py-3 text-right cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ingreso')}>Ingreso{sortIndicator('ingreso')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -446,11 +455,11 @@ export default function PatientList() {
                       className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}
                     >
                       <td className="px-4 py-3"><TriageBadge level={p.triageLevel} /></td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                         <InlineDropdown
                           value={p.location || ''}
                           options={LOCATIONS}
-                          placeholder="Cama"
+                          placeholder="—"
                           onChange={async (v) => {
                             try {
                               await patientApi.updateLocation(p.admissionId, v)
@@ -459,14 +468,16 @@ export default function PatientList() {
                               ))
                             } catch { toast.error('Error al cambiar ubicación') }
                           }}
-                          width="w-24"
+                          width="w-14"
                         />
                       </td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                         <InlineDropdown
                           value={p.specialty || ''}
                           options={SPECIALTIES}
-                          placeholder="Espec."
+                          placeholder="—"
+                          displayValue={SPECIALTY_INITIALS[p.specialty] || (p.specialty ? p.specialty.slice(0, 3) : '')}
+                          tooltip={p.specialty || ''}
                           onChange={async (v) => {
                             try {
                               await patientApi.updateSpecialty(p.admissionId, v)
@@ -475,15 +486,16 @@ export default function PatientList() {
                               ))
                             } catch { toast.error('Error al cambiar especialidad') }
                           }}
-                          width="w-36"
+                          width="w-12"
                         />
                       </td>
-                      <td className="px-4 py-3 font-medium">{p.lastName}, {p.firstName}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{p.nhc}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
+                      <td className="px-4 py-3 font-medium">
+                        {p.lastName}, {p.firstName}
+                        <span className="text-slate-400 font-normal text-sm ml-1.5">{calcAge(p.birthDate) ?? ''}</span>
+                      </td>
                       <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
-                      <td className="px-2 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
+                      <td className="px-2 py-3">
+                        <div className="flex items-center justify-end gap-1">
                           {p.pendingLabs && p.pendingLabs.length > 0 ? (
                             <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
                               <Syringe size={16} className="text-red-500" />
@@ -504,7 +516,7 @@ export default function PatientList() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{formatDate(p.admissionDate)}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500 text-right">{formatDate(p.admissionDate)}</td>
                     </tr>
                   )
                 })}
@@ -578,7 +590,7 @@ export default function PatientList() {
         })}
         <div className="text-base text-slate-500">
           {selectedPatient ? (
-            <><strong className="text-slate-900">{selectedPatient.lastName}, {selectedPatient.firstName}</strong> · {selectedPatient.nhc}</>
+            <><strong className="text-slate-900">{selectedPatient.lastName}, {selectedPatient.firstName}</strong> <span className="text-slate-400">{calcAge(selectedPatient.birthDate) ?? ''}</span> · <span className="font-mono text-sm">{selectedPatient.nhc}</span></>
           ) : (
             <span className="text-slate-400">Selecciona un paciente</span>
           )}
