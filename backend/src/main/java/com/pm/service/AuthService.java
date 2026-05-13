@@ -7,6 +7,9 @@ import com.pm.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -32,6 +35,12 @@ public class AuthService {
         AppUser user = userRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         return AppUserDTO.fromEntity(user);
+    }
+
+    public List<AppUserDTO> getUsersByRole(String role) {
+        return userRepo.findByRole(role).stream()
+                .map(AppUserDTO::fromEntity)
+                .collect(Collectors.toList());
     }
 
     public AppUser createUser(AppUser user) {

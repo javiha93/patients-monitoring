@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -36,6 +37,11 @@ public class AuthController {
             return ResponseEntity.status(404)
                     .body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/users-by-role")
+    public List<AppUserDTO> getUsersByRole(@RequestParam String role) {
+        return authService.getUsersByRole(role);
     }
 
     @PostMapping("/seed")

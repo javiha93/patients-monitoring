@@ -5,3 +5,6 @@ export const login = (username, password, role) =>
 
 export const getUser = (id) =>
   api.get(`/auth/user/${id}`).then(r => r.data)
+
+export const getUsersByRole = (role) =>
+  api.get('/auth/users-by-role', { params: { role } }).then(r => r.data)

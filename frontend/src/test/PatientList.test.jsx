@@ -7,6 +7,10 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
 }))
 
+vi.mock('../services/authApi', () => ({
+  getUsersByRole: vi.fn(() => Promise.resolve([])),
+}))
+
 afterEach(() => { sessionStorage.clear() })
 
 // Mock navigate
@@ -439,7 +443,7 @@ describe('KAN-78: Filtros colapsables', () => {
     // Filter buttons are inside the filter panel (not the table InlineDropdowns)
     // They are rounded-full pill buttons
     return screen.getAllByRole('button').find(
-      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-8')
+      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-7')
     )
   }
 
@@ -462,7 +466,7 @@ describe('KAN-78: Filtros colapsables', () => {
     fireEvent.click(screen.getByText('Filtros'))
     // Click level 1 — only Ruiz (triageLevel=1) should remain
     // Level buttons are w-8 h-8 rounded-full
-    const levelButtons = screen.getAllByRole('button').filter(b => b.textContent === '1' && b.className.includes('w-8'))
+    const levelButtons = screen.getAllByRole('button').filter(b => b.textContent === '1' && b.className.includes('w-7'))
     fireEvent.click(levelButtons[0])
     await waitFor(() => {
       expect(screen.getByText('Ruiz, María')).toBeInTheDocument()
@@ -490,7 +494,7 @@ describe('KAN-78: Filtros colapsables', () => {
     fireEvent.click(getFilterButton('Medicina'))
     await waitFor(() => expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument())
     // Clear filters
-    fireEvent.click(screen.getByText('Limpiar filtros'))
+    fireEvent.click(screen.getByText('Limpiar'))
     await waitFor(() => {
       expect(screen.getByText('García, Ana')).toBeInTheDocument()
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()
@@ -506,7 +510,7 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
 
   function getFilterButton(label) {
     return screen.getAllByRole('button').find(
-      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-8')
+      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-7')
     )
   }
 
@@ -519,7 +523,7 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('Sin nivel'))
+    const sinNivelBtn = screen.getAllByRole('button').find(b => b.textContent === '∅'); fireEvent.click(sinNivelBtn)
     await waitFor(() => {
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()
       expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
@@ -537,8 +541,8 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
     // Select "Sin nivel" + level 1
-    fireEvent.click(getFilterButton('Sin nivel'))
-    const level1Btns = screen.getAllByRole('button').filter(b => b.textContent === '1' && b.className.includes('w-8'))
+    const sinNivelBtn = screen.getAllByRole('button').find(b => b.textContent === '∅'); fireEvent.click(sinNivelBtn)
+    const level1Btns = screen.getAllByRole('button').filter(b => b.textContent === '1' && b.className.includes('w-7'))
     fireEvent.click(level1Btns[0])
     await waitFor(() => {
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()
@@ -557,7 +561,7 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('Zona B'))
+    fireEvent.click(getFilterButton('B'))
     await waitFor(() => {
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()
       expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
@@ -575,8 +579,8 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('Zona A'))
-    fireEvent.click(getFilterButton('Zona C'))
+    fireEvent.click(getFilterButton('A'))
+    fireEvent.click(getFilterButton('C'))
     await waitFor(() => {
       expect(screen.getByText('García, Ana')).toBeInTheDocument()
       expect(screen.getByText('Ruiz, María')).toBeInTheDocument()
@@ -589,9 +593,9 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
     expect(screen.getByText('Zona')).toBeInTheDocument()
-    expect(getFilterButton('Zona A')).toBeTruthy()
-    expect(getFilterButton('Zona B')).toBeTruthy()
-    expect(getFilterButton('Zona C')).toBeTruthy()
+    expect(getFilterButton('A')).toBeTruthy()
+    expect(getFilterButton('B')).toBeTruthy()
+    expect(getFilterButton('C')).toBeTruthy()
   })
 
   it('limpiar filtros limpia zona y sin nivel', async () => {
@@ -603,10 +607,10 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('Zona A'))
-    fireEvent.click(getFilterButton('Sin nivel'))
+    fireEvent.click(getFilterButton('A'))
+    const sinNivelBtn = screen.getAllByRole('button').find(b => b.textContent === '∅'); fireEvent.click(sinNivelBtn)
     await waitFor(() => expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument())
-    fireEvent.click(screen.getByText('Limpiar filtros'))
+    fireEvent.click(screen.getByText('Limpiar'))
     await waitFor(() => {
       expect(screen.getByText('García, Ana')).toBeInTheDocument()
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()
@@ -804,20 +808,20 @@ describe('Columna Asignado', () => {
     expect(screen.getByText('AR')).toBeInTheDocument()
   })
 
-  it('muestra botón "+ Yo" para enfermero sin asignar', async () => {
+  it('muestra botón de asignar para enfermero sin asignar', async () => {
     const patients = [{ ...mockPatients[0], assignedNurse: null }]
     patientApi.listActive.mockResolvedValueOnce({ data: patients })
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
-    expect(screen.getByText('+ Yo')).toBeInTheDocument()
+    expect(screen.getByTitle('Asignarme')).toBeInTheDocument()
   })
 
-  it('clic en "+ Yo" asigna al enfermero actual', async () => {
+  it('clic en asignar asigna al enfermero actual', async () => {
     const patients = [{ ...mockPatients[0], assignedNurse: null }]
     patientApi.listActive.mockResolvedValueOnce({ data: patients })
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
-    fireEvent.click(screen.getByText('+ Yo'))
+    fireEvent.click(screen.getByTitle('Asignarme'))
     await waitFor(() => {
       expect(patientApi.assignNurse).toHaveBeenCalledWith(10, 'Javier Herrada')
     })
@@ -845,7 +849,7 @@ describe('Filtros de asignación', () => {
 
   function getFilterButton(label) {
     return screen.getAllByRole('button').find(
-      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-8')
+      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-7')
     )
   }
 
@@ -866,7 +870,7 @@ describe('Filtros de asignación', () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('Sin enfermero'))
+    fireEvent.click(getFilterButton('Sin enf.'))
     await waitFor(() => {
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()
       expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
@@ -882,7 +886,7 @@ describe('Filtros de asignación', () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('Sin médico'))
+    fireEvent.click(getFilterButton('Sin méd.'))
     await waitFor(() => {
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()
       expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
@@ -898,8 +902,8 @@ describe('Filtros de asignación', () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    // The "Yo (JH)" button should appear since user is Enfermería
-    const yoBtn = getFilterButton('Yo (JH)')
+    // The "Yo" button should appear since user is Enfermería
+    const yoBtn = getFilterButton('Yo')
     expect(yoBtn).toBeTruthy()
     fireEvent.click(yoBtn)
     await waitFor(() => {
@@ -917,9 +921,9 @@ describe('Filtros de asignación', () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('Sin enfermero'))
+    fireEvent.click(getFilterButton('Sin enf.'))
     await waitFor(() => expect(screen.queryByText('García, Ana')).not.toBeInTheDocument())
-    fireEvent.click(screen.getByText('Limpiar filtros'))
+    fireEvent.click(screen.getByText('Limpiar'))
     await waitFor(() => {
       expect(screen.getByText('García, Ana')).toBeInTheDocument()
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()

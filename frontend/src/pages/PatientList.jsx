@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
+import { getUsersByRole } from '../services/authApi'
 import { useAuth } from '../context/AuthContext'
 import { getSamplesNeeded, SAMPLE_ICONS } from '../constants/labCatalog'
 import TriageBadge from '../components/TriageBadge'
@@ -119,7 +120,7 @@ function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28',
 function AssignmentCell({ patient, user, onUpdate, toast }) {
   const p = patient
   const isNurse = user?.role === 'Enfermería'
-  const isDoctor = user?.role === 'Médico'
+  const isDoctor = user?.role === 'Medicina'
   const canAssign = isNurse || isDoctor
 
   const handleAssign = async () => {
@@ -203,13 +204,13 @@ function AssignmentCell({ patient, user, onUpdate, toast }) {
           className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-blue-300 text-blue-300 text-xs font-bold cursor-default"
         >{getInitials(p.previousDoctor)}</span>
       ) : null}
-      {/* Assign button — only if user's role slot is empty */}
+      {/* Assign button — only if user's role slot is empty, visible on hover */}
       {canAssign && ((isNurse && !p.assignedNurse) || (isDoctor && !p.assignedDoctor)) && (
         <button
           onClick={handleAssign}
           title="Asignarme"
-          className="text-xs text-slate-400 hover:text-blue-500 transition-colors mt-0.5"
-        >+ Yo</button>
+          className="w-7 h-7 rounded-full border border-dashed border-slate-300 flex items-center justify-center text-slate-300 opacity-0 group-hover/assign:opacity-100 hover:!opacity-100 hover:border-blue-400 hover:text-blue-500 transition-all mt-0.5"
+        ><Plus size={14} /></button>
       )}
     </div>
   )
@@ -343,6 +344,9 @@ export default function PatientList() {
     setArr(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val])
   }
 
+  const [allNurses, setAllNurses] = useState([])
+  const [allDoctors, setAllDoctors] = useState([])
+
   const fetchPatients = async () => {
     try {
       const { data } = await patientApi.listActive()
@@ -354,11 +358,11 @@ export default function PatientList() {
     }
   }
 
-  useEffect(() => { fetchPatients() }, [])
-
-  // Unique assigned names for filter dropdowns
-  const uniqueNurses = [...new Set(patients.map(p => p.assignedNurse).filter(Boolean))].sort()
-  const uniqueDoctors = [...new Set(patients.map(p => p.assignedDoctor).filter(Boolean))].sort()
+  useEffect(() => {
+    fetchPatients()
+    getUsersByRole('Enfermería').then(setAllNurses).catch(() => {})
+    getUsersByRole('Medicina').then(setAllDoctors).catch(() => {})
+  }, [])
 
   const filtered = patients.filter(p => {
     // Text search
@@ -502,139 +506,142 @@ export default function PatientList() {
           <ChevronDown size={14} className={`ml-auto transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
         </button>
         {filtersOpen && (
-          <div className="px-6 pb-4 flex flex-wrap items-start gap-6">
-            {/* Specialty multi-select */}
-            <div>
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Especialidad</div>
-              <div className="flex flex-wrap gap-1.5">
-                {SPECIALTIES.map(s => {
-                  const active = filterSpecialties.includes(s)
-                  return (
-                    <button
-                      key={s}
-                      onClick={() => toggleFilter(filterSpecialties, setFilterSpecialties, s)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
-                        ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                    >{s}</button>
-                  )
-                })}
+          <div className="px-6 pb-4 space-y-3">
+            {/* Row 1: Especialidad | Nivel | Zona */}
+            <div className="flex flex-wrap items-end gap-6">
+              <div>
+                <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1.5">Especialidad</div>
+                <div className="flex flex-wrap gap-1">
+                  {SPECIALTIES.map(s => {
+                    const active = filterSpecialties.includes(s)
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => toggleFilter(filterSpecialties, setFilterSpecialties, s)}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors
+                          ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                      >{s}</button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-            {/* Level multi-select */}
-            <div>
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Nivel</div>
-              <div className="flex gap-1.5">
-                {[1, 2, 3, 4, 5].map(n => {
-                  const active = filterLevels.includes(n)
-                  const colors = ['bg-red-600', 'bg-orange-600', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500']
-                  return (
-                    <button
-                      key={n}
-                      onClick={() => toggleFilter(filterLevels, setFilterLevels, n)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all
-                        ${colors[n - 1]} ${active ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'opacity-40 hover:opacity-70'}`}
-                    >{n}</button>
-                  )
-                })}
-                <button
-                  onClick={() => toggleFilter(filterLevels, setFilterLevels, 0)}
-                  className={`h-8 px-2.5 rounded-full flex items-center justify-center text-xs font-medium border transition-all
-                    ${filterLevels.includes(0) ? 'bg-slate-600 text-white border-slate-600 ring-2 ring-offset-1 ring-slate-400 scale-110' : 'bg-white text-slate-500 border-slate-300 opacity-60 hover:opacity-90'}`}
-                >Sin nivel</button>
-              </div>
-            </div>
-            {/* Zone multi-select */}
-            <div>
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Zona</div>
-              <div className="flex gap-1.5">
-                {['A', 'B', 'C'].map(z => {
-                  const active = filterZones.includes(z)
-                  return (
-                    <button
-                      key={z}
-                      onClick={() => toggleFilter(filterZones, setFilterZones, z)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors
-                        ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                    >Zona {z}</button>
-                  )
-                })}
-              </div>
-            </div>
-            {/* Nurse filter */}
-            <div>
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Enfermero/a</div>
-              <div className="flex flex-wrap gap-1.5">
-                {user?.role === 'Enfermería' && (
+              <div>
+                <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1.5">Nivel</div>
+                <div className="flex gap-1 items-center">
+                  {[1, 2, 3, 4, 5].map(n => {
+                    const active = filterLevels.includes(n)
+                    const colors = ['bg-red-600', 'bg-orange-600', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500']
+                    return (
+                      <button
+                        key={n}
+                        onClick={() => toggleFilter(filterLevels, setFilterLevels, n)}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all
+                          ${colors[n - 1]} ${active ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'opacity-40 hover:opacity-70'}`}
+                      >{n}</button>
+                    )
+                  })}
                   <button
-                    onClick={() => setFilterNurse(prev => prev === user.displayName ? null : user.displayName)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
-                      ${filterNurse === user.displayName ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-teal-600 border-teal-200 hover:border-teal-400'}`}
-                  >Yo ({getInitials(user.displayName)})</button>
-                )}
-                {uniqueNurses.filter(n => n !== user?.displayName || user?.role !== 'Enfermería').map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setFilterNurse(prev => prev === n ? null : n)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
-                      ${filterNurse === n ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                  >{n}</button>
-                ))}
-                <button
-                  onClick={() => setFilterNurse(prev => prev === '__none__' ? null : '__none__')}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
-                    ${filterNurse === '__none__' ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
-                >Sin enfermero</button>
+                    onClick={() => toggleFilter(filterLevels, setFilterLevels, 0)}
+                    className={`h-7 px-2 rounded-full flex items-center justify-center text-xs font-medium border transition-all
+                      ${filterLevels.includes(0) ? 'bg-slate-600 text-white border-slate-600 ring-2 ring-offset-1 ring-slate-400 scale-110' : 'bg-white text-slate-500 border-slate-300 opacity-60 hover:opacity-90'}`}
+                  >∅</button>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1.5">Zona</div>
+                <div className="flex gap-1">
+                  {['A', 'B', 'C'].map(z => {
+                    const active = filterZones.includes(z)
+                    return (
+                      <button
+                        key={z}
+                        onClick={() => toggleFilter(filterZones, setFilterZones, z)}
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors
+                          ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                      >{z}</button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
-            {/* Doctor filter */}
-            <div>
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Médico</div>
-              <div className="flex flex-wrap gap-1.5">
-                {user?.role === 'Médico' && (
-                  <button
-                    onClick={() => setFilterDoctor(prev => prev === user.displayName ? null : user.displayName)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
-                      ${filterDoctor === user.displayName ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-blue-600 border-blue-200 hover:border-blue-400'}`}
-                  >Yo ({getInitials(user.displayName)})</button>
-                )}
-                {uniqueDoctors.filter(n => n !== user?.displayName || user?.role !== 'Médico').map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setFilterDoctor(prev => prev === n ? null : n)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
-                      ${filterDoctor === n ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                  >{n}</button>
-                ))}
-                <button
-                  onClick={() => setFilterDoctor(prev => prev === '__none__' ? null : '__none__')}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
-                    ${filterDoctor === '__none__' ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
-                >Sin médico</button>
-              </div>
-            </div>
-            {/* Date filter */}
-            <div>
-              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Ingreso</div>
-              <div className="flex flex-wrap gap-1.5">
-                {DATE_FILTERS.map(f => {
-                  const active = filterDate === f.key
-                  return (
+            {/* Row 2: Enfermero/a | Médico | Ingreso | Clear */}
+            <div className="flex flex-wrap items-end gap-6">
+              <div>
+                <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1.5">Enfermero/a</div>
+                <div className="flex gap-1.5 items-center">
+                  {user?.role === 'Enfermería' && (
                     <button
-                      key={f.key}
-                      onClick={() => setFilterDate(prev => prev === f.key ? null : f.key)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
-                        ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                    >{f.label}</button>
-                  )
-                })}
+                      onClick={() => setFilterNurse(prev => prev === user.displayName ? null : user.displayName)}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors
+                        ${filterNurse === user.displayName ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-teal-600 border-teal-200 hover:border-teal-400'}`}
+                    >Yo</button>
+                  )}
+                  <select
+                    value={filterNurse && filterNurse !== '__none__' && filterNurse !== user?.displayName ? filterNurse : ''}
+                    onChange={(e) => setFilterNurse(e.target.value || null)}
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 focus:border-blue-400 outline-none"
+                  >
+                    <option value="">Todos</option>
+                    {allNurses.filter(n => n.displayName !== user?.displayName || user?.role !== 'Enfermería').map(n => (
+                      <option key={n.id} value={n.displayName}>{n.displayName}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => setFilterNurse(prev => prev === '__none__' ? null : '__none__')}
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors
+                      ${filterNurse === '__none__' ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
+                  >Sin enf.</button>
+                </div>
               </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1.5">Médico</div>
+                <div className="flex gap-1.5 items-center">
+                  {user?.role === 'Medicina' && (
+                    <button
+                      onClick={() => setFilterDoctor(prev => prev === user.displayName ? null : user.displayName)}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors
+                        ${filterDoctor === user.displayName ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-blue-600 border-blue-200 hover:border-blue-400'}`}
+                    >Yo</button>
+                  )}
+                  <select
+                    value={filterDoctor && filterDoctor !== '__none__' && filterDoctor !== user?.displayName ? filterDoctor : ''}
+                    onChange={(e) => setFilterDoctor(e.target.value || null)}
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 focus:border-blue-400 outline-none"
+                  >
+                    <option value="">Todos</option>
+                    {allDoctors.filter(n => n.displayName !== user?.displayName || user?.role !== 'Medicina').map(n => (
+                      <option key={n.id} value={n.displayName}>{n.displayName}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => setFilterDoctor(prev => prev === '__none__' ? null : '__none__')}
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors
+                      ${filterDoctor === '__none__' ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
+                  >Sin méd.</button>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1.5">Ingreso</div>
+                <div className="flex flex-wrap gap-1">
+                  {DATE_FILTERS.map(f => {
+                    const active = filterDate === f.key
+                    return (
+                      <button
+                        key={f.key}
+                        onClick={() => setFilterDate(prev => prev === f.key ? null : f.key)}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors
+                          ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                      >{f.label}</button>
+                    )
+                  })}
+                </div>
+              </div>
+              {activeFilterCount > 0 && (
+                <button onClick={clearFilters} className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 pb-0.5">
+                  <X size={12} /> Limpiar
+                </button>
+              )}
             </div>
-            {/* Clear all */}
-            {activeFilterCount > 0 && (
-              <button onClick={clearFilters} className="self-end text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 pb-0.5">
-                <X size={12} /> Limpiar filtros
-              </button>
-            )}
           </div>
         )}
       </div>
@@ -730,7 +737,7 @@ export default function PatientList() {
                           className="w-full bg-transparent text-sm text-slate-600 border-0 border-b border-transparent hover:border-slate-300 focus:border-violet-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
                         />
                       </td>
-                      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-2 py-3 group/assign" onClick={(e) => e.stopPropagation()}>
                         <AssignmentCell
                           patient={p}
                           user={user}
