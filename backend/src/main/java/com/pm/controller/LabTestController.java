@@ -44,14 +44,17 @@ public class LabTestController {
     }
 
     @PatchMapping("/{id}/validate")
-    public ResponseEntity<?> validate(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String externalId = body.get("externalId");
+    public ResponseEntity<?> validate(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        String externalId = (String) body.get("externalId");
         if (externalId == null || externalId.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "El identificador es obligatorio"));
         }
         try {
-            String validatedBy = body.get("validatedBy");
-            return ResponseEntity.ok(service.validate(id, externalId.trim(), validatedBy));
+            String validatedBy = (String) body.get("validatedBy");
+            String validatedSamples = body.get("validatedSamples") != null
+                    ? body.get("validatedSamples").toString() : null;
+            Boolean partial = body.get("partial") != null && (Boolean) body.get("partial");
+            return ResponseEntity.ok(service.validate(id, externalId.trim(), validatedBy, validatedSamples, partial));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {

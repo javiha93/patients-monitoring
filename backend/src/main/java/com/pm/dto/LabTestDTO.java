@@ -22,6 +22,7 @@ public class LabTestDTO {
     private String notes;
     private String requestedParameters;
     private String sampleType;
+    private String validatedSamples;
     private List<LabResultDTO> results;
 
     public static LabTestDTO fromEntity(LabTest t) {
@@ -40,6 +41,7 @@ public class LabTestDTO {
                 .notes(t.getNotes())
                 .requestedParameters(t.getRequestedParameters())
                 .sampleType(t.getSampleType())
+                .validatedSamples(t.getValidatedSamples())
                 .results(t.getResults() != null
                         ? t.getResults().stream().map(LabResultDTO::fromEntity).collect(Collectors.toList())
                         : List.of())

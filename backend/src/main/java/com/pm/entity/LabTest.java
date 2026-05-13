@@ -60,6 +60,10 @@ public class LabTest {
     @Column(name = "sample_type")
     private String sampleType;
 
+    /** JSON array of sample keys already validated, e.g. ["tubo_bioquimica","orina"] */
+    @Column(name = "validated_samples", length = 2000)
+    private String validatedSamples;
+
     @OneToMany(mappedBy = "labTest", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("category, name")
     @Builder.Default

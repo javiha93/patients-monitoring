@@ -72,7 +72,7 @@ public class LabTestService {
      * Rejects if the externalId is already used by another test.
      */
     @Transactional
-    public LabTestDTO validate(Long id, String externalId, String validatedBy) {
+    public LabTestDTO validate(Long id, String externalId, String validatedBy, String validatedSamples, boolean partial) {
         LabTest t = labTestRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lab test not found"));
 
@@ -90,9 +90,15 @@ public class LabTestService {
         });
 
         t.setExternalId(externalId);
-        t.setStatus("pending_receipt");
         t.setValidatedAt(LocalDateTime.now());
         t.setValidatedBy(validatedBy);
+
+        if (validatedSamples != null) {
+            t.setValidatedSamples(validatedSamples);
+        }
+
+        // partial=true means not all samples are validated yet — keep pending
+        t.setStatus(partial ? "pending_validation" : "pending_receipt");
         return LabTestDTO.fromEntity(labTestRepo.save(t));
     }
 

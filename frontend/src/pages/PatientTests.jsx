@@ -10,7 +10,8 @@ import ConfirmModal from '../components/ConfirmModal'
 import InsightsPanel from '../components/InsightsPanel'
 import { DeviceFormModal } from '../components/DevicesTab'
 import NewLabTestModal from '../components/NewLabTestModal'
-import SampleIconsRow from '../components/SampleIcons'
+import SampleIconsRow, { SampleCheckbox } from '../components/SampleIcons'
+import { getSamplesNeeded } from '../constants/labCatalog'
 
 const labInsightTypes = [
   'lab_creatinine_nephrotoxic', 'lab_hyperkaliemia_raas', 'lab_creatinine_rising',
@@ -63,6 +64,7 @@ export default function PatientTests() {
   const [validateModal, setValidateModal] = useState({ open: false, test: null })
   const [externalId, setExternalId] = useState('')
   const [validateError, setValidateError] = useState('')
+  const [selectedSamples, setSelectedSamples] = useState(new Set())
 
   // Results viewer
   const [viewResults, setViewResults] = useState(null) // LabTestDTO with results
@@ -110,9 +112,22 @@ export default function PatientTests() {
   const handleValidate = async () => {
     setValidateError('')
     try {
-      await labTestApi.validate(validateModal.test.id, externalId, user?.displayName || '')
+      const test = validateModal.test
+      const params = test.requestedParameters ? JSON.parse(test.requestedParameters) : []
+      const allSamples = getSamplesNeeded(params)
+      const alreadyValidated = test.validatedSamples ? JSON.parse(test.validatedSamples) : []
+      const merged = new Set([...alreadyValidated, ...selectedSamples])
+      const isPartial = merged.size < allSamples.length
+
+      await labTestApi.validate(test.id, {
+        externalId,
+        validatedBy: user?.displayName || '',
+        validatedSamples: JSON.stringify([...merged]),
+        partial: isPartial,
+      })
       setValidateModal({ open: false, test: null })
       setExternalId('')
+      setSelectedSamples(new Set())
       fetchData()
     } catch (e) {
       setValidateError(e.response?.data?.error || 'Error al validar')
@@ -140,11 +155,32 @@ export default function PatientTests() {
   const handleTestClick = async (test) => {
     if (test.status === 'pending_validation') {
       setValidateModal({ open: true, test })
-      setExternalId('')
+      setExternalId(test.externalId || '')
       setValidateError('')
-      // Check if VVP is needed: first validation and no active VVP
-      const isFirstValidation = !tests.some(t => t.id !== test.id && t.status !== 'pending_validation')
-      if (isFirstValidation && admission) {
+      // Pre-select all non-validated samples
+      const params = test.requestedParameters ? JSON.parse(test.requestedParameters) : []
+      const allSamples = getSamplesNeeded(params)
+      const alreadyValidated = test.validatedSamples ? new Set(JSON.parse(test.validatedSamples)) : new Set()
+      setSelectedSamples(new Set(allSamples.filter(s => !alreadyValidated.has(s.key)).map(s => s.key)))
+      // Check if VVP is needed: first blood test validation and no active VVP
+      const hasSangre = test.requestedParameters && JSON.parse(test.requestedParameters).some(c =>
+        !c.startsWith('orina_') && !c.startsWith('heces_') && !c.startsWith('esputo_') &&
+        !c.startsWith('cultivo_') && !c.startsWith('hemocultivo_') && !c.startsWith('pcr_') &&
+        !c.startsWith('ag_rapido_') && c !== 'urocultivo' && c !== 'urocultivo_hongos' &&
+        c !== 'coprocultivo' && c !== 'cultivo_cdiff' && c !== 'pcr_panel_respiratorio'
+      )
+      const isFirstBloodValidation = hasSangre && !tests.some(t => {
+        if (t.id === test.id || t.status === 'pending_validation') return false
+        if (!t.requestedParameters) return false
+        const params = JSON.parse(t.requestedParameters)
+        return params.some(c =>
+          !c.startsWith('orina_') && !c.startsWith('heces_') && !c.startsWith('esputo_') &&
+          !c.startsWith('cultivo_') && !c.startsWith('hemocultivo_') && !c.startsWith('pcr_') &&
+          !c.startsWith('ag_rapido_') && c !== 'urocultivo' && c !== 'urocultivo_hongos' &&
+          c !== 'coprocultivo' && c !== 'cultivo_cdiff' && c !== 'pcr_panel_respiratorio'
+        )
+      })
+      if (isFirstBloodValidation && admission) {
         try {
           const { data: hasVvp } = await deviceApi.hasActiveByType(admission.id, 'via_periferica')
           setNeedsVvp(!hasVvp)
@@ -207,7 +243,7 @@ export default function PatientTests() {
                     {t.externalId && <span className="font-mono text-slate-500">ID: {t.externalId}</span>}
                   </div>
                 </div>
-                <SampleIconsRow requestedParameters={t.requestedParameters} />
+                <SampleIconsRow requestedParameters={t.requestedParameters} validatedSamples={t.validatedSamples} />
                 <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.color}`}>
                   <StatusIcon size={12} />
                   {cfg.label}
@@ -247,6 +283,21 @@ export default function PatientTests() {
                 placeholder="Ej: LAB-2024-00123"
                 className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 ${validateError ? 'border-red-400' : ''}`} />
             </div>
+            {validateModal.test?.requestedParameters && (
+              <div className="mt-3">
+                <label className="text-xs text-slate-500 font-medium block mb-1.5">Muestras a validar</label>
+                <SampleCheckbox
+                  requestedParameters={validateModal.test.requestedParameters}
+                  validatedSamples={validateModal.test.validatedSamples}
+                  selected={selectedSamples}
+                  onToggle={(key) => setSelectedSamples(prev => {
+                    const next = new Set(prev)
+                    next.has(key) ? next.delete(key) : next.add(key)
+                    return next
+                  })}
+                />
+              </div>
+            )}
             {validateError && (
               <div className="mt-2 flex items-start gap-2 text-sm text-red-600 bg-red-50 rounded-lg p-2.5">
                 <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
@@ -268,8 +319,10 @@ export default function PatientTests() {
             )}
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setValidateModal({ open: false, test: null })} className="px-4 py-2 text-sm text-slate-500">Cancelar</button>
-              <button onClick={handleValidate} disabled={!externalId.trim()}
-                className="bg-violet-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed">Validar</button>
+              <button onClick={handleValidate} disabled={!externalId.trim() || selectedSamples.size === 0}
+                className="bg-violet-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                Validar{selectedSamples.size > 0 ? ` (${selectedSamples.size})` : ''}
+              </button>
             </div>
           </div>
         </div>

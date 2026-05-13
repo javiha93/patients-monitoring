@@ -14,9 +14,9 @@ const mockPatient = {
 }
 
 const mockTests = [
-  { id: 1, category: 'analitica', label: 'Hemograma + Bioquímica', status: 'pending_validation', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: null, results: [] },
-  { id: 2, category: 'cultivo', label: 'Hemocultivo x2', status: 'pending_receipt', requestedAt: '2024-01-10T10:00:00', requestedBy: 'Dr. López', externalId: 'LAB-001', results: [] },
-  { id: 3, category: 'analitica', label: 'Coagulación', status: 'results', requestedAt: '2024-01-10T08:00:00', requestedBy: 'Dr. García', externalId: 'LAB-002', results: [
+  { id: 1, category: 'analitica', label: 'Hemograma + Bioquímica', status: 'pending_validation', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: null, results: [], requestedParameters: '["hemograma","glucosa","creatinina"]', sampleType: 'sangre' },
+  { id: 2, category: 'cultivo', label: 'Hemocultivo x2', status: 'pending_receipt', requestedAt: '2024-01-10T10:00:00', requestedBy: 'Dr. López', externalId: 'LAB-001', results: [], requestedParameters: '["hemocultivo_x2"]', sampleType: 'cultivo' },
+  { id: 3, category: 'analitica', label: 'Coagulación', status: 'results', requestedAt: '2024-01-10T08:00:00', requestedBy: 'Dr. García', externalId: 'LAB-002', requestedParameters: '["tp_inr","ttpa"]', sampleType: 'sangre', results: [
     { id: 1, category: 'Coagulación', name: 'INR', value: '1.1', unit: '', refRange: '0.8-1.2', flag: 'normal' },
     { id: 2, category: 'Coagulación', name: 'Fibrinógeno', value: '450', unit: 'mg/dL', refRange: '200-400', flag: 'high' },
   ]},
@@ -124,7 +124,7 @@ describe('PatientTests: Pruebas de laboratorio', () => {
 
 describe('PatientTests: VVP prompt on first validation', () => {
   const onlyPendingTests = [
-    { id: 1, category: 'analitica', label: 'Hemograma', status: 'pending_validation', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: null, results: [] },
+    { id: 1, category: 'analitica', label: 'Hemograma', status: 'pending_validation', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: null, results: [], requestedParameters: '["hemograma","glucosa","creatinina"]', sampleType: 'sangre' },
   ]
 
   beforeEach(() => {
@@ -170,5 +170,56 @@ describe('PatientTests: VVP prompt on first validation', () => {
     fireEvent.click(screen.getByText('Registrar vía periférica'))
     await waitFor(() => screen.getByText('Nuevo dispositivo'))
     expect(screen.getByText('Nuevo dispositivo')).toBeInTheDocument()
+  })
+})
+
+
+describe('PatientTests: VVP only for blood tests', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('no muestra alerta VVP para prueba sin parámetros de sangre (solo orina)', async () => {
+    const urineOnly = [
+      { id: 10, category: 'analitica', label: 'Orina', status: 'pending_validation', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: null, results: [], requestedParameters: '["orina_sistematico","orina_sedimento"]', sampleType: 'orina' },
+    ]
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: urineOnly })
+    mockDeviceApi.hasActiveByType.mockResolvedValue({ data: false })
+    renderPage()
+    await waitFor(() => screen.getByText('Orina'))
+    fireEvent.click(screen.getByText('Orina'))
+    await waitFor(() => screen.getByText('Validar prueba'))
+    expect(screen.queryByTestId('vvp-alert')).not.toBeInTheDocument()
+  })
+})
+
+describe('PatientTests: partial validation', () => {
+  const multiSampleTest = [
+    { id: 20, category: 'analitica', label: 'Hemograma + Orina', status: 'pending_validation', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: null, results: [], requestedParameters: '["hemograma","glucosa","orina_sistematico"]', sampleType: 'sangre,orina' },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: multiSampleTest })
+    mockDeviceApi.hasActiveByType.mockResolvedValue({ data: true })
+  })
+
+  it('muestra checkboxes de muestras en el modal de validación', async () => {
+    renderPage()
+    await waitFor(() => screen.getByText('Hemograma + Orina'))
+    fireEvent.click(screen.getByText('Hemograma + Orina'))
+    await waitFor(() => screen.getByTestId('sample-checkboxes'))
+    expect(screen.getByText('Tubo bioquímica')).toBeInTheDocument()
+    expect(screen.getByText('Tubo hemograma')).toBeInTheDocument()
+    expect(screen.getByText('Muestra de orina')).toBeInTheDocument()
+  })
+
+  it('muestra iconos grises para muestras ya validadas', async () => {
+    const partiallyValidated = [
+      { ...multiSampleTest[0], validatedSamples: '["tubo_bioquimica","tubo_hemograma"]' },
+    ]
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: partiallyValidated })
+    renderPage()
+    await waitFor(() => screen.getByText('Hemograma + Orina'))
+    const icons = screen.getByTestId('sample-icons')
+    expect(icons).toBeInTheDocument()
   })
 })
