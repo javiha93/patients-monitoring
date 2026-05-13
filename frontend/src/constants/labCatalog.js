@@ -7,6 +7,7 @@
 
 export const SAMPLE_TYPES = [
   { value: 'sangre', label: 'Sangre', icon: '🩸' },
+  { value: 'frotis', label: 'Frotis / PCR', icon: '🧬' },
   { value: 'orina', label: 'Orina', icon: '🧪' },
   { value: 'esputo', label: 'Esputo', icon: '🫁' },
   { value: 'heces', label: 'Heces', icon: '🔬' },
@@ -109,19 +110,6 @@ export const PARAMETERS = {
       ],
     },
     {
-      group: 'PCR molecular',
-      params: [
-        { code: 'pcr_covid', label: 'PCR SARS-CoV-2 (COVID-19)' },
-        { code: 'pcr_gripe_a', label: 'PCR Gripe A' },
-        { code: 'pcr_gripe_b', label: 'PCR Gripe B' },
-        { code: 'pcr_vrs', label: 'PCR VRS (Virus Respiratorio Sincitial)' },
-        { code: 'pcr_panel_respiratorio', label: 'Panel respiratorio múltiple' },
-        { code: 'ag_rapido_covid', label: 'Antígeno rápido COVID-19' },
-        { code: 'ag_rapido_gripe', label: 'Antígeno rápido Gripe A/B' },
-        { code: 'ag_rapido_estreptococo', label: 'Antígeno rápido Estreptococo A' },
-      ],
-    },
-    {
       group: 'Hormonas / Otros',
       params: [
         { code: 'tsh', label: 'TSH' },
@@ -134,6 +122,27 @@ export const PARAMETERS = {
         { code: 'beta_hcg', label: 'Beta-HCG (embarazo)' },
         { code: 'cortisol', label: 'Cortisol' },
         { code: 'pth', label: 'PTH (Parathormona)' },
+      ],
+    },
+  ],
+
+  frotis: [
+    {
+      group: 'PCR molecular',
+      params: [
+        { code: 'pcr_covid', label: 'PCR SARS-CoV-2 (COVID-19)' },
+        { code: 'pcr_gripe_a', label: 'PCR Gripe A' },
+        { code: 'pcr_gripe_b', label: 'PCR Gripe B' },
+        { code: 'pcr_vrs', label: 'PCR VRS (Virus Respiratorio Sincitial)' },
+        { code: 'pcr_panel_respiratorio', label: 'Panel respiratorio múltiple' },
+      ],
+    },
+    {
+      group: 'Antígenos rápidos',
+      params: [
+        { code: 'ag_rapido_covid', label: 'Antígeno rápido COVID-19' },
+        { code: 'ag_rapido_gripe', label: 'Antígeno rápido Gripe A/B' },
+        { code: 'ag_rapido_estreptococo', label: 'Antígeno rápido Estreptococo A' },
       ],
     },
   ],
@@ -312,14 +321,15 @@ export const PRESETS = [
     code: 'respiratorio_viral',
     label: 'Panel respiratorio',
     description: 'COVID + Gripe A/B + VRS',
-    params: { sangre: ['pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs'] },
+    params: { frotis: ['pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs'] },
   },
   {
     code: 'infeccion_respiratoria',
     label: 'Infección respiratoria',
     description: 'Hemograma + PCR + PCT + COVID + Gripe + VRS + Gasometría',
     params: {
-      sangre: ['hemograma', 'pcr', 'procalcitonina', 'pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs', 'gasometria_arterial', 'lactato', 'creatinina', 'urea', 'sodio', 'potasio'],
+      sangre: ['hemograma', 'pcr', 'procalcitonina', 'gasometria_arterial', 'lactato', 'creatinina', 'urea', 'sodio', 'potasio'],
+      frotis: ['pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs'],
       esputo: ['esputo_gram'],
       cultivo: ['hemocultivo_x2'],
     },
@@ -406,10 +416,10 @@ const GASOMETRIA_CODES = new Set([
   'gasometria_arterial', 'gasometria_venosa', 'lactato',
 ])
 
-// All sangre codes that go in the bioquímica tube (everything not hemograma/coag/gaso/hisopo)
+// All sangre codes that go in the bioquímica tube (everything not hemograma/coag/gaso)
 function isBioquimiaTube(code) {
   return !TUBE_HEMOGRAMA.has(code) && !TUBE_COAGULACION.has(code) &&
-         !HISOPO_CODES.has(code) && !GASOMETRIA_CODES.has(code)
+         !GASOMETRIA_CODES.has(code)
 }
 
 export const SAMPLE_ICONS = {
@@ -433,10 +443,11 @@ export function getSamplesNeeded(paramCodes) {
 
   // Blood tubes
   const hasBioq = [...codes].some(c => {
-    // Only sangre-level codes (not orina_, heces_, esputo_, cultivo_, hemocultivo_, urocultivo, coprocultivo)
+    // Exclude non-sangre codes
     if (c.startsWith('orina_') || c.startsWith('heces_') || c.startsWith('esputo_') ||
         c.startsWith('cultivo_') || c.startsWith('hemocultivo_') || c === 'urocultivo' ||
-        c === 'urocultivo_hongos' || c === 'coprocultivo' || c === 'cultivo_cdiff') return false
+        c === 'urocultivo_hongos' || c === 'coprocultivo' || c === 'cultivo_cdiff' ||
+        HISOPO_CODES.has(c)) return false
     return isBioquimiaTube(c)
   })
   if (hasBioq) result.push(SAMPLE_ICONS.tubo_bioquimica)

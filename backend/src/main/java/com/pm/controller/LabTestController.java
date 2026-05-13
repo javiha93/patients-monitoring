@@ -34,6 +34,15 @@ public class LabTestController {
         return service.create(dto);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody LabTestDTO dto) {
+        try {
+            return ResponseEntity.ok(service.update(id, dto));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PatchMapping("/{id}/validate")
     public ResponseEntity<?> validate(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String externalId = body.get("externalId");

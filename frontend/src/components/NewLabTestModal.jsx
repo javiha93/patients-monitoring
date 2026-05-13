@@ -8,10 +8,41 @@ function initSelected() {
   return m
 }
 
-export default function NewLabTestModal({ onSubmit, onClose }) {
-  const [activeTab, setActiveTab] = useState('sangre')
-  const [selected, setSelected] = useState(initSelected)
-  const [notes, setNotes] = useState('')
+/** Build a code→sampleType lookup from the PARAMETERS catalog */
+function buildCodeToType() {
+  const map = {}
+  for (const [sampleType, groups] of Object.entries(PARAMETERS)) {
+    for (const g of groups) {
+      for (const p of g.params) {
+        map[p.code] = sampleType
+      }
+    }
+  }
+  return map
+}
+const CODE_TO_TYPE = buildCodeToType()
+
+function initFromData(data) {
+  const m = initSelected()
+  if (!data?.requestedParameters) return m
+  try {
+    const codes = JSON.parse(data.requestedParameters)
+    for (const code of codes) {
+      const type = CODE_TO_TYPE[code]
+      if (type && m.has(type)) m.get(type).add(code)
+    }
+  } catch { /* ignore */ }
+  return m
+}
+
+export default function NewLabTestModal({ onSubmit, onClose, initialData }) {
+  const editing = !!initialData
+  const [activeTab, setActiveTab] = useState(() => {
+    if (initialData?.sampleType) return initialData.sampleType.split(',')[0]
+    return 'sangre'
+  })
+  const [selected, setSelected] = useState(() => initialData ? initFromData(initialData) : initSelected())
+  const [notes, setNotes] = useState(initialData?.notes || '')
 
   const toggle = (sampleType, code) => {
     setSelected(prev => {
@@ -97,7 +128,7 @@ export default function NewLabTestModal({ onSubmit, onClose }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
-          <h3 className="text-base font-bold text-slate-800">Solicitar prueba de laboratorio</h3>
+          <h3 className="text-base font-bold text-slate-800">{editing ? 'Editar prueba de laboratorio' : 'Solicitar prueba de laboratorio'}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
         </div>
 
@@ -258,7 +289,7 @@ export default function NewLabTestModal({ onSubmit, onClose }) {
                   className="bg-violet-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <Beaker size={16} />
-                  Solicitar ({total})
+                  {editing ? `Guardar (${total})` : `Solicitar (${total})`}
                 </button>
               </div>
             </div>

@@ -33,6 +33,7 @@ vi.mock('../services/labTestApi', () => ({
     getByAdmission: vi.fn(() => Promise.resolve({ data: [] })),
     getById: vi.fn(() => Promise.resolve({ data: {} })),
     create: vi.fn(() => Promise.resolve({ data: { id: 4 } })),
+    update: vi.fn(() => Promise.resolve({ data: {} })),
     validate: vi.fn(() => Promise.resolve({ data: {} })),
     delete: vi.fn(() => Promise.resolve()),
   },

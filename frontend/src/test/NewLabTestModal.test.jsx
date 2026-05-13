@@ -23,13 +23,14 @@ describe('NewLabTestModal', () => {
     expect(screen.getByText('Cultivos')).toBeInTheDocument()
   })
 
-  it('muestra perfiles predefinidos', () => {
+  it('muestra perfiles predefinidos en la pestaña sangre', () => {
     renderModal()
     expect(screen.getByText('Básico')).toBeInTheDocument()
     expect(screen.getByText('Protocolo dolor torácico')).toBeInTheDocument()
-    expect(screen.getByText('Panel respiratorio')).toBeInTheDocument()
     // "Perfil hepático" appears as both preset and group header
     expect(screen.getAllByText('Perfil hepático').length).toBeGreaterThanOrEqual(1)
+    // Panel respiratorio is in frotis tab, not sangre
+    expect(screen.queryByText('Panel respiratorio')).not.toBeInTheDocument()
   })
 
   it('seleccionar parámetro individual actualiza el contador', () => {
@@ -86,12 +87,19 @@ describe('NewLabTestModal', () => {
     expect(screen.getByText('Anti-VHC (Hepatitis C)')).toBeInTheDocument()
   })
 
-  it('muestra parámetros de PCR molecular en sangre', () => {
+  it('muestra parámetros de PCR molecular en pestaña Frotis/PCR', () => {
     renderModal()
+    // PCR molecular is not in sangre tab
+    expect(screen.queryByText('PCR molecular')).not.toBeInTheDocument()
+    // Switch to frotis tab
+    fireEvent.click(screen.getByText('Frotis / PCR'))
     expect(screen.getByText('PCR molecular')).toBeInTheDocument()
     expect(screen.getByText('PCR SARS-CoV-2 (COVID-19)')).toBeInTheDocument()
     expect(screen.getByText('PCR Gripe A')).toBeInTheDocument()
     expect(screen.getByText('PCR Gripe B')).toBeInTheDocument()
+    expect(screen.getByText('Antígenos rápidos')).toBeInTheDocument()
+    // Panel respiratorio preset should be visible here
+    expect(screen.getByText('Panel respiratorio')).toBeInTheDocument()
   })
 
   it('muestra cultivos al cambiar de pestaña', () => {
@@ -122,8 +130,10 @@ describe('NewLabTestModal', () => {
     expect(screen.queryByText('Básico')).not.toBeInTheDocument()
   })
 
-  it('muestra preset infección respiratoria en sangre, esputo y cultivos', () => {
+  it('muestra preset infección respiratoria en sangre, frotis, esputo y cultivos', () => {
     renderModal()
+    expect(screen.getByText('Infección respiratoria')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Frotis / PCR'))
     expect(screen.getByText('Infección respiratoria')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Esputo'))
     expect(screen.getByText('Infección respiratoria')).toBeInTheDocument()

@@ -52,6 +52,21 @@ public class LabTestService {
         return LabTestDTO.fromEntity(labTestRepo.save(t));
     }
 
+    /** Update a pending_validation test's parameters. */
+    @Transactional
+    public LabTestDTO update(Long id, LabTestDTO dto) {
+        LabTest t = labTestRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Lab test not found"));
+        if (!"pending_validation".equals(t.getStatus())) {
+            throw new IllegalStateException("Solo se pueden editar pruebas pendientes de validar");
+        }
+        t.setLabel(dto.getLabel());
+        t.setNotes(dto.getNotes());
+        t.setRequestedParameters(dto.getRequestedParameters());
+        t.setSampleType(dto.getSampleType());
+        return LabTestDTO.fromEntity(labTestRepo.save(t));
+    }
+
     /**
      * Validate a lab test by assigning an external ID.
      * Rejects if the externalId is already used by another test.

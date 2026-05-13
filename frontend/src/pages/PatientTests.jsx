@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText } from 'lucide-react'
+import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText, Pencil } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
 import { deviceApi } from '../services/deviceApi'
@@ -55,8 +55,9 @@ export default function PatientTests() {
   const [tests, setTests] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // New test modal
+  // New/edit test modal
   const [showNew, setShowNew] = useState(false)
+  const [editingTest, setEditingTest] = useState(null)
 
   // Validate modal
   const [validateModal, setValidateModal] = useState({ open: false, test: null })
@@ -96,7 +97,12 @@ export default function PatientTests() {
   const admission = patient.activeAdmission
 
   const handleCreate = async (testData) => {
-    await labTestApi.create({ ...testData, admissionId: admission.id, requestedBy: user?.displayName || '' })
+    if (editingTest) {
+      await labTestApi.update(editingTest.id, testData)
+      setEditingTest(null)
+    } else {
+      await labTestApi.create({ ...testData, admissionId: admission.id, requestedBy: user?.displayName || '' })
+    }
     setShowNew(false)
     fetchData()
   }
@@ -206,6 +212,10 @@ export default function PatientTests() {
                   <StatusIcon size={12} />
                   {cfg.label}
                 </span>
+                {t.status === 'pending_validation' && (
+                  <button onClick={(e) => { e.stopPropagation(); setEditingTest(t); setShowNew(true) }}
+                    className="text-slate-300 hover:text-violet-500 flex-shrink-0" title="Editar prueba"><Pencil size={16} /></button>
+                )}
                 <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, id: t.id }) }}
                   className="text-slate-300 hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
               </div>
@@ -218,7 +228,11 @@ export default function PatientTests() {
 
       {/* New test modal */}
       {showNew && (
-        <NewLabTestModal onSubmit={handleCreate} onClose={() => setShowNew(false)} />
+        <NewLabTestModal
+          onSubmit={handleCreate}
+          onClose={() => { setShowNew(false); setEditingTest(null) }}
+          initialData={editingTest}
+        />
       )}
 
       {/* Validate modal */}

@@ -1,14 +1,25 @@
-import { TestTube, TestTubes, Syringe, PillBottle, Minus } from 'lucide-react'
+import { TestTube, TestTubes, Syringe, PillBottle } from 'lucide-react'
 import { getSamplesNeeded } from '../constants/labCatalog'
 
-/** Custom swab/bastoncillo icon */
-function SwabIcon({ size = 16, className = '' }) {
+/** Custom swab/hisopo icon — stick with oval loop at top */
+function SwabIcon({ size = 22, className = '' }) {
   return (
-    <div className={`relative flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
-      <Minus className="rotate-90 text-current" style={{ width: size, height: size }} strokeWidth={2.5} />
-      <div className="absolute rounded-full bg-current opacity-30"
-        style={{ width: size * 0.35, height: size * 0.35, top: size * 0.05 }} />
-    </div>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* Stick */}
+      <line x1="8" y1="22" x2="15" y2="10" />
+      {/* Oval loop at top */}
+      <ellipse cx="16.5" cy="7" rx="3" ry="4" />
+    </svg>
   )
 }
 
