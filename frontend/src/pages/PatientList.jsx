@@ -207,8 +207,8 @@ function AssignmentCell({ patient, user, onUpdate, toast }) {
           className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-blue-300 text-blue-300 text-xs font-bold cursor-default"
         >{getInitials(p.previousDoctor)}</span>
       ) : null}
-      {/* Assign button — always available for user's role, confirms if already assigned */}
-      {canAssign && (
+      {/* Assign button — hidden if already assigned to self */}
+      {canAssign && !(isNurse && p.assignedNurse === user.displayName) && !(isDoctor && p.assignedDoctor === user.displayName) && (
         <button
           onClick={handleAssign}
           title="Asignarme"
@@ -814,54 +814,128 @@ export default function PatientList() {
                 <div
                   key={p.admissionId}
                   onClick={() => handleSelect(p.id)}
-                  className={`bg-white rounded-xl shadow-sm p-4 cursor-pointer transition-shadow ${isSelected ? 'ring-2 ring-blue-400 shadow-md' : 'hover:shadow-md'}`}
+                  className={`bg-white rounded-xl shadow-sm p-4 cursor-pointer transition-shadow flex flex-col gap-2 ${isSelected ? 'ring-2 ring-blue-400 shadow-md' : 'hover:shadow-md'}`}
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    <TriageBadge level={p.triageLevel} />
-                    <div>
-                      <div className="font-semibold">{p.lastName}, {p.firstName}</div>
-                      <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'}</div>
+                  {/* Top: triage + name left, icons right */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <TriageBadge level={p.triageLevel} />
+                      <div>
+                        <div className="font-semibold">{p.lastName}, {p.firstName}</div>
+                        <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {p.pendingLabs && p.pendingLabs.length > 0 ? (
+                        <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
+                          <Syringe size={14} className="text-orange-500" />
+                        </span>
+                      ) : p.hasCompletedLabs && (
+                        <span title="Analíticas realizadas" data-testid="completed-lab-icon">
+                          <Syringe size={14} className="text-slate-300" />
+                        </span>
+                      )}
+                      {p.hasPendingEcg ? (
+                        <span title="ECG pendiente" data-testid="pending-ecg-icon">
+                          <Activity size={14} className="text-red-500" />
+                        </span>
+                      ) : p.hasCompletedEcg && (
+                        <span title={buildRecentEcgTooltip(p.recentEcgs)} data-testid="completed-ecg-icon">
+                          <Activity size={14} className="text-slate-300" />
+                        </span>
+                      )}
+                      {p.hasPendingXray ? (
+                        <span title="Radiografía pendiente"><XRayIcon size={14} className="text-blue-500" /></span>
+                      ) : p.hasCompletedXray && (
+                        <span title="Radiografía realizada"><XRayIcon size={14} className="text-slate-300" /></span>
+                      )}
+                      {p.hasPendingCt ? (
+                        <span title="TAC pendiente"><Radiation size={14} className="text-amber-500" /></span>
+                      ) : p.hasCompletedCt && (
+                        <span title="TAC realizado"><Radiation size={14} className="text-slate-300" /></span>
+                      )}
+                      {p.hasPendingMri ? (
+                        <span title="Resonancia pendiente"><Magnet size={14} className="text-red-500" /></span>
+                      ) : p.hasCompletedMri && (
+                        <span title="Resonancia realizada"><Magnet size={14} className="text-slate-300" /></span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
-                    {p.pendingLabs && p.pendingLabs.length > 0 ? (
-                      <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
-                        <Syringe size={14} className="text-orange-500" />
-                      </span>
-                    ) : p.hasCompletedLabs && (
-                      <span title="Analíticas realizadas" data-testid="completed-lab-icon">
-                        <Syringe size={14} className="text-slate-300" />
-                      </span>
-                    )}
-                    {p.hasPendingEcg ? (
-                      <span title="ECG pendiente" data-testid="pending-ecg-icon">
-                        <Activity size={14} className="text-red-500" />
-                      </span>
-                    ) : p.hasCompletedEcg && (
-                      <span title={buildRecentEcgTooltip(p.recentEcgs)} data-testid="completed-ecg-icon">
-                        <Activity size={14} className="text-slate-300" />
-                      </span>
-                    )}
-                    {p.hasPendingXray ? (
-                      <span title="Radiografía pendiente"><XRayIcon size={14} className="text-blue-500" /></span>
-                    ) : p.hasCompletedXray && (
-                      <span title="Radiografía realizada"><XRayIcon size={14} className="text-slate-300" /></span>
-                    )}
-                    {p.hasPendingCt ? (
-                      <span title="TAC pendiente"><Radiation size={14} className="text-amber-500" /></span>
-                    ) : p.hasCompletedCt && (
-                      <span title="TAC realizado"><Radiation size={14} className="text-slate-300" /></span>
-                    )}
-                    {p.hasPendingMri ? (
-                      <span title="Resonancia pendiente"><Magnet size={14} className="text-red-500" /></span>
-                    ) : p.hasCompletedMri && (
-                      <span title="Resonancia realizada"><Magnet size={14} className="text-slate-300" /></span>
-                    )}
-                    {p.location && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{p.location}</span>}
-                    {p.specialty && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{p.specialty}</span>}
+
+                  {/* Middle: motivo, location/specialty, observations */}
+                  <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <InlineDropdown
+                      value={p.location || ''}
+                      options={LOCATIONS}
+                      placeholder="Ubic."
+                      onChange={async (v) => {
+                        try {
+                          await patientApi.updateLocation(p.admissionId, v)
+                          setPatients(prev => prev.map(pt =>
+                            pt.admissionId === p.admissionId ? { ...pt, location: v } : pt
+                          ))
+                        } catch { toast.error('Error al cambiar ubicación') }
+                      }}
+                      width="w-14"
+                    />
+                    <InlineDropdown
+                      value={p.specialty || ''}
+                      options={SPECIALTIES}
+                      placeholder="Esp."
+                      displayValue={SPECIALTY_INITIALS[p.specialty] || (p.specialty ? p.specialty.slice(0, 3) : '')}
+                      tooltip={p.specialty || ''}
+                      onChange={async (v) => {
+                        try {
+                          await patientApi.updateSpecialty(p.admissionId, v)
+                          setPatients(prev => prev.map(pt =>
+                            pt.admissionId === p.admissionId ? { ...pt, specialty: v } : pt
+                          ))
+                        } catch { toast.error('Error al cambiar especialidad') }
+                      }}
+                      width="w-12"
+                    />
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">{formatDate(p.admissionDate)}</div>
+                  {/* Observations */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      defaultValue={p.observations || ''}
+                      placeholder="Observaciones..."
+                      onBlur={async (e) => {
+                        const val = e.target.value.trim()
+                        if (val !== (p.observations || '')) {
+                          try {
+                            await patientApi.updateObservations(p.admissionId, val)
+                            setPatients(prev => prev.map(pt =>
+                              pt.admissionId === p.admissionId ? { ...pt, observations: val } : pt
+                            ))
+                          } catch { /* ignore */ }
+                        }
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+                      className="w-full bg-transparent text-sm text-slate-600 border-0 border-b border-transparent hover:border-slate-300 focus:border-violet-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
+                    />
+                  </div>
+
+                  {/* Bottom: assigned left, date right */}
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-1">
+                      {p.assignedNurse && (
+                        <span title={`Enf: ${p.assignedNurse}`} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-teal-100 text-teal-700 text-[10px] font-bold">{getInitials(p.assignedNurse)}</span>
+                      )}
+                      {p.assignedDoctor && (
+                        <span title={`Med: ${p.assignedDoctor}`} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">{getInitials(p.assignedDoctor)}</span>
+                      )}
+                      {!p.assignedNurse && p.previousNurse && (
+                        <span title={`Enf. anterior: ${p.previousNurse}`} className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-teal-300 text-teal-300 text-[10px] font-bold">{getInitials(p.previousNurse)}</span>
+                      )}
+                      {!p.assignedDoctor && p.previousDoctor && (
+                        <span title={`Med. anterior: ${p.previousDoctor}`} className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-blue-300 text-blue-300 text-[10px] font-bold">{getInitials(p.previousDoctor)}</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-400">{formatDate(p.admissionDate)}</div>
+                  </div>
                 </div>
               )
             })}
