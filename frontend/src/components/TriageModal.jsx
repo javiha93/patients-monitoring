@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { X, AlertTriangle, Check, Syringe, Activity, ChevronRight } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { X, AlertTriangle, Check, Syringe, Activity, ChevronRight, Search } from 'lucide-react'
 import XRayIcon from './XRayIcon'
 import { TRIAGE_MOTIVOS, findTriageRules } from '../constants/triageRules'
 
@@ -16,11 +16,79 @@ const SPECIALTIES = [
   'Medicina', 'Traumatología', 'Cirugía', 'Ginecología', 'Pediatría', 'Oftalmología',
 ]
 
+function MotivoDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const inputRef = useRef(null)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus()
+  }, [open])
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filtered = TRIAGE_MOTIVOS.filter(m =>
+    m.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Motivo de consulta *</div>
+      <button
+        type="button"
+        onClick={() => { setOpen(!open); setSearch('') }}
+        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg text-sm text-left transition-colors ${
+          value ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-400'
+        }`}
+      >
+        <span>{value || 'Seleccionar motivo...'}</span>
+        <ChevronRight size={14} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-hidden">
+          <div className="p-2 border-b border-slate-100">
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={inputRef}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar motivo..."
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-md focus:border-blue-400 outline-none"
+              />
+            </div>
+          </div>
+          <div className="overflow-y-auto max-h-44">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-slate-400">Sin resultados</div>
+            ) : filtered.map(m => (
+              <button
+                key={m}
+                onClick={() => { onChange(m); setOpen(false); setSearch('') }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
+                  value === m ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'
+                }`}
+              >{m}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /**
  * Triage modal: set level + motivo (required), location + specialty (optional).
  * After confirm, checks triage rules and shows suggested actions.
  */
-export default function TriageModal({ open, patient, locations, onClose, onConfirm }) {
+export default function TriageModal({ open: isOpen, patient, locations, onClose, onConfirm }) {
   const [step, setStep] = useState('form') // 'form' | 'side' | 'suggestions'
   const [level, setLevel] = useState(null)
   const [motivo, setMotivo] = useState('')
@@ -115,7 +183,7 @@ export default function TriageModal({ open, patient, locations, onClose, onConfi
     )
   }
 
-  if (!open) return null
+  if (!isOpen) return null
 
   const canConfirmForm = level && motivo
 
@@ -156,23 +224,8 @@ export default function TriageModal({ open, patient, locations, onClose, onConfi
                 </div>
               </div>
 
-              {/* Motivo */}
-              <div>
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Motivo de consulta *</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {TRIAGE_MOTIVOS.map(m => (
-                    <button
-                      key={m}
-                      onClick={() => setMotivo(m)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                        motivo === m
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-slate-200 text-slate-600 hover:border-blue-300'
-                      }`}
-                    >{m}</button>
-                  ))}
-                </div>
-              </div>
+              {/* Motivo — searchable dropdown */}
+              <MotivoDropdown value={motivo} onChange={setMotivo} />
 
               {/* Optional: location + specialty */}
               <div className="flex gap-3">

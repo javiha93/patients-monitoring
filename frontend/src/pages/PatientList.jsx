@@ -171,46 +171,51 @@ function AssignmentCell({ patient, user, onUpdate, toast }) {
 
   if (!hasAny && !canAssign) return <span className="text-slate-300">—</span>
 
-  // Render a badge slot: filled, previous (dashed), or empty placeholder
-  const nurseBadge = p.assignedNurse ? (
-    <div className="relative">
-      <span title={`Enf: ${p.assignedNurse}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-100 text-teal-700 text-xs font-bold cursor-default">{nurseInitials}</span>
-      {isNurse && p.assignedNurse === user.displayName && (
-        <button onClick={() => handleUnassign('nurse')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
-          <X size={10} />
-        </button>
-      )}
-    </div>
-  ) : hasPrevNurse ? (
-    <span title={`Enf. anterior: ${p.previousNurse}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-teal-300 text-teal-300 text-xs font-bold cursor-default">{getInitials(p.previousNurse)}</span>
-  ) : <div className="w-7 h-7" /> // empty placeholder
-
-  const doctorBadge = p.assignedDoctor ? (
-    <div className="relative">
-      <span title={`Med: ${p.assignedDoctor}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold cursor-default">{doctorInitials}</span>
-      {isDoctor && p.assignedDoctor === user.displayName && (
-        <button onClick={() => handleUnassign('doctor')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
-          <X size={10} />
-        </button>
-      )}
-    </div>
-  ) : hasPrevDoctor ? (
-    <span title={`Med. anterior: ${p.previousDoctor}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-blue-300 text-blue-300 text-xs font-bold cursor-default">{getInitials(p.previousDoctor)}</span>
-  ) : <div className="w-7 h-7" /> // empty placeholder
-
   const showAssignBtn = canAssign && !(isNurse && p.assignedNurse === user.displayName) && !(isDoctor && p.assignedDoctor === user.displayName)
 
+  // Fixed 3-slot layout: [nurse] [doctor] [action] — each slot always 28px wide
   return (
-    <div className="group/assign flex items-center justify-center gap-1" style={{ minWidth: '76px' }}>
-      {nurseBadge}
-      {doctorBadge}
-      {showAssignBtn && (
-        <button
-          onClick={handleAssign}
-          title="Asignarme"
-          className="w-7 h-7 rounded-full border border-dashed border-slate-300 flex items-center justify-center text-slate-300 opacity-0 group-hover/assign:opacity-100 hover:border-blue-400 hover:text-blue-500 transition-all"
-        ><Plus size={14} /></button>
-      )}
+    <div className="group/assign grid grid-cols-3 gap-0.5 justify-items-center" style={{ width: '90px' }}>
+      {/* Slot 1: Nurse */}
+      <div className="w-7 h-7 flex items-center justify-center">
+        {p.assignedNurse ? (
+          <div className="relative">
+            <span title={`Enf: ${p.assignedNurse}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-100 text-teal-700 text-xs font-bold cursor-default">{nurseInitials}</span>
+            {isNurse && p.assignedNurse === user.displayName && (
+              <button onClick={() => handleUnassign('nurse')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
+                <X size={10} />
+              </button>
+            )}
+          </div>
+        ) : hasPrevNurse ? (
+          <span title={`Enf. anterior: ${p.previousNurse}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-teal-300 text-teal-300 text-xs font-bold cursor-default">{getInitials(p.previousNurse)}</span>
+        ) : null}
+      </div>
+      {/* Slot 2: Doctor */}
+      <div className="w-7 h-7 flex items-center justify-center">
+        {p.assignedDoctor ? (
+          <div className="relative">
+            <span title={`Med: ${p.assignedDoctor}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold cursor-default">{doctorInitials}</span>
+            {isDoctor && p.assignedDoctor === user.displayName && (
+              <button onClick={() => handleUnassign('doctor')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
+                <X size={10} />
+              </button>
+            )}
+          </div>
+        ) : hasPrevDoctor ? (
+          <span title={`Med. anterior: ${p.previousDoctor}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-blue-300 text-blue-300 text-xs font-bold cursor-default">{getInitials(p.previousDoctor)}</span>
+        ) : null}
+      </div>
+      {/* Slot 3: Assign action */}
+      <div className="w-7 h-7 flex items-center justify-center">
+        {showAssignBtn && (
+          <button
+            onClick={handleAssign}
+            title="Asignarme"
+            className="w-7 h-7 rounded-full border border-dashed border-slate-300 flex items-center justify-center text-slate-300 opacity-0 group-hover/assign:opacity-100 hover:border-blue-400 hover:text-blue-500 transition-all"
+          ><Plus size={14} /></button>
+        )}
+      </div>
     </div>
   )
 }
