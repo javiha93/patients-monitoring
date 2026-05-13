@@ -381,7 +381,7 @@ export default function PatientList() {
           <div className="px-6 pb-4 flex flex-wrap items-start gap-6">
             {/* Specialty multi-select */}
             <div>
-              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Especialidad</div>
+              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Especialidad</div>
               <div className="flex flex-wrap gap-1.5">
                 {SPECIALTIES.map(s => {
                   const active = filterSpecialties.includes(s)
@@ -398,7 +398,7 @@ export default function PatientList() {
             </div>
             {/* Level multi-select */}
             <div>
-              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Nivel</div>
+              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Nivel</div>
               <div className="flex gap-1.5">
                 {[1, 2, 3, 4, 5].map(n => {
                   const active = filterLevels.includes(n)
@@ -421,7 +421,7 @@ export default function PatientList() {
             </div>
             {/* Zone multi-select */}
             <div>
-              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Zona</div>
+              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Zona</div>
               <div className="flex gap-1.5">
                 {['A', 'B', 'C'].map(z => {
                   const active = filterZones.includes(z)
@@ -438,7 +438,7 @@ export default function PatientList() {
             </div>
             {/* Date filter */}
             <div>
-              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Ingreso</div>
+              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Ingreso</div>
               <div className="flex flex-wrap gap-1.5">
                 {DATE_FILTERS.map(f => {
                   const active = filterDate === f.key
@@ -473,7 +473,7 @@ export default function PatientList() {
           <div className="bg-white rounded-xl shadow-sm overflow-visible">
             <table className="w-full">
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-900 uppercase tracking-wider">
                   <th className="px-4 py-3 w-20 cursor-pointer select-none hover:text-slate-700 whitespace-nowrap" onClick={() => handleSort('nivel')}>Nivel{sortIndicator('nivel')}</th>
                   <th className="px-2 py-3 w-16 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubic.{sortIndicator('ubicacion')}</th>
                   <th className="px-2 py-3 w-14 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Esp.{sortIndicator('especialidad')}</th>
