@@ -30,6 +30,9 @@ public class PatientListDTO {
     /** Pending lab validation info — null if no pending tests */
     private List<PendingLabInfo> pendingLabs;
 
+    /** True if the patient has at least one pending ECG */
+    private boolean hasPendingEcg;
+
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class PendingLabInfo {
         private LocalDateTime requestedAt;

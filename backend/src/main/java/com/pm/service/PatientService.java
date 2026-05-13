@@ -6,6 +6,7 @@ import com.pm.entity.Device;
 import com.pm.entity.LabTest;
 import com.pm.entity.Patient;
 import com.pm.repository.AdmissionRepository;
+import com.pm.repository.EcgRepository;
 import com.pm.repository.LabTestRepository;
 import com.pm.repository.PatientRepository;
 import com.pm.service.NursingAssessmentService;
@@ -25,6 +26,7 @@ public class PatientService {
     private final PatientRepository patientRepository;
     private final AdmissionRepository admissionRepository;
     private final LabTestRepository labTestRepository;
+    private final EcgRepository ecgRepository;
     private final NursingAssessmentService nursingAssessmentService;
     private final DeviceService deviceService;
 
@@ -37,12 +39,15 @@ public class PatientService {
 
         // Batch-fetch all pending_validation lab tests across active admissions
         Map<Long, List<LabTest>> pendingByAdmission = new HashMap<>();
+        Set<Long> admissionsWithPendingEcg = new HashSet<>();
         if (!admissionIds.isEmpty()) {
             List<LabTest> pendingTests = labTestRepository.findByAdmissionIdInAndStatusAndParentIsNull(
                     admissionIds, "pending_validation");
             for (LabTest lt : pendingTests) {
                 pendingByAdmission.computeIfAbsent(lt.getAdmission().getId(), k -> new ArrayList<>()).add(lt);
             }
+            ecgRepository.findByAdmissionIdInAndStatus(admissionIds, "pending")
+                    .forEach(ecg -> admissionsWithPendingEcg.add(ecg.getAdmission().getId()));
         }
 
         return activeAdmissions.stream().map(a -> {
@@ -73,6 +78,8 @@ public class PatientService {
                             .build()
                 ).collect(Collectors.toList()));
             }
+
+            dto.setHasPendingEcg(admissionsWithPendingEcg.contains(a.getId()));
 
             return dto;
         }).collect(Collectors.toList());

@@ -179,20 +179,6 @@ export default function PatientTests() {
     }
   }
 
-  const handleCompleteEcg = async (ecgId, file) => {
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const base64 = reader.result.split(',')[1]
-      await ecgApi.complete(ecgId, {
-        completedBy: user?.displayName || '',
-        imageData: base64,
-        imageType: file.type,
-      })
-      fetchData()
-    }
-    reader.readAsDataURL(file)
-  }
-
   const handleDeleteEcg = async () => {
     await ecgApi.delete(ecgDeleteConfirm.id)
     setEcgDeleteConfirm({ open: false, id: null })
@@ -423,14 +409,6 @@ export default function PatientTests() {
                           {ecg.completedBy && <span className="text-emerald-500">· {ecg.completedBy}</span>}
                         </div>
                       </div>
-                      {!isCompleted && (
-                        <label className="text-xs text-rose-500 font-medium px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 cursor-pointer"
-                          onClick={e => e.stopPropagation()}>
-                          Subir imagen
-                          <input type="file" accept="image/*" className="hidden"
-                            onChange={e => { if (e.target.files[0]) handleCompleteEcg(ecg.id, e.target.files[0]) }} />
-                        </label>
-                      )}
                       <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
                         isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
                       }`}>

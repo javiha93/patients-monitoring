@@ -565,3 +565,44 @@ describe('Pending lab indicator in patient list', () => {
     expect(tooltip).not.toContain('Tubo bioquímica')
   })
 })
+
+describe('Pending ECG indicator in patient list', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  it('muestra icono Activity rojo cuando el paciente tiene ECG pendiente', async () => {
+    const patientsWithEcg = [
+      { ...mockPatients[0], hasPendingEcg: true, pendingLabs: null },
+      { ...mockPatients[1], hasPendingEcg: false, pendingLabs: null },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsWithEcg })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const icons = screen.getAllByTestId('pending-ecg-icon')
+    expect(icons).toHaveLength(1)
+  })
+
+  it('no muestra icono ECG cuando no hay ECGs pendientes', async () => {
+    const patientsNoEcg = mockPatients.map(p => ({ ...p, hasPendingEcg: false, pendingLabs: null }))
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsNoEcg })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.queryByTestId('pending-ecg-icon')).not.toBeInTheDocument()
+  })
+
+  it('muestra ambos iconos cuando hay lab y ECG pendientes', async () => {
+    const patientsBoth = [
+      {
+        ...mockPatients[0],
+        hasPendingEcg: true,
+        pendingLabs: [{ requestedAt: '2024-01-10T09:00:00', requestedParameters: '["hemograma"]', validatedSamples: null }],
+      },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsBoth })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getAllByTestId('pending-lab-icon')).toHaveLength(1)
+    expect(screen.getAllByTestId('pending-ecg-icon')).toHaveLength(1)
+  })
+})

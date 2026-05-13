@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, ChevronDown, Check, Filter, X } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { useAuth } from '../context/AuthContext'
 import { getSamplesNeeded, SAMPLE_ICONS } from '../constants/labCatalog'
@@ -473,11 +473,18 @@ export default function PatientList() {
                       <td className="px-4 py-3 text-sm text-slate-500">{calcAge(p.birthDate) ?? '—'}</td>
                       <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
                       <td className="px-2 py-3 text-center">
-                        {p.pendingLabs && p.pendingLabs.length > 0 && (
-                          <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
-                            <Syringe size={16} className="text-red-500 inline-block" />
-                          </span>
-                        )}
+                        <div className="flex items-center justify-center gap-1">
+                          {p.pendingLabs && p.pendingLabs.length > 0 && (
+                            <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
+                              <Syringe size={16} className="text-red-500" />
+                            </span>
+                          )}
+                          {p.hasPendingEcg && (
+                            <span title="ECG pendiente" data-testid="pending-ecg-icon">
+                              <Activity size={16} className="text-red-500" />
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-500">{formatDate(p.admissionDate)}</td>
                     </tr>
@@ -508,6 +515,11 @@ export default function PatientList() {
                     {p.pendingLabs && p.pendingLabs.length > 0 && (
                       <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
                         <Syringe size={14} className="text-red-500" />
+                      </span>
+                    )}
+                    {p.hasPendingEcg && (
+                      <span title="ECG pendiente" data-testid="pending-ecg-icon">
+                        <Activity size={14} className="text-red-500" />
                       </span>
                     )}
                     {p.location && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{p.location}</span>}

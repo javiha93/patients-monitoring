@@ -298,7 +298,7 @@ describe('PatientTests: ECG section', () => {
     expect(screen.getByText('Solicitar ECG')).toBeInTheDocument()
   })
 
-  it('muestra ECG pendiente con botón de subir imagen', async () => {
+  it('muestra ECG pendiente con estado Pendiente', async () => {
     const ecgs = [
       { id: 1, status: 'pending', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', completedAt: null, completedBy: null },
     ]
@@ -307,7 +307,6 @@ describe('PatientTests: ECG section', () => {
     renderPage()
     await waitFor(() => screen.getByText('Electrocardiograma'))
     expect(screen.getByText('Pendiente')).toBeInTheDocument()
-    expect(screen.getByText('Subir imagen')).toBeInTheDocument()
   })
 
   it('muestra ECG realizado y abre visor al clicar', async () => {
