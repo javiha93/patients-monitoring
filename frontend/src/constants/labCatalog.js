@@ -2,7 +2,7 @@
  * Lab test parameter catalog.
  * Organized by sample type → parameter groups.
  * Each parameter has a code (stored in DB) and label (displayed).
- * Presets are predefined combinations of parameters.
+ * Presets are predefined combinations that ADD to the current selection.
  */
 
 export const SAMPLE_TYPES = [
@@ -10,6 +10,7 @@ export const SAMPLE_TYPES = [
   { value: 'orina', label: 'Orina', icon: '🧪' },
   { value: 'esputo', label: 'Esputo', icon: '🫁' },
   { value: 'heces', label: 'Heces', icon: '🔬' },
+  { value: 'cultivo', label: 'Cultivos', icon: '🧫' },
 ]
 
 export const PARAMETERS = {
@@ -92,6 +93,35 @@ export const PARAMETERS = {
       ],
     },
     {
+      group: 'Serología',
+      params: [
+        { code: 'vih', label: 'VIH (Ag/Ac)' },
+        { code: 'hepatitis_b_hbsag', label: 'HBsAg (Hepatitis B)' },
+        { code: 'hepatitis_b_anticore', label: 'Anti-HBc (Hepatitis B)' },
+        { code: 'hepatitis_b_antis', label: 'Anti-HBs (Hepatitis B)' },
+        { code: 'hepatitis_c', label: 'Anti-VHC (Hepatitis C)' },
+        { code: 'sifilis', label: 'Serología sífilis (RPR/VDRL)' },
+        { code: 'cmv_igg_igm', label: 'CMV IgG/IgM' },
+        { code: 'ebv_igg_igm', label: 'EBV IgG/IgM' },
+        { code: 'toxoplasma', label: 'Toxoplasma IgG/IgM' },
+        { code: 'brucella', label: 'Serología Brucella' },
+        { code: 'lyme', label: 'Serología Lyme' },
+      ],
+    },
+    {
+      group: 'PCR molecular',
+      params: [
+        { code: 'pcr_covid', label: 'PCR SARS-CoV-2 (COVID-19)' },
+        { code: 'pcr_gripe_a', label: 'PCR Gripe A' },
+        { code: 'pcr_gripe_b', label: 'PCR Gripe B' },
+        { code: 'pcr_vrs', label: 'PCR VRS (Virus Respiratorio Sincitial)' },
+        { code: 'pcr_panel_respiratorio', label: 'Panel respiratorio múltiple' },
+        { code: 'ag_rapido_covid', label: 'Antígeno rápido COVID-19' },
+        { code: 'ag_rapido_gripe', label: 'Antígeno rápido Gripe A/B' },
+        { code: 'ag_rapido_estreptococo', label: 'Antígeno rápido Estreptococo A' },
+      ],
+    },
+    {
       group: 'Hormonas / Otros',
       params: [
         { code: 'tsh', label: 'TSH' },
@@ -101,6 +131,9 @@ export const PARAMETERS = {
         { code: 'vitamina_b12', label: 'Vitamina B12' },
         { code: 'acido_folico', label: 'Ácido fólico' },
         { code: 'psa', label: 'PSA' },
+        { code: 'beta_hcg', label: 'Beta-HCG (embarazo)' },
+        { code: 'cortisol', label: 'Cortisol' },
+        { code: 'pth', label: 'PTH (Parathormona)' },
       ],
     },
   ],
@@ -149,108 +182,198 @@ export const PARAMETERS = {
       ],
     },
   ],
+
+  cultivo: [
+    {
+      group: 'Hemocultivos',
+      params: [
+        { code: 'hemocultivo_aerobio', label: 'Hemocultivo aerobio' },
+        { code: 'hemocultivo_anaerobio', label: 'Hemocultivo anaerobio' },
+        { code: 'hemocultivo_x2', label: 'Hemocultivo x2 (2 sets)' },
+        { code: 'hemocultivo_x3', label: 'Hemocultivo x3 (3 sets)' },
+        { code: 'hemocultivo_hongos', label: 'Hemocultivo para hongos' },
+        { code: 'hemocultivo_micobacterias', label: 'Hemocultivo para micobacterias' },
+      ],
+    },
+    {
+      group: 'Cultivos de orina',
+      params: [
+        { code: 'urocultivo', label: 'Urocultivo' },
+        { code: 'urocultivo_hongos', label: 'Urocultivo para hongos' },
+      ],
+    },
+    {
+      group: 'Cultivos respiratorios',
+      params: [
+        { code: 'cultivo_esputo', label: 'Cultivo de esputo' },
+        { code: 'cultivo_broncoaspirado', label: 'Cultivo de broncoaspirado (BAS)' },
+        { code: 'cultivo_lavado_broncoalveolar', label: 'Cultivo de LBA' },
+        { code: 'cultivo_esputo_hongos', label: 'Cultivo esputo para hongos' },
+        { code: 'cultivo_esputo_micobacterias', label: 'Cultivo esputo para micobacterias' },
+      ],
+    },
+    {
+      group: 'Cultivos de herida / piel',
+      params: [
+        { code: 'cultivo_herida', label: 'Cultivo de herida' },
+        { code: 'cultivo_absceso', label: 'Cultivo de absceso' },
+        { code: 'cultivo_piel', label: 'Cultivo de piel' },
+      ],
+    },
+    {
+      group: 'Cultivos de catéter / dispositivo',
+      params: [
+        { code: 'cultivo_punta_cateter', label: 'Cultivo punta de catéter' },
+        { code: 'cultivo_liquido_drenaje', label: 'Cultivo de líquido de drenaje' },
+      ],
+    },
+    {
+      group: 'Cultivos de líquidos estériles',
+      params: [
+        { code: 'cultivo_lcr', label: 'Cultivo de LCR' },
+        { code: 'cultivo_liquido_pleural', label: 'Cultivo de líquido pleural' },
+        { code: 'cultivo_liquido_ascitico', label: 'Cultivo de líquido ascítico' },
+        { code: 'cultivo_liquido_articular', label: 'Cultivo de líquido articular' },
+      ],
+    },
+    {
+      group: 'Cultivos de heces',
+      params: [
+        { code: 'coprocultivo', label: 'Coprocultivo' },
+        { code: 'cultivo_cdiff', label: 'Cultivo C. difficile' },
+      ],
+    },
+  ],
 }
 
-/** Presets: predefined parameter combinations */
+/** Presets: predefined parameter combinations (can span multiple sample types) */
 export const PRESETS = [
   {
     code: 'basico',
     label: 'Básico',
     description: 'Hemograma + Bioquímica básica + Coagulación',
-    sampleType: 'sangre',
-    params: ['hemograma', 'glucosa', 'urea', 'creatinina', 'sodio', 'potasio', 'pcr', 'tp_inr'],
+    params: { sangre: ['hemograma', 'glucosa', 'urea', 'creatinina', 'sodio', 'potasio', 'pcr', 'tp_inr'] },
   },
   {
     code: 'perfil_hepatico',
     label: 'Perfil hepático',
     description: 'Transaminasas + Bilirrubina + GGT + FA + Albúmina',
-    sampleType: 'sangre',
-    params: ['got', 'gpt', 'ggt', 'fosfatasa_alcalina', 'bilirrubina_total', 'bilirrubina_directa', 'albumina', 'proteinas_totales', 'ldh'],
+    params: { sangre: ['got', 'gpt', 'ggt', 'fosfatasa_alcalina', 'bilirrubina_total', 'bilirrubina_directa', 'albumina', 'proteinas_totales', 'ldh'] },
   },
   {
     code: 'dolor_toracico',
     label: 'Protocolo dolor torácico',
     description: 'Troponina + CK-MB + Coagulación + Gasometría',
-    sampleType: 'sangre',
-    params: ['hemograma', 'troponina', 'ck', 'ck_mb', 'bnp', 'dimero_d', 'tp_inr', 'ttpa', 'gasometria_arterial', 'lactato', 'pcr', 'glucosa', 'creatinina', 'sodio', 'potasio'],
+    params: { sangre: ['hemograma', 'troponina', 'ck', 'ck_mb', 'bnp', 'dimero_d', 'tp_inr', 'ttpa', 'gasometria_arterial', 'lactato', 'pcr', 'glucosa', 'creatinina', 'sodio', 'potasio'] },
   },
   {
     code: 'sepsis',
     label: 'Protocolo sepsis',
-    description: 'Hemograma + PCR + PCT + Lactato + Coagulación',
-    sampleType: 'sangre',
-    params: ['hemograma', 'pcr', 'procalcitonina', 'lactato', 'gasometria_venosa', 'tp_inr', 'ttpa', 'fibrinogeno', 'creatinina', 'urea', 'bilirrubina_total', 'got', 'gpt'],
+    description: 'Hemograma + PCR + PCT + Lactato + Hemocultivos',
+    params: {
+      sangre: ['hemograma', 'pcr', 'procalcitonina', 'lactato', 'gasometria_venosa', 'tp_inr', 'ttpa', 'fibrinogeno', 'creatinina', 'urea', 'bilirrubina_total', 'got', 'gpt'],
+      cultivo: ['hemocultivo_x2'],
+    },
   },
   {
     code: 'preoperatorio',
     label: 'Preoperatorio',
     description: 'Hemograma + Coagulación + Bioquímica + Iones',
-    sampleType: 'sangre',
-    params: ['hemograma', 'glucosa', 'urea', 'creatinina', 'sodio', 'potasio', 'tp_inr', 'ttpa', 'fibrinogeno', 'got', 'gpt', 'proteinas_totales'],
+    params: { sangre: ['hemograma', 'glucosa', 'urea', 'creatinina', 'sodio', 'potasio', 'tp_inr', 'ttpa', 'fibrinogeno', 'got', 'gpt', 'proteinas_totales'] },
   },
   {
     code: 'control_anticoagulacion',
     label: 'Control anticoagulación',
     description: 'INR + TTPa + Hemograma',
-    sampleType: 'sangre',
-    params: ['hemograma', 'tp_inr', 'ttpa', 'fibrinogeno'],
+    params: { sangre: ['hemograma', 'tp_inr', 'ttpa', 'fibrinogeno'] },
   },
   {
     code: 'perfil_renal',
     label: 'Perfil renal',
     description: 'Creatinina + Urea + Iones + Orina',
-    sampleType: 'sangre',
-    params: ['creatinina', 'urea', 'sodio', 'potasio', 'cloro', 'calcio', 'fosforo', 'acido_urico', 'proteinas_totales', 'albumina'],
+    params: {
+      sangre: ['creatinina', 'urea', 'sodio', 'potasio', 'cloro', 'calcio', 'fosforo', 'acido_urico', 'proteinas_totales', 'albumina'],
+      orina: ['orina_sistematico', 'orina_sedimento', 'orina_creatinina'],
+    },
   },
   {
     code: 'perfil_tiroideo',
     label: 'Perfil tiroideo',
     description: 'TSH + T4 libre',
-    sampleType: 'sangre',
-    params: ['tsh', 't4_libre'],
+    params: { sangre: ['tsh', 't4_libre'] },
+  },
+  {
+    code: 'serologia_completa',
+    label: 'Serología completa',
+    description: 'VIH + Hepatitis B/C + Sífilis',
+    params: { sangre: ['vih', 'hepatitis_b_hbsag', 'hepatitis_b_anticore', 'hepatitis_b_antis', 'hepatitis_c', 'sifilis'] },
+  },
+  {
+    code: 'respiratorio_viral',
+    label: 'Panel respiratorio',
+    description: 'COVID + Gripe A/B + VRS',
+    params: { sangre: ['pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs'] },
   },
   {
     code: 'orina_completo',
     label: 'Orina completo',
-    description: 'Sistemático + Sedimento + Bioquímica',
-    sampleType: 'orina',
-    params: ['orina_sistematico', 'orina_sedimento', 'orina_bioquimica', 'orina_iones'],
+    description: 'Sistemático + Sedimento + Bioquímica + Urocultivo',
+    params: {
+      orina: ['orina_sistematico', 'orina_sedimento', 'orina_bioquimica', 'orina_iones'],
+      cultivo: ['urocultivo'],
+    },
+  },
+  {
+    code: 'itu',
+    label: 'Sospecha ITU',
+    description: 'Orina + Urocultivo + Hemograma + PCR',
+    params: {
+      sangre: ['hemograma', 'pcr', 'creatinina', 'urea'],
+      orina: ['orina_sistematico', 'orina_sedimento'],
+      cultivo: ['urocultivo'],
+    },
   },
 ]
 
-/** Get all parameter codes for a sample type (flat list) */
-export function getAllParamCodes(sampleType) {
-  return (PARAMETERS[sampleType] || []).flatMap(g => g.params.map(p => p.code))
-}
+/** Build a human-readable label from selected parameters across all sample types */
+export function buildLabel(selected) {
+  // selected is Map<sampleType, Set<code>>
+  const parts = []
 
-/** Get label for a parameter code */
-export function getParamLabel(code) {
-  for (const groups of Object.values(PARAMETERS)) {
+  for (const [sampleType, codes] of selected.entries()) {
+    if (codes.size === 0) continue
+    const groups = PARAMETERS[sampleType] || []
+    const sampleLabel = SAMPLE_TYPES.find(s => s.value === sampleType)?.label || sampleType
+    const matchedGroups = []
+
     for (const g of groups) {
-      const found = g.params.find(p => p.code === code)
-      if (found) return found.label
+      const groupCodes = g.params.map(p => p.code)
+      const count = groupCodes.filter(c => codes.has(c)).length
+      if (count === groupCodes.length) {
+        matchedGroups.push(g.group)
+      } else if (count > 0) {
+        matchedGroups.push(`${g.group} (parcial)`)
+      }
+    }
+
+    if (matchedGroups.length <= 2) {
+      parts.push(matchedGroups.join(' + '))
+    } else {
+      parts.push(`${sampleLabel}: ${matchedGroups.length} grupos`)
     }
   }
-  return code
+
+  return parts.join(' · ') || 'Sin parámetros'
 }
 
-/** Build a human-readable label from selected parameters */
-export function buildLabel(sampleType, selectedParams) {
-  const sampleLabel = SAMPLE_TYPES.find(s => s.value === sampleType)?.label || sampleType
-  const groups = PARAMETERS[sampleType] || []
-  const selectedGroups = []
+/** Count total selected params across all sample types */
+export function countSelected(selected) {
+  let total = 0
+  for (const codes of selected.values()) total += codes.size
+  return total
+}
 
-  for (const g of groups) {
-    const groupCodes = g.params.map(p => p.code)
-    const selected = groupCodes.filter(c => selectedParams.includes(c))
-    if (selected.length === groupCodes.length) {
-      selectedGroups.push(g.group)
-    } else if (selected.length > 0) {
-      selectedGroups.push(`${g.group} (parcial)`)
-    }
-  }
-
-  if (selectedGroups.length === 0) return `${sampleLabel} — ${selectedParams.length} parámetros`
-  if (selectedGroups.length <= 3) return selectedGroups.join(' + ')
-  return `${selectedGroups.slice(0, 2).join(' + ')} + ${selectedGroups.length - 2} más`
+/** Count selected params for a specific sample type */
+export function countForType(selected, sampleType) {
+  return selected.get(sampleType)?.size || 0
 }
