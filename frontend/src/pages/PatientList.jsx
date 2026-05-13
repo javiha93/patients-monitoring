@@ -12,7 +12,11 @@ const SPECIALTIES = [
   'Medicina', 'Traumatología', 'Cirugía', 'Ginecología', 'Pediatría', 'Oftalmología',
 ]
 
-const LOCATIONS = Array.from({ length: 25 }, (_, i) => `B${i + 1}`)
+const LOCATIONS = [
+  ...Array.from({ length: 25 }, (_, i) => `A${i + 1}`),
+  ...Array.from({ length: 25 }, (_, i) => `B${i + 1}`),
+  ...Array.from({ length: 25 }, (_, i) => `C${i + 1}`),
+]
 
 const DATE_FILTERS = [
   { key: 'hoy', label: 'Hoy', days: 0 },
@@ -207,19 +211,21 @@ export default function PatientList() {
   const [filtersOpen, setFiltersOpen] = useState(saved.current?.filtersOpen ?? false)
   const [filterSpecialties, setFilterSpecialties] = useState(saved.current?.filterSpecialties ?? [])
   const [filterLevels, setFilterLevels] = useState(saved.current?.filterLevels ?? [])
+  const [filterZones, setFilterZones] = useState(saved.current?.filterZones ?? [])
   const [filterDate, setFilterDate] = useState(saved.current?.filterDate ?? null)
   const navigate = useNavigate()
 
   // Persist filter state to sessionStorage
   useEffect(() => {
-    saveFilters({ search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterDate })
-  }, [search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterDate])
+    saveFilters({ search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterZones, filterDate })
+  }, [search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterZones, filterDate])
 
-  const activeFilterCount = filterSpecialties.length + filterLevels.length + (filterDate ? 1 : 0)
+  const activeFilterCount = filterSpecialties.length + filterLevels.length + filterZones.length + (filterDate ? 1 : 0)
 
   const clearFilters = () => {
     setFilterSpecialties([])
     setFilterLevels([])
+    setFilterZones([])
     setFilterDate(null)
   }
 
@@ -252,8 +258,18 @@ export default function PatientList() {
     }
     // Specialty filter
     if (filterSpecialties.length > 0 && !filterSpecialties.includes(p.specialty)) return false
-    // Level filter
-    if (filterLevels.length > 0 && !filterLevels.includes(p.triageLevel)) return false
+    // Level filter (0 = "Sin nivel" for patients with no triageLevel)
+    if (filterLevels.length > 0) {
+      const hasNoLevel = filterLevels.includes(0)
+      const numericLevels = filterLevels.filter(l => l !== 0)
+      const matchesLevel = (hasNoLevel && !p.triageLevel) || numericLevels.includes(p.triageLevel)
+      if (!matchesLevel) return false
+    }
+    // Zone filter
+    if (filterZones.length > 0) {
+      const zone = p.location ? p.location.charAt(0).toUpperCase() : ''
+      if (!filterZones.includes(zone)) return false
+    }
     // Date filter
     if (filterDate && !matchesDateFilter(p.admissionDate, filterDate)) return false
     return true
@@ -365,7 +381,7 @@ export default function PatientList() {
           <div className="px-6 pb-4 flex flex-wrap items-start gap-6">
             {/* Specialty multi-select */}
             <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Especialidad</div>
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Especialidad</div>
               <div className="flex flex-wrap gap-1.5">
                 {SPECIALTIES.map(s => {
                   const active = filterSpecialties.includes(s)
@@ -382,7 +398,7 @@ export default function PatientList() {
             </div>
             {/* Level multi-select */}
             <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Nivel</div>
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Nivel</div>
               <div className="flex gap-1.5">
                 {[1, 2, 3, 4, 5].map(n => {
                   const active = filterLevels.includes(n)
@@ -396,11 +412,33 @@ export default function PatientList() {
                     >{n}</button>
                   )
                 })}
+                <button
+                  onClick={() => toggleFilter(filterLevels, setFilterLevels, 0)}
+                  className={`h-8 px-2.5 rounded-full flex items-center justify-center text-xs font-medium border transition-all
+                    ${filterLevels.includes(0) ? 'bg-slate-600 text-white border-slate-600 ring-2 ring-offset-1 ring-slate-400 scale-110' : 'bg-white text-slate-500 border-slate-300 opacity-60 hover:opacity-90'}`}
+                >Sin nivel</button>
+              </div>
+            </div>
+            {/* Zone multi-select */}
+            <div>
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Zona</div>
+              <div className="flex gap-1.5">
+                {['A', 'B', 'C'].map(z => {
+                  const active = filterZones.includes(z)
+                  return (
+                    <button
+                      key={z}
+                      onClick={() => toggleFilter(filterZones, setFilterZones, z)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors
+                        ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                    >Zona {z}</button>
+                  )
+                })}
               </div>
             </div>
             {/* Date filter */}
             <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Ingreso</div>
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Ingreso</div>
               <div className="flex flex-wrap gap-1.5">
                 {DATE_FILTERS.map(f => {
                   const active = filterDate === f.key
@@ -435,7 +473,7 @@ export default function PatientList() {
           <div className="bg-white rounded-xl shadow-sm overflow-visible">
             <table className="w-full">
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   <th className="px-4 py-3 w-20 cursor-pointer select-none hover:text-slate-700 whitespace-nowrap" onClick={() => handleSort('nivel')}>Nivel{sortIndicator('nivel')}</th>
                   <th className="px-2 py-3 w-16 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubic.{sortIndicator('ubicacion')}</th>
                   <th className="px-2 py-3 w-14 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Esp.{sortIndicator('especialidad')}</th>

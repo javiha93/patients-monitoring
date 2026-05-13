@@ -497,6 +497,119 @@ describe('KAN-78: Filtros colapsables', () => {
 
 import { patientApi } from '../services/patientApi'
 
+describe('Filtro "Sin nivel" y filtro por zona', () => {
+  beforeEach(() => { sessionStorage.clear() })
+
+  function getFilterButton(label) {
+    return screen.getAllByRole('button').find(
+      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-8')
+    )
+  }
+
+  it('"Sin nivel" filtra pacientes sin triageLevel', async () => {
+    const patients = [
+      { ...mockPatients[0], triageLevel: 2 },
+      { ...mockPatients[1], triageLevel: null },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    fireEvent.click(getFilterButton('Sin nivel'))
+    await waitFor(() => {
+      expect(screen.getByText('López, Carlos')).toBeInTheDocument()
+      expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
+    })
+  })
+
+  it('"Sin nivel" combinado con nivel numérico', async () => {
+    const patients = [
+      { ...mockPatients[0], triageLevel: 2 },
+      { ...mockPatients[1], triageLevel: null },
+      { ...mockPatients[2], triageLevel: 1 },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    // Select "Sin nivel" + level 1
+    fireEvent.click(getFilterButton('Sin nivel'))
+    const level1Btns = screen.getAllByRole('button').filter(b => b.textContent === '1' && b.className.includes('w-8'))
+    fireEvent.click(level1Btns[0])
+    await waitFor(() => {
+      expect(screen.getByText('López, Carlos')).toBeInTheDocument()
+      expect(screen.getByText('Ruiz, María')).toBeInTheDocument()
+      expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
+    })
+  })
+
+  it('filtro por zona muestra solo pacientes de esa zona', async () => {
+    const patients = [
+      { ...mockPatients[0], location: 'A5' },
+      { ...mockPatients[1], location: 'B10' },
+      { ...mockPatients[2], location: 'C3' },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    fireEvent.click(getFilterButton('Zona B'))
+    await waitFor(() => {
+      expect(screen.getByText('López, Carlos')).toBeInTheDocument()
+      expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
+      expect(screen.queryByText('Ruiz, María')).not.toBeInTheDocument()
+    })
+  })
+
+  it('filtro multi-zona muestra pacientes de varias zonas', async () => {
+    const patients = [
+      { ...mockPatients[0], location: 'A5' },
+      { ...mockPatients[1], location: 'B10' },
+      { ...mockPatients[2], location: 'C3' },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    fireEvent.click(getFilterButton('Zona A'))
+    fireEvent.click(getFilterButton('Zona C'))
+    await waitFor(() => {
+      expect(screen.getByText('García, Ana')).toBeInTheDocument()
+      expect(screen.getByText('Ruiz, María')).toBeInTheDocument()
+      expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument()
+    })
+  })
+
+  it('zona aparece en el panel de filtros', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    expect(screen.getByText('Zona')).toBeInTheDocument()
+    expect(getFilterButton('Zona A')).toBeTruthy()
+    expect(getFilterButton('Zona B')).toBeTruthy()
+    expect(getFilterButton('Zona C')).toBeTruthy()
+  })
+
+  it('limpiar filtros limpia zona y sin nivel', async () => {
+    const patients = [
+      { ...mockPatients[0], location: 'A5', triageLevel: null },
+      { ...mockPatients[1], location: 'B10' },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    fireEvent.click(getFilterButton('Zona A'))
+    fireEvent.click(getFilterButton('Sin nivel'))
+    await waitFor(() => expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument())
+    fireEvent.click(screen.getByText('Limpiar filtros'))
+    await waitFor(() => {
+      expect(screen.getByText('García, Ana')).toBeInTheDocument()
+      expect(screen.getByText('López, Carlos')).toBeInTheDocument()
+    })
+  })
+})
+
 describe('Pending lab indicator in patient list', () => {
   beforeEach(() => {
     sessionStorage.clear()
