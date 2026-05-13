@@ -44,8 +44,8 @@ public class PatientService {
         Set<Long> admissionsWithPendingEcg = new HashSet<>();
         Set<Long> admissionsWithCompletedLabs = new HashSet<>();
         Set<Long> admissionsWithCompletedEcg = new HashSet<>();
-        Set<Long> admissionsWithPendingRadiology = new HashSet<>();
-        Set<Long> admissionsWithCompletedRadiology = new HashSet<>();
+        Map<Long, Set<String>> pendingRadiologyTypes = new HashMap<>();
+        Map<Long, Set<String>> completedRadiologyTypes = new HashMap<>();
         Map<Long, List<com.pm.entity.Ecg>> recentEcgsByAdmission = new HashMap<>();
         if (!admissionIds.isEmpty()) {
             List<LabTest> pendingTests = labTestRepository.findByAdmissionIdInAndStatusAndParentIsNull(
@@ -70,11 +70,15 @@ public class PatientService {
             ecgRepository.findByAdmissionIdInAndStatus(admissionIds, "completed")
                     .forEach(ecg -> admissionsWithCompletedEcg.add(ecg.getAdmission().getId()));
 
-            // Radiology indicators
+            // Radiology indicators by type
             radiologyRepository.findByAdmissionIdInAndStatus(admissionIds, "pending")
-                    .forEach(r -> admissionsWithPendingRadiology.add(r.getAdmission().getId()));
+                    .forEach(r -> pendingRadiologyTypes
+                            .computeIfAbsent(r.getAdmission().getId(), k -> new HashSet<>())
+                            .add(r.getType()));
             radiologyRepository.findByAdmissionIdInAndStatus(admissionIds, "completed")
-                    .forEach(r -> admissionsWithCompletedRadiology.add(r.getAdmission().getId()));
+                    .forEach(r -> completedRadiologyTypes
+                            .computeIfAbsent(r.getAdmission().getId(), k -> new HashSet<>())
+                            .add(r.getType()));
         }
 
         return activeAdmissions.stream().map(a -> {
@@ -118,9 +122,15 @@ public class PatientService {
             dto.setHasCompletedLabs(!hasPending && admissionsWithCompletedLabs.contains(a.getId()));
             dto.setHasCompletedEcg(!admissionsWithPendingEcg.contains(a.getId()) && admissionsWithCompletedEcg.contains(a.getId()));
 
-            // Radiology indicators
-            dto.setHasPendingRadiology(admissionsWithPendingRadiology.contains(a.getId()));
-            dto.setHasCompletedRadiology(!admissionsWithPendingRadiology.contains(a.getId()) && admissionsWithCompletedRadiology.contains(a.getId()));
+            // Radiology indicators by type
+            Set<String> pendingTypes = pendingRadiologyTypes.getOrDefault(a.getId(), Collections.emptySet());
+            Set<String> completedTypes = completedRadiologyTypes.getOrDefault(a.getId(), Collections.emptySet());
+            dto.setHasPendingXray(pendingTypes.contains("xray"));
+            dto.setHasCompletedXray(!pendingTypes.contains("xray") && completedTypes.contains("xray"));
+            dto.setHasPendingCt(pendingTypes.contains("ct"));
+            dto.setHasCompletedCt(!pendingTypes.contains("ct") && completedTypes.contains("ct"));
+            dto.setHasPendingMri(pendingTypes.contains("mri"));
+            dto.setHasCompletedMri(!pendingTypes.contains("mri") && completedTypes.contains("mri"));
 
             // Recent ECGs for tooltip
             List<com.pm.entity.Ecg> recent = recentEcgsByAdmission.get(a.getId());

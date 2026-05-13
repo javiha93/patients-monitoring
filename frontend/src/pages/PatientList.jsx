@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Scan } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Radiation, Magnet } from 'lucide-react'
+import XRayIcon from '../components/XRayIcon'
 import { patientApi } from '../services/patientApi'
 import { getUsersByRole } from '../services/authApi'
 import { useAuth } from '../context/AuthContext'
@@ -767,13 +768,31 @@ export default function PatientList() {
                               <Activity size={16} className="text-slate-300" />
                             </span>
                           )}
-                          {p.hasPendingRadiology ? (
-                            <span title="Radiología pendiente" data-testid="pending-radiology-icon">
-                              <Scan size={16} className="text-red-500" />
+                          {p.hasPendingXray ? (
+                            <span title="Radiografía pendiente" data-testid="pending-xray-icon">
+                              <XRayIcon size={16} className="text-red-500" />
                             </span>
-                          ) : p.hasCompletedRadiology && (
-                            <span title="Radiología realizada" data-testid="completed-radiology-icon">
-                              <Scan size={16} className="text-slate-300" />
+                          ) : p.hasCompletedXray && (
+                            <span title="Radiografía realizada" data-testid="completed-xray-icon">
+                              <XRayIcon size={16} className="text-slate-300" />
+                            </span>
+                          )}
+                          {p.hasPendingCt ? (
+                            <span title="TAC pendiente" data-testid="pending-ct-icon">
+                              <Radiation size={16} className="text-amber-500" />
+                            </span>
+                          ) : p.hasCompletedCt && (
+                            <span title="TAC realizado" data-testid="completed-ct-icon">
+                              <Radiation size={16} className="text-slate-300" />
+                            </span>
+                          )}
+                          {p.hasPendingMri ? (
+                            <span title="Resonancia pendiente" data-testid="pending-mri-icon">
+                              <Magnet size={16} className="text-red-500" />
+                            </span>
+                          ) : p.hasCompletedMri && (
+                            <span title="Resonancia realizada" data-testid="completed-mri-icon">
+                              <Magnet size={16} className="text-slate-300" />
                             </span>
                           )}
                         </div>
@@ -822,14 +841,20 @@ export default function PatientList() {
                         <Activity size={14} className="text-slate-300" />
                       </span>
                     )}
-                    {p.hasPendingRadiology ? (
-                      <span title="Radiología pendiente" data-testid="pending-radiology-icon">
-                        <Scan size={14} className="text-red-500" />
-                      </span>
-                    ) : p.hasCompletedRadiology && (
-                      <span title="Radiología realizada" data-testid="completed-radiology-icon">
-                        <Scan size={14} className="text-slate-300" />
-                      </span>
+                    {p.hasPendingXray ? (
+                      <span title="Radiografía pendiente"><XRayIcon size={14} className="text-red-500" /></span>
+                    ) : p.hasCompletedXray && (
+                      <span title="Radiografía realizada"><XRayIcon size={14} className="text-slate-300" /></span>
+                    )}
+                    {p.hasPendingCt ? (
+                      <span title="TAC pendiente"><Radiation size={14} className="text-amber-500" /></span>
+                    ) : p.hasCompletedCt && (
+                      <span title="TAC realizado"><Radiation size={14} className="text-slate-300" /></span>
+                    )}
+                    {p.hasPendingMri ? (
+                      <span title="Resonancia pendiente"><Magnet size={14} className="text-red-500" /></span>
+                    ) : p.hasCompletedMri && (
+                      <span title="Resonancia realizada"><Magnet size={14} className="text-slate-300" /></span>
                     )}
                     {p.location && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{p.location}</span>}
                     {p.specialty && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{p.specialty}</span>}

@@ -47,11 +47,12 @@ public class PatientListDTO {
     /** Recent completed ECGs (last 24h) for tooltip — only when hasCompletedEcg */
     private List<RecentEcgInfo> recentEcgs;
 
-    /** True if the patient has pending radiology orders */
-    private boolean hasPendingRadiology;
-
-    /** True if the patient has completed radiology (and no pending) */
-    private boolean hasCompletedRadiology;
+    private boolean hasPendingXray;
+    private boolean hasCompletedXray;
+    private boolean hasPendingCt;
+    private boolean hasCompletedCt;
+    private boolean hasPendingMri;
+    private boolean hasCompletedMri;
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class RecentEcgInfo {
