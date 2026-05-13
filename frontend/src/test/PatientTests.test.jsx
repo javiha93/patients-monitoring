@@ -60,6 +60,17 @@ vi.mock('../services/ecgApi', () => ({
   },
 }))
 
+vi.mock('../services/radiologyApi', () => ({
+  radiologyApi: {
+    getByAdmission: vi.fn(() => Promise.resolve({ data: [] })),
+    getHistorical: vi.fn(() => Promise.resolve({ data: [] })),
+    getById: vi.fn(() => Promise.resolve({ data: {} })),
+    create: vi.fn(() => Promise.resolve({ data: { id: 1 } })),
+    complete: vi.fn(() => Promise.resolve({ data: {} })),
+    delete: vi.fn(() => Promise.resolve()),
+  },
+}))
+
 import { labTestApi as mockLabTestApi } from '../services/labTestApi'
 import { deviceApi as mockDeviceApi } from '../services/deviceApi'
 
@@ -287,6 +298,7 @@ describe('PatientTests: split test card', () => {
 })
 
 import { ecgApi as mockEcgApi } from '../services/ecgApi'
+import { radiologyApi as mockRadiologyApi } from '../services/radiologyApi'
 
 describe('PatientTests: ECG section', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -374,5 +386,79 @@ describe('PatientTests: historical data buttons', () => {
     fireEvent.click(screen.getByText('ECGs de ingresos anteriores'))
     await waitFor(() => screen.getByText('ECGs de ingresos anteriores', { selector: 'h3' }))
     expect(screen.getByText('· Dr. López')).toBeInTheDocument()
+  })
+})
+
+describe('Radiología', () => {
+  it('muestra sección de radiología vacía', async () => {
+    renderPage()
+    await waitFor(() => screen.getByText('Radiología'))
+    expect(screen.getByText('No hay pruebas de imagen solicitadas')).toBeInTheDocument()
+  })
+
+  it('muestra botón de solicitar imagen', async () => {
+    renderPage()
+    await waitFor(() => screen.getByText('Solicitar imagen'))
+    expect(screen.getByText('Solicitar imagen')).toBeInTheDocument()
+  })
+
+  it('muestra órdenes de radiología con tipo y región', async () => {
+    const orders = [
+      { id: 1, type: 'xray', bodyRegion: 'torax', projection: 'PA', contrast: false, priority: 'normal', status: 'pending', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García' },
+      { id: 2, type: 'ct', bodyRegion: 'craneo', projection: null, contrast: true, priority: 'urgente', status: 'completed', requestedAt: '2024-01-09T10:00:00', completedAt: '2024-01-09T11:00:00', requestedBy: 'Dr. García', completedBy: 'Téc. López' },
+    ]
+    mockRadiologyApi.getByAdmission.mockResolvedValue({ data: orders })
+    renderPage()
+    await waitFor(() => screen.getByText(/Radiografía: Tórax/))
+    expect(screen.getByText('(PA)')).toBeInTheDocument()
+    expect(screen.getByText(/TAC: Cráneo/)).toBeInTheDocument()
+    expect(screen.getByText('CIV')).toBeInTheDocument()
+    expect(screen.getByText('URGENTE')).toBeInTheDocument()
+  })
+
+  it('muestra estados pendiente y realizado', async () => {
+    const orders = [
+      { id: 1, type: 'xray', bodyRegion: 'torax', projection: 'PA', contrast: false, priority: 'normal', status: 'pending', requestedAt: '2024-01-10T09:00:00' },
+      { id: 2, type: 'mri', bodyRegion: 'rodilla', projection: null, contrast: false, priority: 'normal', status: 'completed', requestedAt: '2024-01-09T10:00:00', completedAt: '2024-01-09T11:00:00' },
+    ]
+    mockRadiologyApi.getByAdmission.mockResolvedValue({ data: orders })
+    renderPage()
+    await waitFor(() => screen.getByText(/Radiografía: Tórax/))
+    const badges = screen.getAllByText(/Pendiente|Realizado/)
+    expect(badges.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('abre modal de solicitar imagen', async () => {
+    renderPage()
+    await waitFor(() => screen.getByText('Solicitar imagen'))
+    fireEvent.click(screen.getByText('Solicitar imagen'))
+    await waitFor(() => screen.getByText('Solicitar prueba de imagen'))
+    expect(screen.getByText('Radiografía')).toBeInTheDocument()
+    expect(screen.getByText('TAC')).toBeInTheDocument()
+    expect(screen.getByText('Resonancia')).toBeInTheDocument()
+  })
+
+  it('modal de radiografía muestra zonas corporales al seleccionar tipo', async () => {
+    renderPage()
+    await waitFor(() => screen.getByText('Solicitar imagen'))
+    fireEvent.click(screen.getByText('Solicitar imagen'))
+    await waitFor(() => screen.getByText('Radiografía'))
+    fireEvent.click(screen.getByText('Radiografía'))
+    expect(screen.getByText('Cabeza y cuello')).toBeInTheDocument()
+    expect(screen.getByText('Tórax')).toBeInTheDocument()
+    expect(screen.getByText('Extremidad superior')).toBeInTheDocument()
+  })
+
+  it('carga radiología histórica', async () => {
+    const historical = [
+      { id: 10, type: 'xray', bodyRegion: 'torax', projection: 'PA', contrast: false, priority: 'normal', status: 'completed', requestedAt: '2023-06-01T09:00:00', completedAt: '2023-06-01T10:00:00', completedBy: 'Téc. Ruiz' },
+    ]
+    mockRadiologyApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockRadiologyApi.getHistorical.mockResolvedValue({ data: historical })
+    renderPage()
+    await waitFor(() => screen.getByText('Radiología de ingresos anteriores'))
+    fireEvent.click(screen.getByText('Radiología de ingresos anteriores'))
+    await waitFor(() => screen.getByText('Radiología de ingresos anteriores', { selector: 'h3' }))
+    expect(screen.getByText(/· Téc. Ruiz/)).toBeInTheDocument()
   })
 })

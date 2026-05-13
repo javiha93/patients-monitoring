@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText, Pencil, HeartPulse, History } from 'lucide-react'
+import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText, Pencil, HeartPulse, History, Scan } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
 import { deviceApi } from '../services/deviceApi'
 import { ecgApi } from '../services/ecgApi'
+import { radiologyApi } from '../services/radiologyApi'
+import NewRadiologyModal from '../components/NewRadiologyModal'
+import { TYPE_LABELS, getRegionLabel } from '../constants/radiologyCatalog'
 import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import ConfirmModal from '../components/ConfirmModal'
@@ -86,11 +89,19 @@ export default function PatientTests() {
   const [ecgViewer, setEcgViewer] = useState(null) // EcgDTO with imageData
   const [ecgDeleteConfirm, setEcgDeleteConfirm] = useState({ open: false, id: null })
 
+  // Radiology
+  const [radiologyOrders, setRadiologyOrders] = useState([])
+  const [radiologyModalOpen, setRadiologyModalOpen] = useState(false)
+  const [radiologyViewer, setRadiologyViewer] = useState(null)
+  const [radiologyDeleteConfirm, setRadiologyDeleteConfirm] = useState({ open: false, id: null })
+
   // Historical (past admissions)
   const [historicalLabs, setHistoricalLabs] = useState([])
   const [historicalEcgs, setHistoricalEcgs] = useState([])
+  const [historicalRadiology, setHistoricalRadiology] = useState([])
   const [showHistoricalLabs, setShowHistoricalLabs] = useState(false)
   const [showHistoricalEcgs, setShowHistoricalEcgs] = useState(false)
+  const [showHistoricalRadiology, setShowHistoricalRadiology] = useState(false)
   const [loadingHistorical, setLoadingHistorical] = useState(false)
 
   const fetchData = async () => {
@@ -98,12 +109,14 @@ export default function PatientTests() {
       const { data: p } = await patientApi.getPatient(id)
       setPatient(p)
       if (p.activeAdmission) {
-        const [labRes, ecgRes] = await Promise.all([
+        const [labRes, ecgRes, radRes] = await Promise.all([
           labTestApi.getByAdmission(p.activeAdmission.id),
           ecgApi.getByAdmission(p.activeAdmission.id),
+          radiologyApi.getByAdmission(p.activeAdmission.id),
         ])
         setTests(labRes.data)
         setEcgs(ecgRes.data)
+        setRadiologyOrders(radRes.data)
       }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -210,6 +223,37 @@ export default function PatientTests() {
       const { data } = await ecgApi.getHistorical(patient.id, admission.id)
       setHistoricalEcgs(data)
       setShowHistoricalEcgs(true)
+    } catch (e) { console.error(e) }
+    finally { setLoadingHistorical(false) }
+  }
+
+  // Radiology handlers
+  const handleCreateRadiology = async (formData) => {
+    await radiologyApi.create({ admissionId: admission.id, requestedBy: user?.displayName || '', ...formData })
+    setRadiologyModalOpen(false)
+    fetchData()
+  }
+
+  const handleRadiologyClick = async (order) => {
+    if (order.status === 'completed') {
+      const { data } = await radiologyApi.getById(order.id)
+      setRadiologyViewer(data)
+    }
+  }
+
+  const handleDeleteRadiology = async () => {
+    await radiologyApi.delete(radiologyDeleteConfirm.id)
+    setRadiologyDeleteConfirm({ open: false, id: null })
+    fetchData()
+  }
+
+  const loadHistoricalRadiology = async () => {
+    if (!patient || !admission) return
+    setLoadingHistorical(true)
+    try {
+      const { data } = await radiologyApi.getHistorical(patient.id, admission.id)
+      setHistoricalRadiology(data)
+      setShowHistoricalRadiology(true)
     } catch (e) { console.error(e) }
     finally { setLoadingHistorical(false) }
   }
@@ -533,6 +577,111 @@ export default function PatientTests() {
               </div>
             </div>
           )}
+          {/* Radiology section */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-600 flex items-center gap-2">
+                <Scan size={16} className="text-indigo-500" />
+                Radiología
+              </h3>
+              <button onClick={() => setRadiologyModalOpen(true)} className="text-xs text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1">
+                <Plus size={14} /> Solicitar imagen
+              </button>
+            </div>
+            {radiologyOrders.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+                <Scan size={36} className="mx-auto text-indigo-200 mb-2" />
+                <p className="text-sm text-slate-400">No hay pruebas de imagen solicitadas</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {radiologyOrders.map(order => {
+                  const isCompleted = order.status === 'completed'
+                  const typeLabel = TYPE_LABELS[order.type] || order.type
+                  const regionLabel = getRegionLabel(order.type, order.bodyRegion)
+                  const colorMap = { xray: 'blue', ct: 'purple', mri: 'indigo' }
+                  const color = colorMap[order.type] || 'slate'
+                  return (
+                    <div key={order.id}
+                      onClick={() => isCompleted && handleRadiologyClick(order)}
+                      className={`bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 ${isCompleted ? 'cursor-pointer hover:ring-2 hover:ring-indigo-300' : ''} transition-all`}
+                    >
+                      <div className={`w-10 h-10 rounded-full bg-${color}-50 flex items-center justify-center flex-shrink-0`}>
+                        <Scan size={20} className={`text-${color}-500`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm flex items-center gap-2">
+                          {typeLabel}: {regionLabel}
+                          {order.projection && <span className="text-xs text-slate-400">({order.projection})</span>}
+                          {order.contrast && <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">CIV</span>}
+                          {order.priority === 'urgente' && <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">URGENTE</span>}
+                        </div>
+                        <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span>{fmtDateTime(order.requestedAt)}</span>
+                          {order.requestedBy && <span>· {order.requestedBy}</span>}
+                          {order.completedBy && <span className="text-emerald-500">· {order.completedBy}</span>}
+                          {order.notes && <span className="text-slate-300">· {order.notes}</span>}
+                        </div>
+                      </div>
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
+                        isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {isCompleted ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                        {isCompleted ? 'Realizado' : 'Pendiente'}
+                      </span>
+                      <button onClick={(e) => { e.stopPropagation(); setRadiologyDeleteConfirm({ open: true, id: order.id }) }}
+                        className="text-slate-300 hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Historical Radiology */}
+          {!showHistoricalRadiology ? (
+            <div className="flex justify-center pt-2">
+              <button onClick={loadHistoricalRadiology} disabled={loadingHistorical}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50">
+                <History size={15} />
+                {loadingHistorical ? 'Cargando...' : 'Radiología de ingresos anteriores'}
+              </button>
+            </div>
+          ) : historicalRadiology.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Radiología de ingresos anteriores</h3>
+              <div className="space-y-2 opacity-60">
+                {historicalRadiology.map(order => {
+                  const isCompleted = order.status === 'completed'
+                  const typeLabel = TYPE_LABELS[order.type] || order.type
+                  const regionLabel = getRegionLabel(order.type, order.bodyRegion)
+                  return (
+                    <div key={order.id}
+                      onClick={() => isCompleted && handleRadiologyClick(order)}
+                      className={`bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 ${isCompleted ? 'cursor-pointer hover:ring-2 hover:ring-indigo-300' : ''}`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                        <Scan size={20} className="text-indigo-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm">{typeLabel}: {regionLabel}</div>
+                        <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span>{fmtDateTime(order.requestedAt)}</span>
+                          {order.completedBy && <span className="text-emerald-500">· {order.completedBy}</span>}
+                        </div>
+                      </div>
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
+                        isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {isCompleted ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                        {isCompleted ? 'Realizado' : 'Pendiente'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </>)}
       </div>
 
@@ -748,6 +897,53 @@ export default function PatientTests() {
         message="¿Seguro que quieres eliminar este electrocardiograma?"
         onConfirm={handleDeleteEcg}
         onCancel={() => setEcgDeleteConfirm({ open: false, id: null })}
+      />
+
+      {/* Radiology request modal */}
+      <NewRadiologyModal
+        open={radiologyModalOpen}
+        onClose={() => setRadiologyModalOpen(false)}
+        onSubmit={handleCreateRadiology}
+      />
+
+      {/* Radiology image viewer */}
+      {radiologyViewer && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setRadiologyViewer(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div>
+                <h3 className="font-bold">{TYPE_LABELS[radiologyViewer.type]}: {getRegionLabel(radiologyViewer.type, radiologyViewer.bodyRegion)}</h3>
+                <p className="text-xs text-slate-400">
+                  {fmtDateTime(radiologyViewer.completedAt || radiologyViewer.requestedAt)}
+                  {radiologyViewer.completedBy && <span className="ml-2">· {radiologyViewer.completedBy}</span>}
+                </p>
+              </div>
+              <button onClick={() => setRadiologyViewer(null)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+            </div>
+            <div className="p-6">
+              {radiologyViewer.imageData ? (
+                <img
+                  src={`data:${radiologyViewer.imageType || 'image/png'};base64,${radiologyViewer.imageData}`}
+                  alt="Radiology"
+                  className="w-full rounded-lg"
+                />
+              ) : (
+                <p className="text-center text-slate-400 py-8">Sin imagen adjunta</p>
+              )}
+              {radiologyViewer.notes && (
+                <p className="mt-4 text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{radiologyViewer.notes}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        open={radiologyDeleteConfirm.open}
+        title="Eliminar prueba de imagen"
+        message="¿Seguro que quieres eliminar esta prueba de imagen?"
+        onConfirm={handleDeleteRadiology}
+        onCancel={() => setRadiologyDeleteConfirm({ open: false, id: null })}
       />
     </div>
   )

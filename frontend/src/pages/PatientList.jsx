@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Scan } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { getUsersByRole } from '../services/authApi'
 import { useAuth } from '../context/AuthContext'
@@ -767,6 +767,15 @@ export default function PatientList() {
                               <Activity size={16} className="text-slate-300" />
                             </span>
                           )}
+                          {p.hasPendingRadiology ? (
+                            <span title="Radiología pendiente" data-testid="pending-radiology-icon">
+                              <Scan size={16} className="text-red-500" />
+                            </span>
+                          ) : p.hasCompletedRadiology && (
+                            <span title="Radiología realizada" data-testid="completed-radiology-icon">
+                              <Scan size={16} className="text-slate-300" />
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-500 text-right">{formatDate(p.admissionDate)}</td>
@@ -811,6 +820,15 @@ export default function PatientList() {
                     ) : p.hasCompletedEcg && (
                       <span title={buildRecentEcgTooltip(p.recentEcgs)} data-testid="completed-ecg-icon">
                         <Activity size={14} className="text-slate-300" />
+                      </span>
+                    )}
+                    {p.hasPendingRadiology ? (
+                      <span title="Radiología pendiente" data-testid="pending-radiology-icon">
+                        <Scan size={14} className="text-red-500" />
+                      </span>
+                    ) : p.hasCompletedRadiology && (
+                      <span title="Radiología realizada" data-testid="completed-radiology-icon">
+                        <Scan size={14} className="text-slate-300" />
                       </span>
                     )}
                     {p.location && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{p.location}</span>}

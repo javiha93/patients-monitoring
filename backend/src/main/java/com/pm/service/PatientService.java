@@ -9,6 +9,7 @@ import com.pm.repository.AdmissionRepository;
 import com.pm.repository.EcgRepository;
 import com.pm.repository.LabTestRepository;
 import com.pm.repository.PatientRepository;
+import com.pm.repository.RadiologyOrderRepository;
 import com.pm.service.NursingAssessmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,7 @@ public class PatientService {
     private final AdmissionRepository admissionRepository;
     private final LabTestRepository labTestRepository;
     private final EcgRepository ecgRepository;
+    private final RadiologyOrderRepository radiologyRepository;
     private final NursingAssessmentService nursingAssessmentService;
     private final DeviceService deviceService;
 
@@ -42,6 +44,8 @@ public class PatientService {
         Set<Long> admissionsWithPendingEcg = new HashSet<>();
         Set<Long> admissionsWithCompletedLabs = new HashSet<>();
         Set<Long> admissionsWithCompletedEcg = new HashSet<>();
+        Set<Long> admissionsWithPendingRadiology = new HashSet<>();
+        Set<Long> admissionsWithCompletedRadiology = new HashSet<>();
         Map<Long, List<com.pm.entity.Ecg>> recentEcgsByAdmission = new HashMap<>();
         if (!admissionIds.isEmpty()) {
             List<LabTest> pendingTests = labTestRepository.findByAdmissionIdInAndStatusAndParentIsNull(
@@ -65,6 +69,12 @@ public class PatientService {
             // Also check for completed ECGs older than 24h (for the grey icon, not tooltip)
             ecgRepository.findByAdmissionIdInAndStatus(admissionIds, "completed")
                     .forEach(ecg -> admissionsWithCompletedEcg.add(ecg.getAdmission().getId()));
+
+            // Radiology indicators
+            radiologyRepository.findByAdmissionIdInAndStatus(admissionIds, "pending")
+                    .forEach(r -> admissionsWithPendingRadiology.add(r.getAdmission().getId()));
+            radiologyRepository.findByAdmissionIdInAndStatus(admissionIds, "completed")
+                    .forEach(r -> admissionsWithCompletedRadiology.add(r.getAdmission().getId()));
         }
 
         return activeAdmissions.stream().map(a -> {
@@ -107,6 +117,10 @@ public class PatientService {
             boolean hasPending = pending != null && !pending.isEmpty();
             dto.setHasCompletedLabs(!hasPending && admissionsWithCompletedLabs.contains(a.getId()));
             dto.setHasCompletedEcg(!admissionsWithPendingEcg.contains(a.getId()) && admissionsWithCompletedEcg.contains(a.getId()));
+
+            // Radiology indicators
+            dto.setHasPendingRadiology(admissionsWithPendingRadiology.contains(a.getId()));
+            dto.setHasCompletedRadiology(!admissionsWithPendingRadiology.contains(a.getId()) && admissionsWithCompletedRadiology.contains(a.getId()));
 
             // Recent ECGs for tooltip
             List<com.pm.entity.Ecg> recent = recentEcgsByAdmission.get(a.getId());
