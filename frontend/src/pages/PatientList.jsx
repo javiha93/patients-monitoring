@@ -440,7 +440,8 @@ export default function PatientList() {
                   <th className="px-2 py-3 w-16 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubic.{sortIndicator('ubicacion')}</th>
                   <th className="px-2 py-3 w-14 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Esp.{sortIndicator('especialidad')}</th>
                   <th className="px-4 py-3">Paciente</th>
-                  <th className="px-4 py-3">Motivo</th>
+                  <th className="px-3 py-3">Motivo</th>
+                  <th className="px-3 py-3">Observaciones</th>
                   <th className="px-2 py-3 w-8 text-right"></th>
                   <th className="px-4 py-3 text-right cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ingreso')}>Ingreso{sortIndicator('ingreso')}</th>
                 </tr>
@@ -493,7 +494,27 @@ export default function PatientList() {
                         {p.lastName}, {p.firstName}
                         <span className="text-slate-400 font-normal text-sm ml-1.5">{calcAge(p.birthDate) ?? ''}</span>
                       </td>
-                      <td className="px-4 py-3 text-sm">{p.matCategory || '—'}</td>
+                      <td className="px-3 py-3 text-sm">{p.matCategory || '—'}</td>
+                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          defaultValue={p.observations || ''}
+                          placeholder="—"
+                          onBlur={async (e) => {
+                            const val = e.target.value.trim()
+                            if (val !== (p.observations || '')) {
+                              try {
+                                await patientApi.updateObservations(p.admissionId, val)
+                                setPatients(prev => prev.map(pt =>
+                                  pt.admissionId === p.admissionId ? { ...pt, observations: val } : pt
+                                ))
+                              } catch { /* ignore */ }
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+                          className="w-full bg-transparent text-sm text-slate-600 border-0 border-b border-transparent hover:border-slate-300 focus:border-violet-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
+                        />
+                      </td>
                       <td className="px-2 py-3">
                         <div className="flex items-center justify-end gap-1">
                           {p.pendingLabs && p.pendingLabs.length > 0 ? (

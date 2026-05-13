@@ -14,4 +14,6 @@ export const patientApi = {
     api.patch(`/patients/admission/${admissionId}/location`, null, { params: { location } }),
   updateSpecialty: (admissionId, specialty) =>
     api.patch(`/patients/admission/${admissionId}/specialty`, null, { params: { specialty } }),
+  updateObservations: (admissionId, observations) =>
+    api.patch(`/patients/admission/${admissionId}/observations`, { observations }),
 }

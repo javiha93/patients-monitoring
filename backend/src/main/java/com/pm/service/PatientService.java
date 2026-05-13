@@ -82,6 +82,7 @@ public class PatientService {
                     .admissionDate(a.getAdmissionDate())
                     .location(a.getLocation())
                     .specialty(a.getSpecialty())
+                    .observations(a.getObservations())
                     .status(a.getStatus().name())
                     .build();
 
@@ -147,6 +148,7 @@ public class PatientService {
                             .admissionDate(a.getAdmissionDate())
                             .location(a.getLocation())
                             .specialty(a.getSpecialty())
+                    .observations(a.getObservations())
                             .status(a.getStatus().name())
                             .build();
                 })
@@ -199,6 +201,14 @@ public class PatientService {
         Admission admission = admissionRepository.findById(admissionId)
                 .orElseThrow(() -> new RuntimeException("Admission not found"));
         admission.setSpecialty(specialty);
+        admissionRepository.save(admission);
+    }
+
+    @Transactional
+    public void updateAdmissionObservations(Long admissionId, String observations) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        admission.setObservations(observations);
         admissionRepository.save(admission);
     }
 

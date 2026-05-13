@@ -59,6 +59,11 @@ public class PatientController {
         patientService.updateAdmissionSpecialty(admissionId, specialty);
     }
 
+    @PatchMapping("/admission/{admissionId}/observations")
+    public void updateObservations(@PathVariable Long admissionId, @RequestBody Map<String, String> body) {
+        patientService.updateAdmissionObservations(admissionId, body.get("observations"));
+    }
+
     @GetMapping("/search-nhc")
     public ResponseEntity<?> searchByNhc(@RequestParam String nhc) {
         return patientService.searchByNhc(nhc);

@@ -35,6 +35,9 @@ public class Admission {
 
     private String specialty;
 
+    @Column(length = 500)
+    private String observations;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;

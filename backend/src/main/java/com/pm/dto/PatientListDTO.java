@@ -25,6 +25,7 @@ public class PatientListDTO {
     private LocalDateTime admissionDate;
     private String location;
     private String specialty;
+    private String observations;
     private String status;
 
     /** Pending lab validation info — null if no pending tests */
