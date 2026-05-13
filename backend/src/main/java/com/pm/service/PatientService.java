@@ -290,6 +290,16 @@ public class PatientService {
         admissionRepository.save(admission);
     }
 
+    public void updateTriage(Long admissionId, Integer triageLevel, String matCategory, String location, String specialty) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        if (triageLevel != null) admission.setTriageLevel(triageLevel);
+        if (matCategory != null) admission.setMatCategory(matCategory);
+        if (location != null && !location.isEmpty()) admission.setLocation(location);
+        if (specialty != null && !specialty.isEmpty()) admission.setSpecialty(specialty);
+        admissionRepository.save(admission);
+    }
+
     /**
      * Discharge patient (close active admission).
      */

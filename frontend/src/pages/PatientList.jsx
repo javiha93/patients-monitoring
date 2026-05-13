@@ -3,10 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Radiation, Magnet, RefreshCw } from 'lucide-react'
 import XRayIcon from '../components/XRayIcon'
 import { patientApi } from '../services/patientApi'
+import { labTestApi } from '../services/labTestApi'
+import { ecgApi } from '../services/ecgApi'
+import { radiologyApi } from '../services/radiologyApi'
 import { getUsersByRole } from '../services/authApi'
 import { useAuth } from '../context/AuthContext'
-import { getSamplesNeeded, SAMPLE_ICONS } from '../constants/labCatalog'
+import { getSamplesNeeded, SAMPLE_ICONS, PRESETS } from '../constants/labCatalog'
 import TriageBadge from '../components/TriageBadge'
+import TriageModal from '../components/TriageModal'
 import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
 
@@ -167,48 +171,40 @@ function AssignmentCell({ patient, user, onUpdate, toast }) {
 
   if (!hasAny && !canAssign) return <span className="text-slate-300">—</span>
 
+  // Render a badge slot: filled, previous (dashed), or empty placeholder
+  const nurseBadge = p.assignedNurse ? (
+    <div className="relative">
+      <span title={`Enf: ${p.assignedNurse}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-100 text-teal-700 text-xs font-bold cursor-default">{nurseInitials}</span>
+      {isNurse && p.assignedNurse === user.displayName && (
+        <button onClick={() => handleUnassign('nurse')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
+          <X size={10} />
+        </button>
+      )}
+    </div>
+  ) : hasPrevNurse ? (
+    <span title={`Enf. anterior: ${p.previousNurse}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-teal-300 text-teal-300 text-xs font-bold cursor-default">{getInitials(p.previousNurse)}</span>
+  ) : <div className="w-7 h-7" /> // empty placeholder
+
+  const doctorBadge = p.assignedDoctor ? (
+    <div className="relative">
+      <span title={`Med: ${p.assignedDoctor}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold cursor-default">{doctorInitials}</span>
+      {isDoctor && p.assignedDoctor === user.displayName && (
+        <button onClick={() => handleUnassign('doctor')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
+          <X size={10} />
+        </button>
+      )}
+    </div>
+  ) : hasPrevDoctor ? (
+    <span title={`Med. anterior: ${p.previousDoctor}`} className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-blue-300 text-blue-300 text-xs font-bold cursor-default">{getInitials(p.previousDoctor)}</span>
+  ) : <div className="w-7 h-7" /> // empty placeholder
+
+  const showAssignBtn = canAssign && !(isNurse && p.assignedNurse === user.displayName) && !(isDoctor && p.assignedDoctor === user.displayName)
+
   return (
-    <div className="group/assign flex items-center justify-center gap-1">
-      {/* Nurse badge */}
-      {p.assignedNurse ? (
-        <div className="relative">
-          <span
-            title={`Enf: ${p.assignedNurse}`}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-100 text-teal-700 text-xs font-bold cursor-default"
-          >{nurseInitials}</span>
-          {isNurse && p.assignedNurse === user.displayName && (
-            <button onClick={() => handleUnassign('nurse')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
-              <X size={10} />
-            </button>
-          )}
-        </div>
-      ) : hasPrevNurse ? (
-        <span
-          title={`Enf. anterior: ${p.previousNurse}`}
-          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-teal-300 text-teal-300 text-xs font-bold cursor-default"
-        >{getInitials(p.previousNurse)}</span>
-      ) : null}
-      {/* Doctor badge */}
-      {p.assignedDoctor ? (
-        <div className="relative">
-          <span
-            title={`Med: ${p.assignedDoctor}`}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold cursor-default"
-          >{doctorInitials}</span>
-          {isDoctor && p.assignedDoctor === user.displayName && (
-            <button onClick={() => handleUnassign('doctor')} title="Desasignar" className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/assign:opacity-100">
-              <X size={10} />
-            </button>
-          )}
-        </div>
-      ) : hasPrevDoctor ? (
-        <span
-          title={`Med. anterior: ${p.previousDoctor}`}
-          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-blue-300 text-blue-300 text-xs font-bold cursor-default"
-        >{getInitials(p.previousDoctor)}</span>
-      ) : null}
-      {/* Assign button — hidden if already assigned to self */}
-      {canAssign && !(isNurse && p.assignedNurse === user.displayName) && !(isDoctor && p.assignedDoctor === user.displayName) && (
+    <div className="group/assign flex items-center justify-center gap-1" style={{ minWidth: '76px' }}>
+      {nurseBadge}
+      {doctorBadge}
+      {showAssignBtn && (
         <button
           onClick={handleAssign}
           title="Asignarme"
@@ -314,6 +310,7 @@ export default function PatientList() {
   const { toasts, removeToast, toast } = useToast()
   const [search, setSearch] = useState(saved.current?.search ?? '')
   const [modalOpen, setModalOpen] = useState(false)
+  const [triagePatient, setTriagePatient] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
   const [sortKey, setSortKey] = useState(saved.current?.sortKey ?? null)
@@ -471,6 +468,67 @@ export default function PatientList() {
     } catch (e) {
       toast.error(e.response?.data?.error || 'Error creating patient')
     }
+  }
+
+  const handleTriageConfirm = async ({ triageLevel, matCategory, location, specialty, suggestions }) => {
+    const p = triagePatient
+    if (!p) return
+    try {
+      // 1. Update triage data
+      await patientApi.updateTriage(p.admissionId, { triageLevel, matCategory, location, specialty })
+      setPatients(prev => prev.map(pt =>
+        pt.admissionId === p.admissionId
+          ? { ...pt, triageLevel, matCategory, location: location || pt.location, specialty: specialty || pt.specialty }
+          : pt
+      ))
+
+      // 2. Create suggested tests
+      for (const s of suggestions) {
+        try {
+          if (s.type === 'ecg') {
+            await ecgApi.create({ admissionId: p.admissionId, requestedBy: user?.displayName || '' })
+          } else if (s.type === 'lab' && s.preset) {
+            const preset = PRESETS.find(pr => pr.code === s.preset)
+            if (preset) {
+              const allParams = []
+              const sampleTypes = []
+              for (const [sampleType, codes] of Object.entries(preset.params)) {
+                sampleTypes.push(sampleType)
+                allParams.push(...codes)
+              }
+              await labTestApi.create({
+                admissionId: p.admissionId,
+                requestedBy: user?.displayName || '',
+                category: sampleTypes.includes('cultivo') && sampleTypes.length === 1 ? 'cultivo' : 'analitica',
+                sampleType: sampleTypes.join(','),
+                label: preset.label,
+                requestedParameters: JSON.stringify(allParams),
+              })
+            }
+          } else if (s.type === 'radiology' && s.radiology) {
+            await radiologyApi.create({
+              admissionId: p.admissionId,
+              requestedBy: user?.displayName || '',
+              type: s.radiology.type,
+              bodyRegion: s.radiology.bodyRegion,
+              projection: s.radiology.projection,
+              priority: 'normal',
+            })
+          }
+        } catch { /* continue with other suggestions */ }
+      }
+
+      if (suggestions.length > 0) {
+        toast.success(`Triaje completado — ${suggestions.length} prueba${suggestions.length !== 1 ? 's' : ''} solicitada${suggestions.length !== 1 ? 's' : ''}`)
+      } else {
+        toast.success('Triaje completado')
+      }
+      // Refresh to get updated icons
+      fetchPatients()
+    } catch {
+      toast.error('Error al actualizar triaje')
+    }
+    setTriagePatient(null)
   }
 
   const actions = [
@@ -701,7 +759,19 @@ export default function PatientList() {
                       onClick={() => handleSelect(p.id)}
                       className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}
                     >
-                      <td className="px-4 py-3"><TriageBadge level={p.triageLevel} /></td>
+                      <td className="px-4 py-3 group/triage" onClick={(e) => { if (!p.triageLevel) { e.stopPropagation(); setTriagePatient(p) } }}>
+                        {p.triageLevel ? (
+                          <TriageBadge level={p.triageLevel} />
+                        ) : (
+                          <div className="flex items-center justify-center">
+                            <span className="text-slate-300 group-hover/triage:hidden">—</span>
+                            <button
+                              className="w-7 h-7 rounded-full border border-dashed border-slate-300 items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-500 transition-all hidden group-hover/triage:flex"
+                              title="Triar paciente"
+                            ><Plus size={14} /></button>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                         <InlineDropdown
                           value={p.location || ''}
@@ -994,6 +1064,13 @@ export default function PatientList() {
       </div>
 
       <NewPatientModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleCreate} isAdmin={isAdmin} />
+      <TriageModal
+        open={!!triagePatient}
+        patient={triagePatient}
+        locations={LOCATIONS}
+        onClose={() => setTriagePatient(null)}
+        onConfirm={handleTriageConfirm}
+      />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )

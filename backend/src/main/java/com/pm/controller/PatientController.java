@@ -84,6 +84,15 @@ public class PatientController {
         patientService.unassignDoctor(admissionId);
     }
 
+    @PatchMapping("/admission/{admissionId}/triage")
+    public void updateTriage(@PathVariable Long admissionId, @RequestBody Map<String, Object> body) {
+        Integer level = body.get("triageLevel") != null ? ((Number) body.get("triageLevel")).intValue() : null;
+        String matCategory = (String) body.get("matCategory");
+        String location = (String) body.get("location");
+        String specialty = (String) body.get("specialty");
+        patientService.updateTriage(admissionId, level, matCategory, location, specialty);
+    }
+
     @GetMapping("/search-nhc")
     public ResponseEntity<?> searchByNhc(@RequestParam String nhc) {
         return patientService.searchByNhc(nhc);

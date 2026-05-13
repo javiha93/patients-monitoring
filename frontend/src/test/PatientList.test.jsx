@@ -25,6 +25,7 @@ const mockPatients = [
   { id: 1, admissionId: 10, nhc: 'NHC-001', firstName: 'Ana', lastName: 'García', birthDate: '1985-03-15', sex: 'female', triageLevel: 2, matCategory: 'Dolor torácico', admissionDate: '2024-01-10T08:30:00', location: 'B1', specialty: 'Medicina', status: 'active' },
   { id: 2, admissionId: 11, nhc: 'NHC-002', firstName: 'Carlos', lastName: 'López', birthDate: '1970-07-22', sex: 'male', triageLevel: 4, matCategory: 'Fiebre', admissionDate: '2024-01-11T14:00:00', location: 'B10', specialty: 'Cirugía', status: 'active' },
   { id: 3, admissionId: 12, nhc: 'NHC-003', firstName: 'María', lastName: 'Ruiz', birthDate: '1990-01-01', sex: 'female', triageLevel: 1, matCategory: 'Politraumatismo', admissionDate: '2024-01-09T06:00:00', location: 'B2', specialty: 'Traumatología', status: 'active' },
+  { id: 4, admissionId: 13, nhc: 'NHC-004', firstName: 'Pedro', lastName: 'Sánchez', birthDate: '1988-05-10', sex: 'male', triageLevel: null, matCategory: null, admissionDate: '2024-01-12T10:00:00', location: '', specialty: '', status: 'active' },
 ]
 
 vi.mock('../services/patientApi', () => ({
@@ -37,7 +38,20 @@ vi.mock('../services/patientApi', () => ({
     assignDoctor: vi.fn(() => Promise.resolve({ data: {} })),
     unassignNurse: vi.fn(() => Promise.resolve({ data: {} })),
     unassignDoctor: vi.fn(() => Promise.resolve({ data: {} })),
+    updateTriage: vi.fn(() => Promise.resolve({ data: {} })),
   },
+}))
+
+vi.mock('../services/labTestApi', () => ({
+  labTestApi: { create: vi.fn(() => Promise.resolve({ data: {} })) },
+}))
+
+vi.mock('../services/ecgApi', () => ({
+  ecgApi: { create: vi.fn(() => Promise.resolve({ data: {} })) },
+}))
+
+vi.mock('../services/radiologyApi', () => ({
+  radiologyApi: { create: vi.fn(() => Promise.resolve({ data: {} })) },
 }))
 
 function renderList() {
@@ -163,15 +177,15 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     const { container } = renderList()
     await waitFor(() => screen.getByText('García, Ana'))
 
-    // Click Nivel header
     const nivelHeader = screen.getByText(/^Nivel/)
     fireEvent.click(nivelHeader)
 
     const names = getRowNames(container)
-    // triageLevel: Ruiz=1, García=2, López=4
-    expect(names[0]).toContain('Ruiz, María')
-    expect(names[1]).toContain('García, Ana')
-    expect(names[2]).toContain('López, Carlos')
+    // triageLevel: Sánchez=null(0), Ruiz=1, García=2, López=4
+    expect(names[0]).toContain('Sánchez, Pedro')
+    expect(names[1]).toContain('Ruiz, María')
+    expect(names[2]).toContain('García, Ana')
+    expect(names[3]).toContain('López, Carlos')
   })
 
   it('[KAN-5] segundo clic en Nivel ordena descendente', async () => {
@@ -183,10 +197,11 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     fireEvent.click(nivelHeader) // desc
 
     const names = getRowNames(container)
-    // desc: López=4, García=2, Ruiz=1
+    // desc: López=4, García=2, Ruiz=1, Sánchez=null(0)
     expect(names[0]).toContain('López, Carlos')
     expect(names[1]).toContain('García, Ana')
     expect(names[2]).toContain('Ruiz, María')
+    expect(names[3]).toContain('Sánchez, Pedro')
   })
 
   it('[KAN-5] ordena por ubicación ascendente (natural sort: B2 antes de B10)', async () => {
@@ -197,10 +212,11 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     fireEvent.click(ubicacionHeader)
 
     const names = getRowNames(container)
-    // natural sort: García=B1, Ruiz=B2, López=B10
-    expect(names[0]).toContain('García, Ana')
-    expect(names[1]).toContain('Ruiz, María')
-    expect(names[2]).toContain('López, Carlos')
+    // natural sort: Sánchez='', García=B1, Ruiz=B2, López=B10
+    expect(names[0]).toContain('Sánchez, Pedro')
+    expect(names[1]).toContain('García, Ana')
+    expect(names[2]).toContain('Ruiz, María')
+    expect(names[3]).toContain('López, Carlos')
   })
 
   it('[KAN-5] ordena por ingreso ascendente', async () => {
@@ -211,10 +227,11 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     fireEvent.click(ingresoHeader)
 
     const names = getRowNames(container)
-    // admissionDate: Ruiz=09, García=10, López=11
+    // admissionDate: Ruiz=09, García=10, López=11, Sánchez=12
     expect(names[0]).toContain('Ruiz, María')
     expect(names[1]).toContain('García, Ana')
     expect(names[2]).toContain('López, Carlos')
+    expect(names[3]).toContain('Sánchez, Pedro')
   })
 
   it('[KAN-5] ordena por ingreso descendente', async () => {
@@ -226,10 +243,11 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     fireEvent.click(ingresoHeader) // desc
 
     const names = getRowNames(container)
-    // desc: López=11, García=10, Ruiz=09
-    expect(names[0]).toContain('López, Carlos')
-    expect(names[1]).toContain('García, Ana')
-    expect(names[2]).toContain('Ruiz, María')
+    // desc: Sánchez=12, López=11, García=10, Ruiz=09
+    expect(names[0]).toContain('Sánchez, Pedro')
+    expect(names[1]).toContain('López, Carlos')
+    expect(names[2]).toContain('García, Ana')
+    expect(names[3]).toContain('Ruiz, María')
   })
 
   it('[KAN-5] muestra indicador de dirección en cabecera activa', async () => {
@@ -313,10 +331,11 @@ describe('KAN-5: Columna Especialidad', () => {
     const rows = container.querySelectorAll('tbody tr')
     // Column order: Nivel(0), Ubic(1), Esp(2), Paciente(3), Motivo(4), Icons(5), Ingreso(6)
     const names = Array.from(rows).map(r => r.querySelectorAll('td')[3]?.textContent)
-    // Cirugía < Medicina < Traumatología → López, García, Ruiz
-    expect(names[0]).toContain('López, Carlos')
-    expect(names[1]).toContain('García, Ana')
-    expect(names[2]).toContain('Ruiz, María')
+    // '' < Cirugía < Medicina < Traumatología → Sánchez, López, García, Ruiz
+    expect(names[0]).toContain('Sánchez, Pedro')
+    expect(names[1]).toContain('López, Carlos')
+    expect(names[2]).toContain('García, Ana')
+    expect(names[3]).toContain('Ruiz, María')
   })
 })
 
@@ -930,3 +949,4 @@ describe('Filtros de asignación', () => {
     })
   })
 })
+

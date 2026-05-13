@@ -24,4 +24,6 @@ export const patientApi = {
     api.patch(`/patients/admission/${admissionId}/unassign-nurse`),
   unassignDoctor: (admissionId) =>
     api.patch(`/patients/admission/${admissionId}/unassign-doctor`),
+  updateTriage: (admissionId, data) =>
+    api.patch(`/patients/admission/${admissionId}/triage`, data),
 }
