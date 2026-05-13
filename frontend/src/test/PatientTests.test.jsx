@@ -223,3 +223,53 @@ describe('PatientTests: partial validation', () => {
     expect(icons).toBeInTheDocument()
   })
 })
+
+describe('PatientTests: split test card', () => {
+  const splitTest = [
+    {
+      id: 30, category: 'analitica', label: 'Hemograma + Orina', status: 'pending_validation',
+      requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: null, results: [],
+      requestedParameters: '["hemograma","glucosa","orina_sistematico"]', sampleType: 'sangre,orina',
+      validatedSamples: '["tubo_bioquimica","tubo_hemograma"]',
+      children: [
+        {
+          id: 31, category: 'analitica', label: 'Hemograma + Orina', status: 'pending_receipt',
+          requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', externalId: 'LAB-100',
+          validatedBy: 'Javier Herrada', validatedAt: '2024-01-10T10:00:00',
+          results: [], requestedParameters: '["hemograma","glucosa","orina_sistematico"]',
+          sampleType: 'sangre,orina', validatedSamples: '["tubo_bioquimica","tubo_hemograma"]',
+          children: [], validations: [],
+        },
+      ],
+      validations: [
+        { externalId: 'LAB-100', validatedBy: 'Javier Herrada', validatedAt: '2024-01-10T10:00:00',
+          validatedSamples: '["tubo_bioquimica","tubo_hemograma"]', status: 'pending_receipt' },
+      ],
+    },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: splitTest })
+    mockDeviceApi.hasActiveByType.mockResolvedValue({ data: true })
+  })
+
+  it('muestra tarjeta dividida con fila de hijo validado y fila pendiente', async () => {
+    renderPage()
+    await waitFor(() => screen.getByTestId('split-test-card'))
+    expect(screen.getByText('ID: LAB-100')).toBeInTheDocument()
+    expect(screen.getByText('Val: Javier Herrada')).toBeInTheDocument()
+    expect(screen.getByText('Pendiente de recibir')).toBeInTheDocument()
+    expect(screen.getByText('Muestras pendientes de validar')).toBeInTheDocument()
+  })
+
+  it('al clicar fila pendiente abre modal con códigos existentes', async () => {
+    renderPage()
+    await waitFor(() => screen.getByText('Muestras pendientes de validar'))
+    fireEvent.click(screen.getByText('Muestras pendientes de validar'))
+    await waitFor(() => screen.getByText('Validar prueba'))
+    expect(screen.getByText(/Usar código existente/)).toBeInTheDocument()
+    expect(screen.getByText('LAB-100')).toBeInTheDocument()
+    expect(screen.getByText('Nuevo código')).toBeInTheDocument()
+  })
+})

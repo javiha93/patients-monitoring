@@ -64,6 +64,16 @@ public class LabTest {
     @Column(name = "validated_samples", length = 2000)
     private String validatedSamples;
 
+    /** Parent test ID — set on child tests created by partial validation splits */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private LabTest parent;
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    @OrderBy("validatedAt ASC")
+    @Builder.Default
+    private List<LabTest> children = new ArrayList<>();
+
     @OneToMany(mappedBy = "labTest", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("category, name")
     @Builder.Default

@@ -7,6 +7,8 @@ import java.util.Optional;
 
 public interface LabTestRepository extends JpaRepository<LabTest, Long> {
     List<LabTest> findByAdmissionIdOrderByRequestedAtDesc(Long admissionId);
+    /** Only return top-level tests (not children from partial validation splits) */
+    List<LabTest> findByAdmissionIdAndParentIsNullOrderByRequestedAtDesc(Long admissionId);
     Optional<LabTest> findByExternalId(String externalId);
     boolean existsByExternalId(String externalId);
 }

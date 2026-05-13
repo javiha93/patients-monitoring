@@ -65,6 +65,8 @@ export default function PatientTests() {
   const [externalId, setExternalId] = useState('')
   const [validateError, setValidateError] = useState('')
   const [selectedSamples, setSelectedSamples] = useState(new Set())
+  const [siblingCodes, setSiblingCodes] = useState([]) // existing codes from sibling validations
+  const [useExistingCode, setUseExistingCode] = useState(false)
 
   // Results viewer
   const [viewResults, setViewResults] = useState(null) // LabTestDTO with results
@@ -128,6 +130,8 @@ export default function PatientTests() {
       setValidateModal({ open: false, test: null })
       setExternalId('')
       setSelectedSamples(new Set())
+      setSiblingCodes([])
+      setUseExistingCode(false)
       fetchData()
     } catch (e) {
       setValidateError(e.response?.data?.error || 'Error al validar')
@@ -157,6 +161,13 @@ export default function PatientTests() {
       setValidateModal({ open: true, test })
       setExternalId(test.externalId || '')
       setValidateError('')
+      setUseExistingCode(false)
+      // Collect existing codes from sibling validations
+      const codes = (test.validations || [])
+        .map(v => v.externalId)
+        .filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i)
+      setSiblingCodes(codes)
       // Pre-select all non-validated samples
       const params = test.requestedParameters ? JSON.parse(test.requestedParameters) : []
       const allSamples = getSamplesNeeded(params)
@@ -222,38 +233,110 @@ export default function PatientTests() {
           </div>
         ) : (
           tests.map(t => {
-            const cfg = STATUS_CONFIG[t.status] || STATUS_CONFIG.pending_validation
+            const hasSplit = t.children && t.children.length > 0
             const CatIcon = CATEGORY_ICON[t.category] || FlaskConical
-            const StatusIcon = cfg.icon
-            const clickable = t.status === 'pending_validation' || t.status === 'partial_results' || t.status === 'results'
-            return (
-              <div key={t.id}
-                onClick={() => clickable && handleTestClick(t)}
-                className={`bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 ${clickable ? 'cursor-pointer hover:ring-2 hover:ring-violet-300' : ''} transition-all`}
-              >
-                <div className="w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center flex-shrink-0">
-                  <CatIcon size={20} className="text-violet-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm">{t.label}</div>
-                  <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
-                    <span>{fmtDateTime(t.requestedAt)}</span>
-                    {t.requestedBy && <span title={`Solicitado por: ${t.requestedBy}`}>· {t.requestedBy}</span>}
-                    {t.validatedBy && <span className="text-sky-500" title={`Validado por: ${t.validatedBy}`}>· Val: {t.validatedBy}</span>}
-                    {t.externalId && <span className="font-mono text-slate-500">ID: {t.externalId}</span>}
+
+            if (!hasSplit) {
+              // Simple test — no splits, render as single row
+              const cfg = STATUS_CONFIG[t.status] || STATUS_CONFIG.pending_validation
+              const StatusIcon = cfg.icon
+              const clickable = t.status === 'pending_validation' || t.status === 'partial_results' || t.status === 'results'
+              return (
+                <div key={t.id}
+                  onClick={() => clickable && handleTestClick(t)}
+                  className={`bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 ${clickable ? 'cursor-pointer hover:ring-2 hover:ring-violet-300' : ''} transition-all`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center flex-shrink-0">
+                    <CatIcon size={20} className="text-violet-500" />
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm">{t.label}</div>
+                    <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                      <span>{fmtDateTime(t.requestedAt)}</span>
+                      {t.requestedBy && <span title={`Solicitado por: ${t.requestedBy}`}>· {t.requestedBy}</span>}
+                      {t.validatedBy && <span className="text-sky-500" title={`Validado por: ${t.validatedBy}`}>· Val: {t.validatedBy}</span>}
+                      {t.externalId && <span className="font-mono text-slate-500">ID: {t.externalId}</span>}
+                    </div>
+                  </div>
+                  <SampleIconsRow requestedParameters={t.requestedParameters} validatedSamples={t.validatedSamples} />
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.color}`}>
+                    <StatusIcon size={12} />
+                    {cfg.label}
+                  </span>
+                  {t.status === 'pending_validation' && (
+                    <button onClick={(e) => { e.stopPropagation(); setEditingTest(t); setShowNew(true) }}
+                      className="text-slate-300 hover:text-violet-500 flex-shrink-0" title="Editar prueba"><Pencil size={16} /></button>
+                  )}
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, id: t.id }) }}
+                    className="text-slate-300 hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
                 </div>
-                <SampleIconsRow requestedParameters={t.requestedParameters} validatedSamples={t.validatedSamples} />
-                <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.color}`}>
-                  <StatusIcon size={12} />
-                  {cfg.label}
-                </span>
+              )
+            }
+
+            // Split test — render grouped card with sub-rows
+            const parentClickable = t.status === 'pending_validation' || t.status === 'partial_results' || t.status === 'results'
+            return (
+              <div key={t.id} className="bg-white rounded-xl shadow-sm overflow-hidden" data-testid="split-test-card">
+                {/* Header row */}
+                <div className="px-4 py-3 flex items-center gap-4 border-b border-slate-100">
+                  <div className="w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center flex-shrink-0">
+                    <CatIcon size={20} className="text-violet-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm">{t.label}</div>
+                    <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                      <span>{fmtDateTime(t.requestedAt)}</span>
+                      {t.requestedBy && <span>· {t.requestedBy}</span>}
+                    </div>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, id: t.id }) }}
+                    className="text-slate-300 hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
+                </div>
+
+                {/* Validated child rows */}
+                {t.children.map(child => {
+                  const childCfg = STATUS_CONFIG[child.status] || STATUS_CONFIG.pending_receipt
+                  const ChildStatusIcon = childCfg.icon
+                  const childClickable = child.status === 'partial_results' || child.status === 'results'
+                  return (
+                    <div key={child.id}
+                      onClick={() => childClickable && (async () => { const { data } = await labTestApi.getById(child.id); setViewResults(data) })()}
+                      className={`px-4 py-2.5 flex items-center gap-3 border-b border-slate-50 bg-slate-50/50 ${childClickable ? 'cursor-pointer hover:bg-slate-100' : ''}`}
+                    >
+                      <div className="w-6 flex-shrink-0" />
+                      <SampleIconsRow requestedParameters={child.requestedParameters} validatedSamples={child.validatedSamples} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-slate-500 flex items-center gap-2">
+                          {child.externalId && <span className="font-mono font-medium text-slate-600">ID: {child.externalId}</span>}
+                          {child.validatedBy && <span className="text-sky-500">Val: {child.validatedBy}</span>}
+                          {child.validatedAt && <span>{fmtDateTime(child.validatedAt)}</span>}
+                        </div>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${childCfg.color}`}>
+                        <ChildStatusIcon size={10} />
+                        {childCfg.label}
+                      </span>
+                    </div>
+                  )
+                })}
+
+                {/* Remaining samples row (if parent still pending_validation) */}
                 {t.status === 'pending_validation' && (
-                  <button onClick={(e) => { e.stopPropagation(); setEditingTest(t); setShowNew(true) }}
-                    className="text-slate-300 hover:text-violet-500 flex-shrink-0" title="Editar prueba"><Pencil size={16} /></button>
+                  <div
+                    onClick={() => handleTestClick(t)}
+                    className="px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-amber-50 transition-colors"
+                  >
+                    <div className="w-6 flex-shrink-0" />
+                    <SampleIconsRow requestedParameters={t.requestedParameters} validatedSamples={t.validatedSamples} onlyPending />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs text-amber-700 font-medium">Muestras pendientes de validar</span>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      <Clock size={10} />
+                      Pendiente
+                    </span>
+                  </div>
                 )}
-                <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, id: t.id }) }}
-                  className="text-slate-300 hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
               </div>
             )
           })
@@ -279,9 +362,29 @@ export default function PatientTests() {
             <p className="text-sm text-slate-500 mb-4">{validateModal.test?.label}</p>
             <div>
               <label className="text-xs text-slate-500 font-medium">Identificador único (código de barras / ID laboratorio)</label>
-              <input autoFocus value={externalId} onChange={e => { setExternalId(e.target.value); setValidateError('') }}
+              {siblingCodes.length > 0 && (
+                <div className="mt-1.5 mb-2 space-y-1">
+                  <label className="flex items-center gap-2 text-xs text-slate-600">
+                    <input type="radio" name="codeMode" checked={!useExistingCode}
+                      onChange={() => { setUseExistingCode(false); setExternalId('') }}
+                      className="accent-violet-500" />
+                    Nuevo código
+                  </label>
+                  {siblingCodes.map(code => (
+                    <label key={code} className="flex items-center gap-2 text-xs text-slate-600">
+                      <input type="radio" name="codeMode" checked={useExistingCode && externalId === code}
+                        onChange={() => { setUseExistingCode(true); setExternalId(code); setValidateError('') }}
+                        className="accent-violet-500" />
+                      Usar código existente: <span className="font-mono font-medium">{code}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <input autoFocus value={externalId}
+                onChange={e => { setExternalId(e.target.value); setValidateError(''); if (useExistingCode) setUseExistingCode(false) }}
                 placeholder="Ej: LAB-2024-00123"
-                className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 ${validateError ? 'border-red-400' : ''}`} />
+                disabled={useExistingCode}
+                className={`w-full border rounded-lg px-3 py-2 text-sm mt-1 ${validateError ? 'border-red-400' : ''} ${useExistingCode ? 'bg-slate-50 text-slate-400' : ''}`} />
             </div>
             {validateModal.test?.requestedParameters && (
               <div className="mt-3">

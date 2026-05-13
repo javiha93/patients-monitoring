@@ -44,7 +44,7 @@ const ICON_MAP = {
  * Renders sample/tube icons for a lab test based on its requested parameters.
  * Validated samples are shown in grey; pending ones keep their color.
  */
-export default function SampleIconsRow({ requestedParameters, validatedSamples }) {
+export default function SampleIconsRow({ requestedParameters, validatedSamples, onlyPending }) {
   if (!requestedParameters) return null
 
   let params
@@ -64,9 +64,13 @@ export default function SampleIconsRow({ requestedParameters, validatedSamples }
     } catch { /* ignore */ }
   }
 
+  // onlyPending: show only non-validated samples (for the "remaining" row in split cards)
+  const filtered = onlyPending ? samples.filter(s => !validatedSet.has(s.key)) : samples
+  if (filtered.length === 0) return null
+
   return (
-    <div className={`grid gap-1 ${samples.length > 3 ? 'grid-cols-3' : `grid-cols-${samples.length}`}`} data-testid="sample-icons">
-      {samples.map(s => {
+    <div className={`grid gap-1 ${filtered.length > 3 ? 'grid-cols-3' : `grid-cols-${filtered.length}`}`} data-testid="sample-icons">
+      {filtered.map(s => {
         const mapping = ICON_MAP[s.key]
         if (!mapping) return null
         const { Icon, color } = mapping
