@@ -84,7 +84,7 @@ export default function SampleIconsRow({ requestedParameters, validatedSamples, 
           <span
             key={s.key}
             title={isValidated ? `${s.label} ✓` : s.label}
-            className={`${(isValidated && !onlyValidated) ? 'text-slate-300' : color} cursor-default flex items-center justify-center`}
+            className={`${isValidated ? 'text-slate-300' : color} cursor-default flex items-center justify-center`}
           >
             <Icon size={22} />
           </span>

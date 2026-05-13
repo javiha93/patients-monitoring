@@ -125,6 +125,7 @@ export default function PatientTests() {
         externalId,
         validatedBy: user?.displayName || '',
         validatedSamples: JSON.stringify([...merged]),
+        batchSamples: JSON.stringify([...selectedSamples]),
         partial: isPartial,
       })
       setValidateModal({ open: false, test: null })

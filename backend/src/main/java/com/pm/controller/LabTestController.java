@@ -53,8 +53,10 @@ public class LabTestController {
             String validatedBy = (String) body.get("validatedBy");
             String validatedSamples = body.get("validatedSamples") != null
                     ? body.get("validatedSamples").toString() : null;
+            String batchSamples = body.get("batchSamples") != null
+                    ? body.get("batchSamples").toString() : null;
             Boolean partial = body.get("partial") != null && (Boolean) body.get("partial");
-            return ResponseEntity.ok(service.validate(id, externalId.trim(), validatedBy, validatedSamples, partial));
+            return ResponseEntity.ok(service.validate(id, externalId.trim(), validatedBy, validatedSamples, batchSamples, partial));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {

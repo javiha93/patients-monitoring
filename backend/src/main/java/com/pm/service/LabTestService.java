@@ -76,7 +76,7 @@ public class LabTestService {
      * parent may share an externalId (same barcode for multiple validations).
      */
     @Transactional
-    public LabTestDTO validate(Long id, String externalId, String validatedBy, String validatedSamples, boolean partial) {
+    public LabTestDTO validate(Long id, String externalId, String validatedBy, String validatedSamples, String batchSamples, boolean partial) {
         LabTest t = labTestRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lab test not found"));
 
@@ -112,6 +112,8 @@ public class LabTestService {
         }
 
         // Create a child for this validation batch (partial or final batch of a split test)
+        // Child stores only its own batch samples, not the cumulative set
+        String childSamples = (batchSamples != null) ? batchSamples : validatedSamples;
         LabTest child = LabTest.builder()
                 .admission(t.getAdmission())
                 .parent(t)
@@ -124,7 +126,7 @@ public class LabTestService {
                 .validatedBy(validatedBy)
                 .requestedBy(t.getRequestedBy())
                 .notes(t.getNotes())
-                .validatedSamples(validatedSamples)
+                .validatedSamples(childSamples)
                 .requestedParameters(t.getRequestedParameters())
                 .sampleType(t.getSampleType())
                 .build();
