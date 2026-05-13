@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Radiation, Magnet } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Radiation, Magnet, RefreshCw } from 'lucide-react'
 import XRayIcon from '../components/XRayIcon'
 import { patientApi } from '../services/patientApi'
 import { getUsersByRole } from '../services/authApi'
@@ -349,6 +349,8 @@ export default function PatientList() {
 
   const [allNurses, setAllNurses] = useState([])
   const [allDoctors, setAllDoctors] = useState([])
+  const [autoRefresh, setAutoRefresh] = useState(false)
+  const refreshInterval = useRef(null)
 
   const fetchPatients = async () => {
     try {
@@ -366,6 +368,16 @@ export default function PatientList() {
     getUsersByRole('Enfermería').then(setAllNurses).catch(() => {})
     getUsersByRole('Medicina').then(setAllDoctors).catch(() => {})
   }, [])
+
+  // Auto-refresh every 30s when toggled on
+  useEffect(() => {
+    if (autoRefresh) {
+      refreshInterval.current = setInterval(fetchPatients, 30000)
+    } else {
+      clearInterval(refreshInterval.current)
+    }
+    return () => clearInterval(refreshInterval.current)
+  }, [autoRefresh])
 
   const filtered = patients.filter(p => {
     // Text search
@@ -480,9 +492,18 @@ export default function PatientList() {
               : patients.length}
           </span>
         </h2>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar paciente..." className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-64 focus:border-blue-500 outline-none" />
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar paciente..." className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-64 focus:border-blue-500 outline-none" />
+          </div>
+          <button
+            onClick={() => setAutoRefresh(prev => !prev)}
+            title={autoRefresh ? 'Desactivar auto-refresco (30s)' : 'Activar auto-refresco (30s)'}
+            className={`p-2 rounded-lg border transition-colors ${autoRefresh ? 'bg-blue-50 border-blue-300 text-blue-600' : 'border-slate-200 text-slate-400 hover:text-slate-600'}`}
+          >
+            <RefreshCw size={16} className={autoRefresh ? 'animate-spin' : ''} style={autoRefresh ? { animationDuration: '3s' } : undefined} />
+          </button>
         </div>
         <div className="flex border border-slate-200 rounded-lg overflow-hidden">
           <button onClick={() => setView('table')} className={`p-2 ${view === 'table' ? 'bg-slate-100' : ''}`}><List size={16} /></button>
@@ -807,119 +828,122 @@ export default function PatientList() {
             </table>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map(p => {
               const isSelected = selectedId === p.id
               return (
                 <div
                   key={p.admissionId}
                   onClick={() => handleSelect(p.id)}
-                  className={`bg-white rounded-xl shadow-sm p-4 cursor-pointer transition-shadow flex flex-col gap-2 ${isSelected ? 'ring-2 ring-blue-400 shadow-md' : 'hover:shadow-md'}`}
+                  className={`bg-white rounded-xl shadow-sm p-3 cursor-pointer transition-shadow ${isSelected ? 'ring-2 ring-blue-400 shadow-md' : 'hover:shadow-md'}`}
                 >
-                  {/* Top: triage + name left, icons right */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
+                  {/* Row 1: triage + name + location/specialty left, icons right */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <TriageBadge level={p.triageLevel} />
-                      <div>
-                        <div className="font-semibold">{p.lastName}, {p.firstName}</div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm truncate">{p.lastName}, {p.firstName}</div>
                         <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
                       {p.pendingLabs && p.pendingLabs.length > 0 ? (
                         <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
-                          <Syringe size={14} className="text-orange-500" />
+                          <Syringe size={18} className="text-orange-500" />
                         </span>
                       ) : p.hasCompletedLabs && (
                         <span title="Analíticas realizadas" data-testid="completed-lab-icon">
-                          <Syringe size={14} className="text-slate-300" />
+                          <Syringe size={18} className="text-slate-300" />
                         </span>
                       )}
                       {p.hasPendingEcg ? (
                         <span title="ECG pendiente" data-testid="pending-ecg-icon">
-                          <Activity size={14} className="text-red-500" />
+                          <Activity size={18} className="text-red-500" />
                         </span>
                       ) : p.hasCompletedEcg && (
                         <span title={buildRecentEcgTooltip(p.recentEcgs)} data-testid="completed-ecg-icon">
-                          <Activity size={14} className="text-slate-300" />
+                          <Activity size={18} className="text-slate-300" />
                         </span>
                       )}
                       {p.hasPendingXray ? (
-                        <span title="Radiografía pendiente"><XRayIcon size={14} className="text-blue-500" /></span>
+                        <span title="Radiografía pendiente"><XRayIcon size={18} className="text-blue-500" /></span>
                       ) : p.hasCompletedXray && (
-                        <span title="Radiografía realizada"><XRayIcon size={14} className="text-slate-300" /></span>
+                        <span title="Radiografía realizada"><XRayIcon size={18} className="text-slate-300" /></span>
                       )}
                       {p.hasPendingCt ? (
-                        <span title="TAC pendiente"><Radiation size={14} className="text-amber-500" /></span>
+                        <span title="TAC pendiente"><Radiation size={18} className="text-amber-500" /></span>
                       ) : p.hasCompletedCt && (
-                        <span title="TAC realizado"><Radiation size={14} className="text-slate-300" /></span>
+                        <span title="TAC realizado"><Radiation size={18} className="text-slate-300" /></span>
                       )}
                       {p.hasPendingMri ? (
-                        <span title="Resonancia pendiente"><Magnet size={14} className="text-red-500" /></span>
+                        <span title="Resonancia pendiente"><Magnet size={18} className="text-red-500" /></span>
                       ) : p.hasCompletedMri && (
-                        <span title="Resonancia realizada"><Magnet size={14} className="text-slate-300" /></span>
+                        <span title="Resonancia realizada"><Magnet size={18} className="text-slate-300" /></span>
                       )}
                     </div>
                   </div>
 
-                  {/* Middle: motivo, location/specialty, observations */}
-                  <div className="text-sm text-slate-600">{p.matCategory || 'Sin motivo'}</div>
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <InlineDropdown
-                      value={p.location || ''}
-                      options={LOCATIONS}
-                      placeholder="Ubic."
-                      onChange={async (v) => {
-                        try {
-                          await patientApi.updateLocation(p.admissionId, v)
-                          setPatients(prev => prev.map(pt =>
-                            pt.admissionId === p.admissionId ? { ...pt, location: v } : pt
-                          ))
-                        } catch { toast.error('Error al cambiar ubicación') }
-                      }}
-                      width="w-14"
-                    />
-                    <InlineDropdown
-                      value={p.specialty || ''}
-                      options={SPECIALTIES}
-                      placeholder="Esp."
-                      displayValue={SPECIALTY_INITIALS[p.specialty] || (p.specialty ? p.specialty.slice(0, 3) : '')}
-                      tooltip={p.specialty || ''}
-                      onChange={async (v) => {
-                        try {
-                          await patientApi.updateSpecialty(p.admissionId, v)
-                          setPatients(prev => prev.map(pt =>
-                            pt.admissionId === p.admissionId ? { ...pt, specialty: v } : pt
-                          ))
-                        } catch { toast.error('Error al cambiar especialidad') }
-                      }}
-                      width="w-12"
-                    />
-                  </div>
-                  {/* Observations */}
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="text"
-                      defaultValue={p.observations || ''}
-                      placeholder="Observaciones..."
-                      onBlur={async (e) => {
-                        const val = e.target.value.trim()
-                        if (val !== (p.observations || '')) {
-                          try {
-                            await patientApi.updateObservations(p.admissionId, val)
-                            setPatients(prev => prev.map(pt =>
-                              pt.admissionId === p.admissionId ? { ...pt, observations: val } : pt
-                            ))
-                          } catch { /* ignore */ }
-                        }
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
-                      className="w-full bg-transparent text-sm text-slate-600 border-0 border-b border-transparent hover:border-slate-300 focus:border-violet-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
-                    />
+                  {/* Row 2: motivo + location/specialty left, observations right */}
+                  <div className="flex items-start gap-3 mt-2">
+                    <div className="flex-shrink-0">
+                      <div className="text-xs text-slate-500 mb-1">{p.matCategory || 'Sin motivo'}</div>
+                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <InlineDropdown
+                          value={p.location || ''}
+                          options={LOCATIONS}
+                          placeholder="Ubic."
+                          onChange={async (v) => {
+                            try {
+                              await patientApi.updateLocation(p.admissionId, v)
+                              setPatients(prev => prev.map(pt =>
+                                pt.admissionId === p.admissionId ? { ...pt, location: v } : pt
+                              ))
+                            } catch { toast.error('Error al cambiar ubicación') }
+                          }}
+                          width="w-14"
+                        />
+                        <InlineDropdown
+                          value={p.specialty || ''}
+                          options={SPECIALTIES}
+                          placeholder="Esp."
+                          displayValue={SPECIALTY_INITIALS[p.specialty] || (p.specialty ? p.specialty.slice(0, 3) : '')}
+                          tooltip={p.specialty || ''}
+                          onChange={async (v) => {
+                            try {
+                              await patientApi.updateSpecialty(p.admissionId, v)
+                              setPatients(prev => prev.map(pt =>
+                                pt.admissionId === p.admissionId ? { ...pt, specialty: v } : pt
+                              ))
+                            } catch { toast.error('Error al cambiar especialidad') }
+                          }}
+                          width="w-12"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        defaultValue={p.observations || ''}
+                        placeholder="Observaciones..."
+                        onBlur={async (e) => {
+                          const val = e.target.value.trim()
+                          if (val !== (p.observations || '')) {
+                            try {
+                              await patientApi.updateObservations(p.admissionId, val)
+                              setPatients(prev => prev.map(pt =>
+                                pt.admissionId === p.admissionId ? { ...pt, observations: val } : pt
+                              ))
+                            } catch { /* ignore */ }
+                          }
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+                        className="w-full bg-transparent text-xs text-slate-600 border-0 border-b border-slate-200 hover:border-slate-300 focus:border-violet-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
+                      />
+                    </div>
                   </div>
 
-                  {/* Bottom: assigned left, date right */}
-                  <div className="flex items-center justify-between mt-1">
+                  {/* Row 3: assigned left, date right */}
+                  <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-1">
                       {p.assignedNurse && (
                         <span title={`Enf: ${p.assignedNurse}`} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-teal-100 text-teal-700 text-[10px] font-bold">{getInitials(p.assignedNurse)}</span>
@@ -944,7 +968,7 @@ export default function PatientList() {
       </div>
 
       {/* Action Bar */}
-      <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200 px-6 py-5 flex items-center gap-6 z-50">
+      <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-5 flex items-center gap-6 z-50">
         {actions.map(a => {
           const Icon = a.icon
           const disabled = !selectedId || isAdmin

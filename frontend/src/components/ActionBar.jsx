@@ -13,7 +13,7 @@ export default function ActionBar({ patient, admissionId }) {
   ]
 
   return (
-    <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200 px-6 py-5 flex items-center gap-6 z-50">
+    <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-5 flex items-center gap-6 z-50">
       {tabs.map(t => {
         const Icon = t.icon
         const active = location.pathname === t.path

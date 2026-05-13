@@ -84,7 +84,7 @@ describe('KAN-5: Listado de pacientes', () => {
     // After selection, name appears in both table and action bar
     expect(screen.queryByText('Selecciona un paciente')).not.toBeInTheDocument()
     // Action bar should show the selected patient's NHC
-    const actionBar = document.querySelector('.fixed.bottom-0')
+    const actionBar = document.querySelector('.sticky.bottom-0')
     expect(actionBar.textContent).toContain('García')
     expect(actionBar.textContent).toContain('NHC-001')
   })
