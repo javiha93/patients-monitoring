@@ -48,6 +48,16 @@ vi.mock('../services/deviceApi', () => ({
   },
 }))
 
+vi.mock('../services/ecgApi', () => ({
+  ecgApi: {
+    getByAdmission: vi.fn(() => Promise.resolve({ data: [] })),
+    getById: vi.fn(() => Promise.resolve({ data: {} })),
+    create: vi.fn(() => Promise.resolve({ data: { id: 1 } })),
+    complete: vi.fn(() => Promise.resolve({ data: {} })),
+    delete: vi.fn(() => Promise.resolve()),
+  },
+}))
+
 import { labTestApi as mockLabTestApi } from '../services/labTestApi'
 import { deviceApi as mockDeviceApi } from '../services/deviceApi'
 
@@ -271,5 +281,55 @@ describe('PatientTests: split test card', () => {
     expect(screen.getByText(/Usar código existente/)).toBeInTheDocument()
     expect(screen.getByText('LAB-100')).toBeInTheDocument()
     expect(screen.getByText('Nuevo código')).toBeInTheDocument()
+  })
+})
+
+import { ecgApi as mockEcgApi } from '../services/ecgApi'
+
+describe('PatientTests: ECG section', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('muestra sección de electrocardiogramas vacía', async () => {
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockEcgApi.getByAdmission.mockResolvedValue({ data: [] })
+    renderPage()
+    await waitFor(() => screen.getByText('Electrocardiogramas'))
+    expect(screen.getByText('No hay electrocardiogramas solicitados')).toBeInTheDocument()
+    expect(screen.getByText('Solicitar ECG')).toBeInTheDocument()
+  })
+
+  it('muestra ECG pendiente con botón de subir imagen', async () => {
+    const ecgs = [
+      { id: 1, status: 'pending', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', completedAt: null, completedBy: null },
+    ]
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockEcgApi.getByAdmission.mockResolvedValue({ data: ecgs })
+    renderPage()
+    await waitFor(() => screen.getByText('Electrocardiograma'))
+    expect(screen.getByText('Pendiente')).toBeInTheDocument()
+    expect(screen.getByText('Subir imagen')).toBeInTheDocument()
+  })
+
+  it('muestra ECG realizado y abre visor al clicar', async () => {
+    const ecgs = [
+      { id: 2, status: 'completed', requestedAt: '2024-01-10T09:00:00', requestedBy: 'Dr. García', completedAt: '2024-01-10T10:00:00', completedBy: 'Javier Herrada' },
+    ]
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockEcgApi.getByAdmission.mockResolvedValue({ data: ecgs })
+    mockEcgApi.getById.mockResolvedValue({ data: { ...ecgs[0], imageData: 'abc123', imageType: 'image/png' } })
+    renderPage()
+    await waitFor(() => screen.getByText('Realizado'))
+    fireEvent.click(screen.getByText('Electrocardiograma'))
+    await waitFor(() => screen.getByAltText('ECG'))
+    expect(screen.getByAltText('ECG')).toBeInTheDocument()
+  })
+
+  it('solicitar ECG llama a ecgApi.create', async () => {
+    mockLabTestApi.getByAdmission.mockResolvedValue({ data: [] })
+    mockEcgApi.getByAdmission.mockResolvedValue({ data: [] })
+    renderPage()
+    await waitFor(() => screen.getByText('Solicitar ECG'))
+    fireEvent.click(screen.getByText('Solicitar ECG'))
+    await waitFor(() => expect(mockEcgApi.create).toHaveBeenCalled())
   })
 })

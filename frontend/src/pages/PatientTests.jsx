@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText, Pencil } from 'lucide-react'
+import { ChevronLeft, Plus, Syringe, Trash2, FlaskConical, Bug, X, AlertTriangle, Clock, CheckCircle2, Loader2, FileText, Pencil, HeartPulse } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
 import { deviceApi } from '../services/deviceApi'
+import { ecgApi } from '../services/ecgApi'
 import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import ConfirmModal from '../components/ConfirmModal'
@@ -80,13 +81,22 @@ export default function PatientTests() {
   // Delete confirm
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null })
 
+  // ECG
+  const [ecgs, setEcgs] = useState([])
+  const [ecgViewer, setEcgViewer] = useState(null) // EcgDTO with imageData
+  const [ecgDeleteConfirm, setEcgDeleteConfirm] = useState({ open: false, id: null })
+
   const fetchData = async () => {
     try {
       const { data: p } = await patientApi.getPatient(id)
       setPatient(p)
       if (p.activeAdmission) {
-        const { data: t } = await labTestApi.getByAdmission(p.activeAdmission.id)
-        setTests(t)
+        const [labRes, ecgRes] = await Promise.all([
+          labTestApi.getByAdmission(p.activeAdmission.id),
+          ecgApi.getByAdmission(p.activeAdmission.id),
+        ])
+        setTests(labRes.data)
+        setEcgs(ecgRes.data)
       }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -154,6 +164,38 @@ export default function PatientTests() {
   const handleDelete = async () => {
     await labTestApi.delete(deleteConfirm.id)
     setDeleteConfirm({ open: false, id: null })
+    fetchData()
+  }
+
+  const handleCreateEcg = async () => {
+    await ecgApi.create({ admissionId: admission.id, requestedBy: user?.displayName || '' })
+    fetchData()
+  }
+
+  const handleEcgClick = async (ecg) => {
+    if (ecg.status === 'completed') {
+      const { data } = await ecgApi.getById(ecg.id)
+      setEcgViewer(data)
+    }
+  }
+
+  const handleCompleteEcg = async (ecgId, file) => {
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1]
+      await ecgApi.complete(ecgId, {
+        completedBy: user?.displayName || '',
+        imageData: base64,
+        imageType: file.type,
+      })
+      fetchData()
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleDeleteEcg = async () => {
+    await ecgApi.delete(ecgDeleteConfirm.id)
+    setEcgDeleteConfirm({ open: false, id: null })
     fetchData()
   }
 
@@ -227,12 +269,14 @@ export default function PatientTests() {
         {admission && <InsightsPanel patientId={patient.id} admissionId={admission.id} includeTypes={labInsightTypes} />}
         {!admission ? (
           <p className="text-slate-400 text-center mt-12">Sin ingreso activo</p>
-        ) : tests.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <Syringe size={48} className="mx-auto text-violet-300 mb-4" />
-            <p className="text-sm text-slate-400">No hay pruebas de laboratorio solicitadas</p>
-          </div>
-        ) : (
+        ) : (<>
+          {/* Lab tests section */}
+          {tests.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+              <Syringe size={48} className="mx-auto text-violet-300 mb-4" />
+              <p className="text-sm text-slate-400">No hay pruebas de laboratorio solicitadas</p>
+            </div>
+          ) : (
           tests.map(t => {
             const hasSplit = t.children && t.children.length > 0
             const CatIcon = CATEGORY_ICON[t.category] || FlaskConical
@@ -341,7 +385,67 @@ export default function PatientTests() {
               </div>
             )
           })
-        )}
+          )}
+
+          {/* ECG section */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-600 flex items-center gap-2">
+                <HeartPulse size={16} className="text-rose-500" />
+                Electrocardiogramas
+              </h3>
+              <button onClick={handleCreateEcg} className="text-xs text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1">
+                <Plus size={14} /> Solicitar ECG
+              </button>
+            </div>
+            {ecgs.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+                <HeartPulse size={36} className="mx-auto text-rose-200 mb-2" />
+                <p className="text-sm text-slate-400">No hay electrocardiogramas solicitados</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {ecgs.map(ecg => {
+                  const isCompleted = ecg.status === 'completed'
+                  return (
+                    <div key={ecg.id}
+                      onClick={() => isCompleted && handleEcgClick(ecg)}
+                      className={`bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 ${isCompleted ? 'cursor-pointer hover:ring-2 hover:ring-rose-300' : ''} transition-all`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center flex-shrink-0">
+                        <HeartPulse size={20} className="text-rose-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm">Electrocardiograma</div>
+                        <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span>{fmtDateTime(ecg.requestedAt)}</span>
+                          {ecg.requestedBy && <span>· {ecg.requestedBy}</span>}
+                          {ecg.completedBy && <span className="text-emerald-500">· {ecg.completedBy}</span>}
+                        </div>
+                      </div>
+                      {!isCompleted && (
+                        <label className="text-xs text-rose-500 font-medium px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 cursor-pointer"
+                          onClick={e => e.stopPropagation()}>
+                          Subir imagen
+                          <input type="file" accept="image/*" className="hidden"
+                            onChange={e => { if (e.target.files[0]) handleCompleteEcg(ecg.id, e.target.files[0]) }} />
+                        </label>
+                      )}
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
+                        isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {isCompleted ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                        {isCompleted ? 'Realizado' : 'Pendiente'}
+                      </span>
+                      <button onClick={(e) => { e.stopPropagation(); setEcgDeleteConfirm({ open: true, id: ecg.id }) }}
+                        className="text-slate-300 hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>)}
       </div>
 
       <ActionBar patient={patient} admissionId={admission?.id} />
@@ -515,6 +619,47 @@ export default function PatientTests() {
         saving={vvpSaving}
         onSubmit={handleVvpSubmit}
         onCancel={() => { setShowVvpModal(false); setVvpForm({}) }}
+      />
+
+      {/* ECG image viewer */}
+      {ecgViewer && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setEcgViewer(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h3 className="text-base font-bold flex items-center gap-2">
+                  <HeartPulse size={18} className="text-rose-500" />
+                  Electrocardiograma
+                </h3>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  {fmtDateTime(ecgViewer.completedAt || ecgViewer.requestedAt)}
+                  {ecgViewer.completedBy && <span className="ml-2">· {ecgViewer.completedBy}</span>}
+                </div>
+              </div>
+              <button onClick={() => setEcgViewer(null)} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-50">
+              {ecgViewer.imageData ? (
+                <img
+                  src={`data:${ecgViewer.imageType || 'image/png'};base64,${ecgViewer.imageData}`}
+                  alt="ECG"
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                />
+              ) : (
+                <p className="text-sm text-slate-400">Sin imagen disponible</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ECG delete confirm */}
+      <ConfirmModal
+        open={ecgDeleteConfirm.open}
+        title="Eliminar ECG"
+        message="¿Seguro que quieres eliminar este electrocardiograma?"
+        onConfirm={handleDeleteEcg}
+        onCancel={() => setEcgDeleteConfirm({ open: false, id: null })}
       />
     </div>
   )
