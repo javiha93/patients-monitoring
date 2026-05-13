@@ -10,6 +10,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import InsightsPanel from '../components/InsightsPanel'
 import { DeviceFormModal } from '../components/DevicesTab'
 import NewLabTestModal from '../components/NewLabTestModal'
+import { getSamplesNeeded } from '../constants/labCatalog'
 
 const labInsightTypes = [
   'lab_creatinine_nephrotoxic', 'lab_hyperkaliemia_raas', 'lab_creatinine_rising',
@@ -193,6 +194,22 @@ export default function PatientTests() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm">{t.label}</div>
+                  {(() => {
+                    const params = t.requestedParameters ? JSON.parse(t.requestedParameters) : []
+                    const samples = getSamplesNeeded(params)
+                    if (samples.length === 0) return null
+                    return (
+                      <div className="flex items-center gap-1.5 mt-1" data-testid="sample-icons">
+                        {samples.map(s => (
+                          <span key={s.key} title={s.label}
+                            className="inline-flex items-center gap-1 text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">
+                            <span>{s.icon}</span>
+                            <span className="hidden sm:inline">{s.label}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )
+                  })()}
                   <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
                     <span>{fmtDateTime(t.requestedAt)}</span>
                     {t.requestedBy && <span title={`Solicitado por: ${t.requestedBy}`}>· {t.requestedBy}</span>}

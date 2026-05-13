@@ -377,3 +377,86 @@ export function countSelected(selected) {
 export function countForType(selected, sampleType) {
   return selected.get(sampleType)?.size || 0
 }
+
+/**
+ * Physical samples/tubes needed for a set of parameter codes.
+ * Returns an array of { key, label, color, icon } objects.
+ */
+const TUBE_HEMOGRAMA = new Set([
+  'hemograma', 'reticulocitos', 'frotis_sangre', 'vsg', 'hba1c',
+])
+const TUBE_COAGULACION = new Set([
+  'tp_inr', 'ttpa', 'fibrinogeno', 'dimero_d',
+])
+const HISOPO_CODES = new Set([
+  'pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs', 'pcr_panel_respiratorio',
+  'ag_rapido_covid', 'ag_rapido_gripe', 'ag_rapido_estreptococo',
+])
+const GASOMETRIA_CODES = new Set([
+  'gasometria_arterial', 'gasometria_venosa', 'lactato',
+])
+
+// All sangre codes that go in the bioquímica tube (everything not hemograma/coag/gaso/hisopo)
+function isBioquimiaTube(code) {
+  return !TUBE_HEMOGRAMA.has(code) && !TUBE_COAGULACION.has(code) &&
+         !HISOPO_CODES.has(code) && !GASOMETRIA_CODES.has(code)
+}
+
+export const SAMPLE_ICONS = {
+  tubo_bioquimica:  { key: 'tubo_bioquimica',  label: 'Tubo bioquímica',  color: '#D4A017', icon: '🟡' },
+  tubo_hemograma:   { key: 'tubo_hemograma',   label: 'Tubo hemograma',   color: '#7C3AED', icon: '🟣' },
+  tubo_coagulacion: { key: 'tubo_coagulacion', label: 'Tubo coagulación', color: '#3B82F6', icon: '🔵' },
+  gasometria:       { key: 'gasometria',       label: 'Gasometría',       color: '#EF4444', icon: '🔴' },
+  hisopo:           { key: 'hisopo',           label: 'Hisopo / bastoncillo', color: '#F59E0B', icon: '🧹' },
+  orina:            { key: 'orina',            label: 'Muestra de orina', color: '#F59E0B', icon: '🧪' },
+  heces:            { key: 'heces',            label: 'Muestra de heces', color: '#92400E', icon: '🔬' },
+  esputo:           { key: 'esputo',           label: 'Muestra de esputo', color: '#059669', icon: '🫁' },
+  hemocultivo:      { key: 'hemocultivo',      label: 'Botellas hemocultivo', color: '#DC2626', icon: '🧫' },
+  cultivo_otro:     { key: 'cultivo_otro',     label: 'Muestra para cultivo', color: '#7C3AED', icon: '🧫' },
+}
+
+export function getSamplesNeeded(paramCodes) {
+  if (!paramCodes || paramCodes.length === 0) return []
+
+  const codes = new Set(paramCodes)
+  const result = []
+
+  // Blood tubes
+  const hasBioq = [...codes].some(c => {
+    // Only sangre-level codes (not orina_, heces_, esputo_, cultivo_, hemocultivo_, urocultivo, coprocultivo)
+    if (c.startsWith('orina_') || c.startsWith('heces_') || c.startsWith('esputo_') ||
+        c.startsWith('cultivo_') || c.startsWith('hemocultivo_') || c === 'urocultivo' ||
+        c === 'urocultivo_hongos' || c === 'coprocultivo' || c === 'cultivo_cdiff') return false
+    return isBioquimiaTube(c)
+  })
+  if (hasBioq) result.push(SAMPLE_ICONS.tubo_bioquimica)
+
+  if ([...codes].some(c => TUBE_HEMOGRAMA.has(c))) result.push(SAMPLE_ICONS.tubo_hemograma)
+  if ([...codes].some(c => TUBE_COAGULACION.has(c))) result.push(SAMPLE_ICONS.tubo_coagulacion)
+  if ([...codes].some(c => GASOMETRIA_CODES.has(c))) result.push(SAMPLE_ICONS.gasometria)
+  if ([...codes].some(c => HISOPO_CODES.has(c))) result.push(SAMPLE_ICONS.hisopo)
+
+  // Non-blood samples
+  if ([...codes].some(c => c.startsWith('orina_') || c === 'urocultivo' || c === 'urocultivo_hongos'))
+    result.push(SAMPLE_ICONS.orina)
+  if ([...codes].some(c => c.startsWith('heces_') || c === 'coprocultivo' || c === 'cultivo_cdiff'))
+    result.push(SAMPLE_ICONS.heces)
+  if ([...codes].some(c => c.startsWith('esputo_') || c === 'cultivo_esputo' ||
+      c === 'cultivo_esputo_hongos' || c === 'cultivo_esputo_micobacterias' ||
+      c === 'cultivo_broncoaspirado' || c === 'cultivo_lavado_broncoalveolar'))
+    result.push(SAMPLE_ICONS.esputo)
+
+  // Hemocultivos (bottles)
+  if ([...codes].some(c => c.startsWith('hemocultivo_')))
+    result.push(SAMPLE_ICONS.hemocultivo)
+
+  // Other cultivos (catéter, herida, líquidos estériles)
+  if ([...codes].some(c =>
+    (c.startsWith('cultivo_') && !c.startsWith('cultivo_esputo') &&
+     c !== 'cultivo_broncoaspirado' && c !== 'cultivo_lavado_broncoalveolar' &&
+     c !== 'cultivo_cdiff') ||
+    c === 'cultivo_herida' || c === 'cultivo_absceso' || c === 'cultivo_piel'
+  )) result.push(SAMPLE_ICONS.cultivo_otro)
+
+  return result
+}
