@@ -35,9 +35,8 @@ public class Ecg {
 
     private String notes;
 
-    /** Base64-encoded image data (stored as TEXT/LOB) */
+    /** Base64-encoded image data */
     @Column(name = "image_data", columnDefinition = "TEXT")
-    @Lob
     private String imageData;
 
     /** MIME type of the image, e.g. "image/png" */
