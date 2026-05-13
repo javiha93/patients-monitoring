@@ -44,7 +44,7 @@ const ICON_MAP = {
  * Renders sample/tube icons for a lab test based on its requested parameters.
  * Validated samples are shown in grey; pending ones keep their color.
  */
-export default function SampleIconsRow({ requestedParameters, validatedSamples, onlyPending }) {
+export default function SampleIconsRow({ requestedParameters, validatedSamples, onlyPending, onlyValidated }) {
   if (!requestedParameters) return null
 
   let params
@@ -64,8 +64,13 @@ export default function SampleIconsRow({ requestedParameters, validatedSamples, 
     } catch { /* ignore */ }
   }
 
-  // onlyPending: show only non-validated samples (for the "remaining" row in split cards)
-  const filtered = onlyPending ? samples.filter(s => !validatedSet.has(s.key)) : samples
+  // onlyPending: show only non-validated samples
+  // onlyValidated: show only validated samples (for child rows in split cards)
+  const filtered = onlyPending
+    ? samples.filter(s => !validatedSet.has(s.key))
+    : onlyValidated
+      ? samples.filter(s => validatedSet.has(s.key))
+      : samples
   if (filtered.length === 0) return null
 
   return (
@@ -79,7 +84,7 @@ export default function SampleIconsRow({ requestedParameters, validatedSamples, 
           <span
             key={s.key}
             title={isValidated ? `${s.label} ✓` : s.label}
-            className={`${isValidated ? 'text-slate-300' : color} cursor-default flex items-center justify-center`}
+            className={`${(isValidated && !onlyValidated) ? 'text-slate-300' : color} cursor-default flex items-center justify-center`}
           >
             <Icon size={22} />
           </span>

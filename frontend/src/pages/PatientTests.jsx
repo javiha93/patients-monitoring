@@ -304,7 +304,7 @@ export default function PatientTests() {
                       className={`px-4 py-2.5 flex items-center gap-3 border-b border-slate-50 bg-slate-50/50 ${childClickable ? 'cursor-pointer hover:bg-slate-100' : ''}`}
                     >
                       <div className="w-6 flex-shrink-0" />
-                      <SampleIconsRow requestedParameters={child.requestedParameters} validatedSamples={child.validatedSamples} />
+                      <SampleIconsRow requestedParameters={child.requestedParameters} validatedSamples={child.validatedSamples} onlyValidated />
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-slate-500 flex items-center gap-2">
                           {child.externalId && <span className="font-mono font-medium text-slate-600">ID: {child.externalId}</span>}
