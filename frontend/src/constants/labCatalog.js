@@ -315,6 +315,16 @@ export const PRESETS = [
     params: { sangre: ['pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs'] },
   },
   {
+    code: 'infeccion_respiratoria',
+    label: 'Infección respiratoria',
+    description: 'Hemograma + PCR + PCT + COVID + Gripe + VRS + Gasometría',
+    params: {
+      sangre: ['hemograma', 'pcr', 'procalcitonina', 'pcr_covid', 'pcr_gripe_a', 'pcr_gripe_b', 'pcr_vrs', 'gasometria_arterial', 'lactato', 'creatinina', 'urea', 'sodio', 'potasio'],
+      esputo: ['esputo_gram'],
+      cultivo: ['hemocultivo_x2'],
+    },
+  },
+  {
     code: 'orina_completo',
     label: 'Orina completo',
     description: 'Sistemático + Sedimento + Bioquímica + Urocultivo',

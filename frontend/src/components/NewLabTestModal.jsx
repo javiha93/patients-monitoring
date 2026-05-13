@@ -37,18 +37,26 @@ export default function NewLabTestModal({ onSubmit, onClose }) {
   }
 
   const applyPreset = (preset) => {
+    // If all params of this preset are already selected, remove them (toggle off)
+    const allApplied = Object.entries(preset.params).every(([st, codes]) => {
+      const current = selected.get(st) || new Set()
+      return codes.every(c => current.has(c))
+    })
+
     setSelected(prev => {
       const next = new Map(prev)
       for (const [sampleType, codes] of Object.entries(preset.params)) {
         const set = new Set(next.get(sampleType))
-        codes.forEach(c => set.add(c))
+        codes.forEach(c => allApplied ? set.delete(c) : set.add(c))
         next.set(sampleType, set)
       }
       return next
     })
-    // Switch to the first tab that has params in this preset
-    const firstType = Object.keys(preset.params)[0]
-    if (firstType) setActiveTab(firstType)
+
+    if (!allApplied) {
+      const firstType = Object.keys(preset.params)[0]
+      if (firstType) setActiveTab(firstType)
+    }
   }
 
   const clearAll = () => setSelected(initSelected())
@@ -122,12 +130,15 @@ export default function NewLabTestModal({ onSubmit, onClose }) {
             </div>
           </div>
 
-          {/* Presets */}
+          {/* Presets — filtered by active tab */}
+          {(() => {
+            const visiblePresets = PRESETS.filter(p => activeTab in p.params)
+            if (visiblePresets.length === 0) return null
+            return (
           <div className="px-5 py-2 flex-shrink-0">
             <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Perfiles predefinidos</label>
             <div className="flex flex-wrap gap-2 mt-1.5">
-              {PRESETS.map(p => {
-                // Check if all params of this preset are already selected
+              {visiblePresets.map(p => {
                 const allApplied = Object.entries(p.params).every(([st, codes]) => {
                   const current = selected.get(st) || new Set()
                   return codes.every(c => current.has(c))
@@ -150,6 +161,8 @@ export default function NewLabTestModal({ onSubmit, onClose }) {
               })}
             </div>
           </div>
+            )
+          })()}
 
           {/* Parameters */}
           <div className="flex-1 overflow-auto px-5 py-3">

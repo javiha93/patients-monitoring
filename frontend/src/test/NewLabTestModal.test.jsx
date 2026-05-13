@@ -104,6 +104,45 @@ describe('NewLabTestModal', () => {
     expect(screen.getByText('Cultivo punta de catéter')).toBeInTheDocument()
   })
 
+  it('clicar preset aplicado lo deselecciona', () => {
+    renderModal()
+    fireEvent.click(screen.getByText('Básico'))
+    expect(screen.getByText('Solicitar (8)')).toBeInTheDocument()
+    // Click again to toggle off
+    fireEvent.click(screen.getByText('Básico'))
+    expect(screen.getByText('Solicitar (0)')).toBeInTheDocument()
+  })
+
+  it('solo muestra presets relevantes para la pestaña activa', () => {
+    renderModal()
+    // In sangre tab, "Básico" should be visible
+    expect(screen.getByText('Básico')).toBeInTheDocument()
+    // Switch to heces — "Básico" should not be visible
+    fireEvent.click(screen.getByText('Heces'))
+    expect(screen.queryByText('Básico')).not.toBeInTheDocument()
+  })
+
+  it('muestra preset infección respiratoria en sangre, esputo y cultivos', () => {
+    renderModal()
+    expect(screen.getByText('Infección respiratoria')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Esputo'))
+    expect(screen.getByText('Infección respiratoria')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Cultivos'))
+    expect(screen.getByText('Infección respiratoria')).toBeInTheDocument()
+    // But not in heces
+    fireEvent.click(screen.getByText('Heces'))
+    expect(screen.queryByText('Infección respiratoria')).not.toBeInTheDocument()
+  })
+
+  it('preset multi-muestra ITU visible en sangre, orina y cultivos', () => {
+    renderModal()
+    expect(screen.getByText('Sospecha ITU')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Orina'))
+    expect(screen.getByText('Sospecha ITU')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Cultivos'))
+    expect(screen.getByText('Sospecha ITU')).toBeInTheDocument()
+  })
+
   it('limpiar todo resetea todas las selecciones', () => {
     renderModal()
     fireEvent.click(screen.getByText('Básico'))

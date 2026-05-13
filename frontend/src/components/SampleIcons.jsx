@@ -43,7 +43,7 @@ export default function SampleIconsRow({ requestedParameters }) {
   if (samples.length === 0) return null
 
   return (
-    <div className="flex items-center gap-1" data-testid="sample-icons">
+    <div className={`grid gap-1 ${samples.length > 3 ? 'grid-cols-3' : `grid-cols-${samples.length}`}`} data-testid="sample-icons">
       {samples.map(s => {
         const mapping = ICON_MAP[s.key]
         if (!mapping) return null
@@ -52,9 +52,9 @@ export default function SampleIconsRow({ requestedParameters }) {
           <span
             key={s.key}
             title={s.label}
-            className={`${color} cursor-default`}
+            className={`${color} cursor-default flex items-center justify-center`}
           >
-            <Icon size={16} />
+            <Icon size={22} />
           </span>
         )
       })}
