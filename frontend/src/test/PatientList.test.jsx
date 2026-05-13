@@ -29,6 +29,10 @@ vi.mock('../services/patientApi', () => ({
     create: vi.fn((data) => Promise.resolve({ data: { id: 4, ...data } })),
     updateLocation: vi.fn(() => Promise.resolve({ data: {} })),
     updateSpecialty: vi.fn(() => Promise.resolve({ data: {} })),
+    assignNurse: vi.fn(() => Promise.resolve({ data: {} })),
+    assignDoctor: vi.fn(() => Promise.resolve({ data: {} })),
+    unassignNurse: vi.fn(() => Promise.resolve({ data: {} })),
+    unassignDoctor: vi.fn(() => Promise.resolve({ data: {} })),
   },
 }))
 
@@ -761,5 +765,164 @@ describe('Grey icons for completed labs/ECGs', () => {
     expect(screen.getByTestId('pending-ecg-icon')).toBeInTheDocument()
     expect(screen.queryByTestId('completed-lab-icon')).not.toBeInTheDocument()
     expect(screen.queryByTestId('completed-ecg-icon')).not.toBeInTheDocument()
+  })
+})
+
+describe('Columna Asignado', () => {
+  beforeEach(() => { sessionStorage.clear() })
+
+  it('muestra cabecera Asignado en la tabla', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByText('Asignado')).toBeInTheDocument()
+  })
+
+  it('muestra iniciales del enfermero asignado', async () => {
+    const patients = [{ ...mockPatients[0], assignedNurse: 'Javier Herrada' }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByText('JH')).toBeInTheDocument()
+    expect(screen.getByTitle('Enf: Javier Herrada')).toBeInTheDocument()
+  })
+
+  it('muestra iniciales del médico asignado', async () => {
+    const patients = [{ ...mockPatients[0], assignedDoctor: 'María López' }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByText('ML')).toBeInTheDocument()
+    expect(screen.getByTitle('Med: María López')).toBeInTheDocument()
+  })
+
+  it('muestra ambos enfermero y médico', async () => {
+    const patients = [{ ...mockPatients[0], assignedNurse: 'Javier Herrada', assignedDoctor: 'Ana Ruiz' }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByText('JH')).toBeInTheDocument()
+    expect(screen.getByText('AR')).toBeInTheDocument()
+  })
+
+  it('muestra botón "+ Yo" para enfermero sin asignar', async () => {
+    const patients = [{ ...mockPatients[0], assignedNurse: null }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByText('+ Yo')).toBeInTheDocument()
+  })
+
+  it('clic en "+ Yo" asigna al enfermero actual', async () => {
+    const patients = [{ ...mockPatients[0], assignedNurse: null }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('+ Yo'))
+    await waitFor(() => {
+      expect(patientApi.assignNurse).toHaveBeenCalledWith(10, 'Javier Herrada')
+    })
+  })
+
+  it('muestra indicador visual de enfermero anterior (desasignado)', async () => {
+    const patients = [{ ...mockPatients[0], assignedNurse: null, previousNurse: 'Pedro Gómez' }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByTitle('Enf. anterior: Pedro Gómez')).toBeInTheDocument()
+  })
+
+  it('muestra indicador visual de médico anterior (desasignado)', async () => {
+    const patients = [{ ...mockPatients[0], assignedDoctor: null, previousDoctor: 'Laura Sánchez' }]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByTitle('Med. anterior: Laura Sánchez')).toBeInTheDocument()
+  })
+})
+
+describe('Filtros de asignación', () => {
+  beforeEach(() => { sessionStorage.clear() })
+
+  function getFilterButton(label) {
+    return screen.getAllByRole('button').find(
+      b => b.textContent === label && b.className.includes('rounded-full') && !b.className.includes('w-8')
+    )
+  }
+
+  it('muestra secciones de filtro Enfermero/a y Médico', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    expect(screen.getByText('Enfermero/a')).toBeInTheDocument()
+    expect(screen.getByText('Médico')).toBeInTheDocument()
+  })
+
+  it('filtro "Sin enfermero" muestra solo pacientes sin enfermero', async () => {
+    const patients = [
+      { ...mockPatients[0], assignedNurse: 'Javier Herrada' },
+      { ...mockPatients[1], assignedNurse: null },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    fireEvent.click(getFilterButton('Sin enfermero'))
+    await waitFor(() => {
+      expect(screen.getByText('López, Carlos')).toBeInTheDocument()
+      expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
+    })
+  })
+
+  it('filtro "Sin médico" muestra solo pacientes sin médico', async () => {
+    const patients = [
+      { ...mockPatients[0], assignedDoctor: 'Ana Ruiz' },
+      { ...mockPatients[1], assignedDoctor: null },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    fireEvent.click(getFilterButton('Sin médico'))
+    await waitFor(() => {
+      expect(screen.getByText('López, Carlos')).toBeInTheDocument()
+      expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
+    })
+  })
+
+  it('filtro por nombre de enfermero filtra correctamente', async () => {
+    const patients = [
+      { ...mockPatients[0], assignedNurse: 'Javier Herrada' },
+      { ...mockPatients[1], assignedNurse: 'Pedro Gómez' },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    // The "Yo (JH)" button should appear since user is Enfermería
+    const yoBtn = getFilterButton('Yo (JH)')
+    expect(yoBtn).toBeTruthy()
+    fireEvent.click(yoBtn)
+    await waitFor(() => {
+      expect(screen.getByText('García, Ana')).toBeInTheDocument()
+      expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument()
+    })
+  })
+
+  it('limpiar filtros limpia enfermero y médico', async () => {
+    const patients = [
+      { ...mockPatients[0], assignedNurse: 'Javier Herrada' },
+      { ...mockPatients[1], assignedNurse: null },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patients })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    fireEvent.click(screen.getByText('Filtros'))
+    fireEvent.click(getFilterButton('Sin enfermero'))
+    await waitFor(() => expect(screen.queryByText('García, Ana')).not.toBeInTheDocument())
+    fireEvent.click(screen.getByText('Limpiar filtros'))
+    await waitFor(() => {
+      expect(screen.getByText('García, Ana')).toBeInTheDocument()
+      expect(screen.getByText('López, Carlos')).toBeInTheDocument()
+    })
   })
 })

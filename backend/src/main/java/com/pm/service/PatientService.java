@@ -83,6 +83,10 @@ public class PatientService {
                     .location(a.getLocation())
                     .specialty(a.getSpecialty())
                     .observations(a.getObservations())
+                    .assignedNurse(a.getAssignedNurse())
+                    .assignedDoctor(a.getAssignedDoctor())
+                    .previousNurse(a.getPreviousNurse())
+                    .previousDoctor(a.getPreviousDoctor())
                     .status(a.getStatus().name())
                     .build();
 
@@ -149,6 +153,10 @@ public class PatientService {
                             .location(a.getLocation())
                             .specialty(a.getSpecialty())
                     .observations(a.getObservations())
+                            .assignedNurse(a.getAssignedNurse())
+                            .assignedDoctor(a.getAssignedDoctor())
+                            .previousNurse(a.getPreviousNurse())
+                            .previousDoctor(a.getPreviousDoctor())
                             .status(a.getStatus().name())
                             .build();
                 })
@@ -209,6 +217,44 @@ public class PatientService {
         Admission admission = admissionRepository.findById(admissionId)
                 .orElseThrow(() -> new RuntimeException("Admission not found"));
         admission.setObservations(observations);
+        admissionRepository.save(admission);
+    }
+
+    @Transactional
+    public void assignNurse(Long admissionId, String name) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        admission.setAssignedNurse(name);
+        admissionRepository.save(admission);
+    }
+
+    @Transactional
+    public void assignDoctor(Long admissionId, String name) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        admission.setAssignedDoctor(name);
+        admissionRepository.save(admission);
+    }
+
+    @Transactional
+    public void unassignNurse(Long admissionId) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        if (admission.getAssignedNurse() != null) {
+            admission.setPreviousNurse(admission.getAssignedNurse());
+            admission.setAssignedNurse(null);
+        }
+        admissionRepository.save(admission);
+    }
+
+    @Transactional
+    public void unassignDoctor(Long admissionId) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        if (admission.getAssignedDoctor() != null) {
+            admission.setPreviousDoctor(admission.getAssignedDoctor());
+            admission.setAssignedDoctor(null);
+        }
         admissionRepository.save(admission);
     }
 

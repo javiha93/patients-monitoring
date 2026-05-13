@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { useAuth } from '../context/AuthContext'
 import { getSamplesNeeded, SAMPLE_ICONS } from '../constants/labCatalog'
@@ -115,6 +115,106 @@ function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28',
   )
 }
 
+/* ── Assignment cell component ── */
+function AssignmentCell({ patient, user, onUpdate, toast }) {
+  const p = patient
+  const isNurse = user?.role === 'Enfermería'
+  const isDoctor = user?.role === 'Médico'
+  const canAssign = isNurse || isDoctor
+
+  const handleAssign = async () => {
+    if (!canAssign) return
+    const name = user.displayName
+    try {
+      if (isNurse) {
+        if (p.assignedNurse && p.assignedNurse !== name) {
+          if (!window.confirm(`Este paciente ya tiene asignado/a a ${p.assignedNurse}. ¿Quieres reemplazarlo/a?`)) return
+        }
+        await patientApi.assignNurse(p.admissionId, name)
+        onUpdate({ assignedNurse: name })
+      } else {
+        if (p.assignedDoctor && p.assignedDoctor !== name) {
+          if (!window.confirm(`Este paciente ya tiene asignado/a a ${p.assignedDoctor}. ¿Quieres reemplazarlo/a?`)) return
+        }
+        await patientApi.assignDoctor(p.admissionId, name)
+        onUpdate({ assignedDoctor: name })
+      }
+    } catch { toast.error('Error al asignar') }
+  }
+
+  const handleUnassign = async (role) => {
+    try {
+      if (role === 'nurse') {
+        await patientApi.unassignNurse(p.admissionId)
+        onUpdate({ assignedNurse: null, previousNurse: p.assignedNurse })
+      } else {
+        await patientApi.unassignDoctor(p.admissionId)
+        onUpdate({ assignedDoctor: null, previousDoctor: p.assignedDoctor })
+      }
+    } catch { toast.error('Error al desasignar') }
+  }
+
+  const nurseInitials = getInitials(p.assignedNurse)
+  const doctorInitials = getInitials(p.assignedDoctor)
+  const hasPrevNurse = !p.assignedNurse && p.previousNurse
+  const hasPrevDoctor = !p.assignedDoctor && p.previousDoctor
+
+  const hasAny = p.assignedNurse || p.assignedDoctor || hasPrevNurse || hasPrevDoctor
+
+  if (!hasAny && !canAssign) return <span className="text-slate-300">—</span>
+
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      {/* Nurse row */}
+      {p.assignedNurse ? (
+        <div className="flex items-center gap-1">
+          <span
+            title={`Enf: ${p.assignedNurse}`}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-100 text-teal-700 text-xs font-bold cursor-default"
+          >{nurseInitials}</span>
+          {isNurse && p.assignedNurse === user.displayName && (
+            <button onClick={() => handleUnassign('nurse')} title="Desasignar" className="text-slate-300 hover:text-red-400 transition-colors">
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      ) : hasPrevNurse ? (
+        <span
+          title={`Enf. anterior: ${p.previousNurse}`}
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-teal-300 text-teal-300 text-xs font-bold cursor-default"
+        >{getInitials(p.previousNurse)}</span>
+      ) : null}
+      {/* Doctor row */}
+      {p.assignedDoctor ? (
+        <div className="flex items-center gap-1">
+          <span
+            title={`Med: ${p.assignedDoctor}`}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold cursor-default"
+          >{doctorInitials}</span>
+          {isDoctor && p.assignedDoctor === user.displayName && (
+            <button onClick={() => handleUnassign('doctor')} title="Desasignar" className="text-slate-300 hover:text-red-400 transition-colors">
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      ) : hasPrevDoctor ? (
+        <span
+          title={`Med. anterior: ${p.previousDoctor}`}
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-blue-300 text-blue-300 text-xs font-bold cursor-default"
+        >{getInitials(p.previousDoctor)}</span>
+      ) : null}
+      {/* Assign button — only if user's role slot is empty */}
+      {canAssign && ((isNurse && !p.assignedNurse) || (isDoctor && !p.assignedDoctor)) && (
+        <button
+          onClick={handleAssign}
+          title="Asignarme"
+          className="text-xs text-slate-400 hover:text-blue-500 transition-colors mt-0.5"
+        >+ Yo</button>
+      )}
+    </div>
+  )
+}
+
 const SPECIALTY_INITIALS = {
   'Medicina': 'Med',
   'Traumatología': 'Trau',
@@ -182,6 +282,12 @@ function buildRecentEcgTooltip(recentEcgs) {
   }).join('\n')
 }
 
+/** Get initials from a full name, e.g. "Javier Herrada" → "JH" */
+function getInitials(name) {
+  if (!name) return ''
+  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
+
 const STORAGE_KEY = 'patientListFilters'
 
 function loadFilters() {
@@ -212,20 +318,24 @@ export default function PatientList() {
   const [filterSpecialties, setFilterSpecialties] = useState(saved.current?.filterSpecialties ?? [])
   const [filterLevels, setFilterLevels] = useState(saved.current?.filterLevels ?? [])
   const [filterZones, setFilterZones] = useState(saved.current?.filterZones ?? [])
+  const [filterNurse, setFilterNurse] = useState(saved.current?.filterNurse ?? null)
+  const [filterDoctor, setFilterDoctor] = useState(saved.current?.filterDoctor ?? null)
   const [filterDate, setFilterDate] = useState(saved.current?.filterDate ?? null)
   const navigate = useNavigate()
 
   // Persist filter state to sessionStorage
   useEffect(() => {
-    saveFilters({ search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterZones, filterDate })
-  }, [search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterZones, filterDate])
+    saveFilters({ search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterZones, filterNurse, filterDoctor, filterDate })
+  }, [search, sortKey, sortDir, filtersOpen, filterSpecialties, filterLevels, filterZones, filterNurse, filterDoctor, filterDate])
 
-  const activeFilterCount = filterSpecialties.length + filterLevels.length + filterZones.length + (filterDate ? 1 : 0)
+  const activeFilterCount = filterSpecialties.length + filterLevels.length + filterZones.length + (filterNurse ? 1 : 0) + (filterDoctor ? 1 : 0) + (filterDate ? 1 : 0)
 
   const clearFilters = () => {
     setFilterSpecialties([])
     setFilterLevels([])
     setFilterZones([])
+    setFilterNurse(null)
+    setFilterDoctor(null)
     setFilterDate(null)
   }
 
@@ -245,6 +355,10 @@ export default function PatientList() {
   }
 
   useEffect(() => { fetchPatients() }, [])
+
+  // Unique assigned names for filter dropdowns
+  const uniqueNurses = [...new Set(patients.map(p => p.assignedNurse).filter(Boolean))].sort()
+  const uniqueDoctors = [...new Set(patients.map(p => p.assignedDoctor).filter(Boolean))].sort()
 
   const filtered = patients.filter(p => {
     // Text search
@@ -269,6 +383,16 @@ export default function PatientList() {
     if (filterZones.length > 0) {
       const zone = p.location ? p.location.charAt(0).toUpperCase() : ''
       if (!filterZones.includes(zone)) return false
+    }
+    // Nurse filter: '__none__' = sin enfermero, name = specific nurse
+    if (filterNurse) {
+      if (filterNurse === '__none__' && p.assignedNurse) return false
+      if (filterNurse !== '__none__' && p.assignedNurse !== filterNurse) return false
+    }
+    // Doctor filter
+    if (filterDoctor) {
+      if (filterDoctor === '__none__' && p.assignedDoctor) return false
+      if (filterDoctor !== '__none__' && p.assignedDoctor !== filterDoctor) return false
     }
     // Date filter
     if (filterDate && !matchesDateFilter(p.admissionDate, filterDate)) return false
@@ -436,6 +560,58 @@ export default function PatientList() {
                 })}
               </div>
             </div>
+            {/* Nurse filter */}
+            <div>
+              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Enfermero/a</div>
+              <div className="flex flex-wrap gap-1.5">
+                {user?.role === 'Enfermería' && (
+                  <button
+                    onClick={() => setFilterNurse(prev => prev === user.displayName ? null : user.displayName)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                      ${filterNurse === user.displayName ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-teal-600 border-teal-200 hover:border-teal-400'}`}
+                  >Yo ({getInitials(user.displayName)})</button>
+                )}
+                {uniqueNurses.filter(n => n !== user?.displayName || user?.role !== 'Enfermería').map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setFilterNurse(prev => prev === n ? null : n)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                      ${filterNurse === n ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                  >{n}</button>
+                ))}
+                <button
+                  onClick={() => setFilterNurse(prev => prev === '__none__' ? null : '__none__')}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                    ${filterNurse === '__none__' ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
+                >Sin enfermero</button>
+              </div>
+            </div>
+            {/* Doctor filter */}
+            <div>
+              <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Médico</div>
+              <div className="flex flex-wrap gap-1.5">
+                {user?.role === 'Médico' && (
+                  <button
+                    onClick={() => setFilterDoctor(prev => prev === user.displayName ? null : user.displayName)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                      ${filterDoctor === user.displayName ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-blue-600 border-blue-200 hover:border-blue-400'}`}
+                  >Yo ({getInitials(user.displayName)})</button>
+                )}
+                {uniqueDoctors.filter(n => n !== user?.displayName || user?.role !== 'Médico').map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setFilterDoctor(prev => prev === n ? null : n)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                      ${filterDoctor === n ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                  >{n}</button>
+                ))}
+                <button
+                  onClick={() => setFilterDoctor(prev => prev === '__none__' ? null : '__none__')}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+                    ${filterDoctor === '__none__' ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
+                >Sin médico</button>
+              </div>
+            </div>
             {/* Date filter */}
             <div>
               <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Ingreso</div>
@@ -480,6 +656,7 @@ export default function PatientList() {
                   <th className="px-4 py-3">Paciente</th>
                   <th className="px-3 py-3">Motivo</th>
                   <th className="px-3 py-3">Observaciones</th>
+                  <th className="px-2 py-3 w-20 text-center">Asignado</th>
                   <th className="px-2 py-3 w-8 text-right"></th>
                   <th className="px-4 py-3 text-right cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ingreso')}>Ingreso{sortIndicator('ingreso')}</th>
                 </tr>
@@ -551,6 +728,16 @@ export default function PatientList() {
                           }}
                           onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
                           className="w-full bg-transparent text-sm text-slate-600 border-0 border-b border-transparent hover:border-slate-300 focus:border-violet-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
+                        />
+                      </td>
+                      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                        <AssignmentCell
+                          patient={p}
+                          user={user}
+                          onUpdate={(updates) => setPatients(prev => prev.map(pt =>
+                            pt.admissionId === p.admissionId ? { ...pt, ...updates } : pt
+                          ))}
+                          toast={toast}
                         />
                       </td>
                       <td className="px-2 py-3">

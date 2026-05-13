@@ -64,6 +64,26 @@ public class PatientController {
         patientService.updateAdmissionObservations(admissionId, body.get("observations"));
     }
 
+    @PatchMapping("/admission/{admissionId}/assign-nurse")
+    public void assignNurse(@PathVariable Long admissionId, @RequestBody Map<String, String> body) {
+        patientService.assignNurse(admissionId, body.get("name"));
+    }
+
+    @PatchMapping("/admission/{admissionId}/assign-doctor")
+    public void assignDoctor(@PathVariable Long admissionId, @RequestBody Map<String, String> body) {
+        patientService.assignDoctor(admissionId, body.get("name"));
+    }
+
+    @PatchMapping("/admission/{admissionId}/unassign-nurse")
+    public void unassignNurse(@PathVariable Long admissionId) {
+        patientService.unassignNurse(admissionId);
+    }
+
+    @PatchMapping("/admission/{admissionId}/unassign-doctor")
+    public void unassignDoctor(@PathVariable Long admissionId) {
+        patientService.unassignDoctor(admissionId);
+    }
+
     @GetMapping("/search-nhc")
     public ResponseEntity<?> searchByNhc(@RequestParam String nhc) {
         return patientService.searchByNhc(nhc);

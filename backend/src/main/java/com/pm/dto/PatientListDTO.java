@@ -26,6 +26,10 @@ public class PatientListDTO {
     private String location;
     private String specialty;
     private String observations;
+    private String assignedNurse;
+    private String assignedDoctor;
+    private String previousNurse;
+    private String previousDoctor;
     private String status;
 
     /** Pending lab validation info — null if no pending tests */

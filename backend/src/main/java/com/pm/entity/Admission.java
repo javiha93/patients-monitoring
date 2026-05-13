@@ -38,6 +38,18 @@ public class Admission {
     @Column(length = 500)
     private String observations;
 
+    @Column(name = "assigned_nurse")
+    private String assignedNurse;
+
+    @Column(name = "assigned_doctor")
+    private String assignedDoctor;
+
+    @Column(name = "previous_nurse")
+    private String previousNurse;
+
+    @Column(name = "previous_doctor")
+    private String previousDoctor;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;
