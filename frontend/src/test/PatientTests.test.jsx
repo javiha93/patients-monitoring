@@ -71,6 +71,14 @@ vi.mock('../services/radiologyApi', () => ({
   },
 }))
 
+vi.mock('../services/notificationApi', () => ({
+  notificationApi: {
+    getUnseenLab: vi.fn(() => Promise.resolve({ data: [] })),
+    markAllSeen: vi.fn(() => Promise.resolve()),
+    markSeenForAdmission: vi.fn(() => Promise.resolve()),
+  },
+}))
+
 import { labTestApi as mockLabTestApi } from '../services/labTestApi'
 import { deviceApi as mockDeviceApi } from '../services/deviceApi'
 

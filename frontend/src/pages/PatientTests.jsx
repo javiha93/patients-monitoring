@@ -7,6 +7,7 @@ import { labTestApi } from '../services/labTestApi'
 import { deviceApi } from '../services/deviceApi'
 import { ecgApi } from '../services/ecgApi'
 import { radiologyApi } from '../services/radiologyApi'
+import { notificationApi } from '../services/notificationApi'
 import NewRadiologyModal from '../components/NewRadiologyModal'
 import { TYPE_LABELS, getRegionLabel } from '../constants/radiologyCatalog'
 
@@ -110,6 +111,7 @@ export default function PatientTests() {
   const [showHistoricalLabs, setShowHistoricalLabs] = useState(false)
   const [showHistoricalEcgs, setShowHistoricalEcgs] = useState(false)
   const [showHistoricalRadiology, setShowHistoricalRadiology] = useState(false)
+  const [labNotifTests, setLabNotifTests] = useState(new Set()) // labTestIds with unseen updates
   const [loadingHistorical, setLoadingHistorical] = useState(false)
 
   const fetchData = async () => {
@@ -130,7 +132,15 @@ export default function PatientTests() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchData() }, [id])
+  useEffect(() => {
+    fetchData()
+    // Fetch unseen lab notifications for this admission
+    if (user?.username) {
+      notificationApi.getUnseenLab(user.username).then(({ data }) => {
+        setLabNotifTests(new Set(data.map(n => n.labTestId)))
+      }).catch(() => {})
+    }
+  }, [id])
 
   if (loading) return <p className="p-6 text-slate-400">Cargando...</p>
   if (!patient) return null
@@ -353,13 +363,15 @@ export default function PatientTests() {
               const cfg = STATUS_CONFIG[t.status] || STATUS_CONFIG.pending_validation
               const StatusIcon = cfg.icon
               const clickable = t.status === 'pending_validation' || t.status === 'partial_results' || t.status === 'results'
+              const hasNotif = labNotifTests.has(t.id)
               return (
                 <div key={t.id}
                   onClick={() => clickable && handleTestClick(t)}
                   className={`bg-white rounded-xl shadow-sm p-4 flex items-center gap-4 ${clickable ? 'cursor-pointer hover:ring-2 hover:ring-violet-300' : ''} transition-all`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center flex-shrink-0">
+                  <div className="relative w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center flex-shrink-0">
                     <CatIcon size={20} className="text-violet-500" />
+                    {hasNotif && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white" data-testid="lab-test-notif-badge" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm">{t.label}</div>
@@ -410,12 +422,15 @@ export default function PatientTests() {
                   const childCfg = STATUS_CONFIG[child.status] || STATUS_CONFIG.pending_receipt
                   const ChildStatusIcon = childCfg.icon
                   const childClickable = child.status === 'partial_results' || child.status === 'results'
+                  const childHasNotif = labNotifTests.has(child.id)
                   return (
                     <div key={child.id}
                       onClick={() => childClickable && (async () => { const { data } = await labTestApi.getById(child.id); setViewResults(data) })()}
                       className={`px-4 py-2.5 flex items-center gap-3 border-b border-slate-50 bg-slate-50/50 ${childClickable ? 'cursor-pointer hover:bg-slate-100' : ''}`}
                     >
-                      <div className="w-6 flex-shrink-0" />
+                      <div className="relative w-6 flex-shrink-0">
+                        {childHasNotif && <span className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" data-testid="lab-test-notif-badge" />}
+                      </div>
                       <SampleIconsRow requestedParameters={child.requestedParameters} validatedSamples={child.validatedSamples} onlyValidated />
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-slate-500 flex items-center gap-2">

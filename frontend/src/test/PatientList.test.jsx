@@ -54,6 +54,14 @@ vi.mock('../services/radiologyApi', () => ({
   radiologyApi: { create: vi.fn(() => Promise.resolve({ data: {} })) },
 }))
 
+vi.mock('../services/notificationApi', () => ({
+  notificationApi: {
+    getUnseenLab: vi.fn(() => Promise.resolve({ data: [] })),
+    markAllSeen: vi.fn(() => Promise.resolve()),
+    markSeenForAdmission: vi.fn(() => Promise.resolve()),
+  },
+}))
+
 function renderList() {
   return render(
     <MemoryRouter>

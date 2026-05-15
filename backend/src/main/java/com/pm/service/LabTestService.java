@@ -2,12 +2,8 @@ package com.pm.service;
 
 import com.pm.dto.LabResultDTO;
 import com.pm.dto.LabTestDTO;
-import com.pm.entity.Admission;
-import com.pm.entity.LabResult;
-import com.pm.entity.LabTest;
-import com.pm.repository.AdmissionRepository;
-import com.pm.repository.LabResultRepository;
-import com.pm.repository.LabTestRepository;
+import com.pm.entity.*;
+import com.pm.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +19,23 @@ public class LabTestService {
     private final LabTestRepository labTestRepo;
     private final LabResultRepository labResultRepo;
     private final AdmissionRepository admissionRepo;
+    private final LabNotificationRepository notificationRepo;
+    private final AppUserRepository appUserRepo;
+
+    private void createNotifications(Long labTestId, Long admissionId, String changeType) {
+        List<AppUser> users = appUserRepo.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (AppUser u : users) {
+            notificationRepo.save(LabNotification.builder()
+                    .labTestId(labTestId)
+                    .admissionId(admissionId)
+                    .username(u.getUsername())
+                    .changeType(changeType)
+                    .createdAt(now)
+                    .seen(false)
+                    .build());
+        }
+    }
 
     public List<LabTestDTO> getByAdmission(Long admissionId) {
         return labTestRepo.findByAdmissionIdAndParentIsNullOrderByRequestedAtDesc(admissionId)
@@ -159,6 +172,7 @@ public class LabTestService {
     public LabTestDTO updateStatus(Long id, String newStatus) {
         LabTest t = labTestRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lab test not found"));
+        String oldStatus = t.getStatus();
         t.setStatus(newStatus);
         if ("pending_receipt".equals(newStatus) && t.getReceivedAt() == null) {
             // no-op
@@ -166,7 +180,17 @@ public class LabTestService {
         if ("in_progress".equals(newStatus) && t.getReceivedAt() == null) {
             t.setReceivedAt(LocalDateTime.now());
         }
-        return LabTestDTO.fromEntity(labTestRepo.save(t));
+        LabTest saved = labTestRepo.save(t);
+
+        // Notify on meaningful status transitions
+        Long admissionId = t.getAdmission().getId();
+        if ("partial_results".equals(newStatus) && !"partial_results".equals(oldStatus)) {
+            createNotifications(saved.getId(), admissionId, "partial_results");
+        } else if ("completed".equals(newStatus) && !"completed".equals(oldStatus)) {
+            createNotifications(saved.getId(), admissionId, "completed");
+        }
+
+        return LabTestDTO.fromEntity(saved);
     }
 
     @Transactional
@@ -188,12 +212,20 @@ public class LabTestService {
         }
 
         // Auto-update status based on whether all expected results are in
-        if ("pending_receipt".equals(t.getStatus()) || "in_progress".equals(t.getStatus())) {
+        String oldStatus = t.getStatus();
+        if ("pending_receipt".equals(oldStatus) || "in_progress".equals(oldStatus)) {
             t.setStatus("partial_results");
             if (t.getReceivedAt() == null) t.setReceivedAt(LocalDateTime.now());
         }
 
-        return LabTestDTO.fromEntity(labTestRepo.save(t));
+        LabTest saved = labTestRepo.save(t);
+
+        // Notify if status changed to partial_results
+        if ("partial_results".equals(saved.getStatus()) && !"partial_results".equals(oldStatus)) {
+            createNotifications(saved.getId(), saved.getAdmission().getId(), "partial_results");
+        }
+
+        return LabTestDTO.fromEntity(saved);
     }
 
     @Transactional

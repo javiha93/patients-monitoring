@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import { getSamplesNeeded, SAMPLE_ICONS, PRESETS } from '../constants/labCatalog'
 import TriageBadge from '../components/TriageBadge'
 import TriageModal from '../components/TriageModal'
+import { notificationApi } from '../services/notificationApi'
 import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
 
@@ -353,6 +354,8 @@ export default function PatientList() {
   const [allDoctors, setAllDoctors] = useState([])
   const [autoRefresh, setAutoRefresh] = useState(false)
   const refreshInterval = useRef(null)
+  const [labNotifications, setLabNotifications] = useState(new Set()) // admissionIds with unseen lab updates
+  const [labNotifByTest, setLabNotifByTest] = useState(new Set()) // labTestIds with unseen updates
 
   const fetchPatients = async () => {
     try {
@@ -365,10 +368,27 @@ export default function PatientList() {
     }
   }
 
+  const fetchNotifications = async () => {
+    if (!user?.username) return
+    try {
+      const { data } = await notificationApi.getUnseenLab(user.username)
+      setLabNotifications(new Set(data.map(n => n.admissionId)))
+      setLabNotifByTest(new Set(data.map(n => n.labTestId)))
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => {
     fetchPatients()
+    fetchNotifications()
     getUsersByRole('Enfermería').then(setAllNurses).catch(() => {})
     getUsersByRole('Medicina').then(setAllDoctors).catch(() => {})
+
+    // Mark notifications as seen when leaving the patient list
+    return () => {
+      if (user?.username) {
+        notificationApi.markAllSeen(user.username).catch(() => {})
+      }
+    }
   }, [])
 
   // Auto-refresh every 30s when toggled on
@@ -849,12 +869,23 @@ export default function PatientList() {
                       <td className="px-2 py-3">
                         <div className="flex items-center justify-end gap-1">
                           {p.pendingLabs && p.pendingLabs.length > 0 ? (
-                            <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
+                            <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon" className="relative">
                               <Syringe size={16} className="text-orange-500" />
+                              {labNotifications.has(p.admissionId) && (
+                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" data-testid="lab-notif-badge" />
+                              )}
                             </span>
-                          ) : p.hasCompletedLabs && (
-                            <span title="Analíticas realizadas" data-testid="completed-lab-icon">
+                          ) : p.hasCompletedLabs ? (
+                            <span title="Analíticas realizadas" data-testid="completed-lab-icon" className="relative">
                               <Syringe size={16} className="text-slate-300" />
+                              {labNotifications.has(p.admissionId) && (
+                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" data-testid="lab-notif-badge" />
+                              )}
+                            </span>
+                          ) : labNotifications.has(p.admissionId) && (
+                            <span className="relative" data-testid="completed-lab-icon">
+                              <Syringe size={16} className="text-slate-300" />
+                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" data-testid="lab-notif-badge" />
                             </span>
                           )}
                           {p.hasPendingEcg ? (
@@ -923,12 +954,23 @@ export default function PatientList() {
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {p.pendingLabs && p.pendingLabs.length > 0 ? (
-                        <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon">
+                        <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon" className="relative">
                           <Syringe size={18} className="text-orange-500" />
+                          {labNotifications.has(p.admissionId) && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
+                          )}
                         </span>
-                      ) : p.hasCompletedLabs && (
-                        <span title="Analíticas realizadas" data-testid="completed-lab-icon">
+                      ) : p.hasCompletedLabs ? (
+                        <span title="Analíticas realizadas" data-testid="completed-lab-icon" className="relative">
                           <Syringe size={18} className="text-slate-300" />
+                          {labNotifications.has(p.admissionId) && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
+                          )}
+                        </span>
+                      ) : labNotifications.has(p.admissionId) && (
+                        <span className="relative" data-testid="completed-lab-icon">
+                          <Syringe size={18} className="text-slate-300" />
+                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
                         </span>
                       )}
                       {p.hasPendingEcg ? (
