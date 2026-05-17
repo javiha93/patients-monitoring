@@ -26,7 +26,20 @@ const insulinMed = {
   conditionText: null, prescribedBy: 'Martínez', suspended: false, administrations: [],
 }
 
-const admissionDate = '2024-01-10T08:00:00'
+// Use a date relative to now so test data falls within the ±36h sliding window
+const now = new Date()
+const todayBase = new Date(now)
+todayBase.setHours(8, 0, 0, 0)
+const admissionDate = todayBase.toISOString()
+
+// Helper: build a local datetime string for today at a given hour
+function todayAt(hour, minute = 0) {
+  const d = new Date(now)
+  d.setHours(hour, minute, 0, 0)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(hour)}:${pad(minute)}:00`
+}
+
 const defaultProps = {
   admissionDate,
   onDirectSign: vi.fn(),
@@ -50,8 +63,14 @@ describe('KAN-52: Grid de medicación 72h — Estructura', () => {
 
   it('[KAN-52] muestra cabeceras de día en celdas de medianoche', () => {
     render(<MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />)
-    expect(screen.getByText('11/01')).toBeInTheDocument()
-    expect(screen.getByText('12/01')).toBeInTheDocument()
+    // The 72h window (±36h from now) should contain at least one midnight crossing
+    // Check that at least one date header (DD/MM format) is rendered
+    const pad = n => String(n).padStart(2, '0')
+    const tomorrow = new Date(now.getTime() + 24 * 3600000)
+    const tomorrowLabel = `${pad(tomorrow.getDate())}/${pad(tomorrow.getMonth() + 1)}`
+    const todayLabel = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}`
+    const hasAnyDateHeader = screen.queryByText(tomorrowLabel) || screen.queryByText(todayLabel)
+    expect(hasAnyDateHeader).toBeTruthy()
   })
 })
 
@@ -176,7 +195,7 @@ describe('KAN-57: Celda firmada — Dosis con unidad', () => {
     const signedMed = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
       }],
     }
@@ -192,7 +211,7 @@ describe('KAN-57: Celda firmada — Dosis con unidad', () => {
       ...fixedMed,
       amount: '1', unit: 'g',
       administrations: [{
-        id: 101, administeredAt: '2024-01-10T08:30:00',
+        id: 101, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1', signedBy: 'Enfermera Ana', note: null,
       }],
     }
@@ -209,7 +228,7 @@ describe('KAN-57: Desfirmar — Clic directo sin confirmación', () => {
     const signedMed = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
       }],
     }
@@ -229,7 +248,7 @@ describe('KAN-57: Observación — Indicador visual', () => {
     const signedWithNote = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: 'Paciente con náuseas',
       }],
     }
@@ -245,7 +264,7 @@ describe('KAN-57: Observación — Indicador visual', () => {
     const signedNoNote = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
       }],
     }
@@ -262,7 +281,7 @@ describe('KAN-57: Tooltip — Hover muestra firmante', () => {
     const signedMed = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: 'Paciente con náuseas',
       }],
     }
@@ -284,7 +303,7 @@ describe('KAN-57: Tooltip — Hover muestra firmante', () => {
     const signedMed = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
       }],
     }
@@ -305,7 +324,7 @@ describe('KAN-57: Editar — Icono lápiz en hover', () => {
     const signedMed = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
       }],
     }
@@ -324,7 +343,7 @@ describe('KAN-57: Editar — Icono lápiz en hover', () => {
     const signedMed = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
       }],
     }
@@ -373,12 +392,15 @@ describe('KAN-57: ▶ dinámica — se recalcula tras firmar', () => {
   })
 
   it('[KAN-57] no muestra ▶ en horas pasadas', () => {
-    // Use the fixed past admission date — all slots are in the past
+    // Past cells (data-past="true") should never contain ▶
     const { container } = render(
-      <MedicationGrid prescriptions={[fixedMed]} {...defaultProps} />
+      <MedicationGrid prescriptions={[futureMed]} admissionDate={futureAdmission}
+        onDirectSign={vi.fn()} onDirectUnsign={vi.fn()}
+        onOpenInsulinModal={vi.fn()} onOpenEditModal={vi.fn()} />
     )
-    const arrows = Array.from(container.querySelectorAll('td')).filter(td => td.textContent.includes('▶'))
-    expect(arrows.length).toBe(0)
+    const pastArrows = Array.from(container.querySelectorAll('td[data-past="true"]'))
+      .filter(td => td.textContent.includes('▶'))
+    expect(pastArrows.length).toBe(0)
   })
 
   it('[KAN-57] tras firmar, siguiente ▶ se recalcula desde la administración', () => {
@@ -409,7 +431,7 @@ describe('KAN-57: ▶ dinámica — se recalcula tras firmar', () => {
     const signedMed = {
       ...fixedMed,
       administrations: [{
-        id: 100, administeredAt: '2024-01-10T08:30:00',
+        id: 100, administeredAt: todayAt(now.getHours(), 30),
         doseGiven: '1000', signedBy: 'Enfermera Ana', note: null,
       }],
     }

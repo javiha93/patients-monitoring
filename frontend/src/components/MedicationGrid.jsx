@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 
 // ── Time helpers ──
 
-function generate72hSlots(admissionDate) {
-  const start = new Date(admissionDate)
+function generate72hSlots() {
+  const now = new Date()
+  const start = new Date(now.getTime() - 36 * 3600000)
   start.setMinutes(0, 0, 0)
   const slots = []
   for (let i = 0; i < 72; i++) slots.push(new Date(start.getTime() + i * 3600000))
@@ -176,7 +177,7 @@ const MedicationGrid = forwardRef(function MedicationGrid(
   const LABEL_W = 240
   const SCROLL_STEP = CELL_W * 6 // scroll 6 hours at a time
 
-  const slots = generate72hSlots(admissionDate)
+  const slots = generate72hSlots()
 
   function updateScrollButtons() {
     const el = scrollRef.current
