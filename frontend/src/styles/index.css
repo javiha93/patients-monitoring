@@ -28,11 +28,14 @@ html.dark body {
   color: #e2e8f0;
 }
 
+/* Zebra striping for table rows */
+.pm-stripe { background: #f1f5f9; }
+html.dark .pm-stripe { background: #0f172a; }
+
 /* Backgrounds */
 html.dark .bg-white { background: #1e293b; }
 html.dark .bg-slate-50 { background: #1e293b; }
 html.dark .bg-slate-100 { background: #0f172a; }
-html.dark .bg-slate-50\/60 { background: rgba(30,41,59,0.6); }
 
 /* Text */
 html.dark .text-slate-900 { color: #f1f5f9; }
@@ -170,7 +173,10 @@ html.dark [data-datepicker-dropdown] {
 html.dark .bg-black\/40 { background: rgba(0,0,0,0.6); }
 html.dark .bg-black\/50 { background: rgba(0,0,0,0.7); }
 
-/* Sidebar — already dark, no changes needed */
+/* Sidebar — lighten in dark mode to contrast with bg */
+html.dark .bg-sidebar {
+  background: #1e293b;
+}
 
 /* Assignment badges */
 html.dark .bg-teal-100 { background: rgba(19,78,74,0.4); }

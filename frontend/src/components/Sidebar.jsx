@@ -61,31 +61,45 @@ export default function Sidebar() {
           {!collapsed && 'Reportes'}
         </Link>
       </div>
-      <div className={`border-t border-slate-800`}>
-        <button
-          onClick={toggleTheme}
-          title={dark ? 'Modo claro' : 'Modo oscuro'}
-          className={`flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-5'} py-3 text-sm transition-colors text-slate-400 hover:text-white hover:bg-slate-800 w-full`}
-        >
-          {dark ? <Sun size={18} /> : <Moon size={18} />}
-          {!collapsed && (dark ? 'Modo claro' : 'Modo oscuro')}
-        </button>
-      </div>
       <div className={`${collapsed ? 'px-2' : 'px-5'} py-4 border-t border-slate-800 text-sm text-slate-400`}>
         {!collapsed ? (
           <>
             <div className="text-white font-medium">{user?.displayName || 'Usuario'}</div>
             <div className="flex items-center justify-between">
               <span>{user?.role || 'Sin rol'}</span>
-              <button onClick={logout} className="text-slate-500 hover:text-white transition-colors" title="Cerrar sesión">
-                <LogOut size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleTheme}
+                  title={dark ? 'Modo claro' : 'Modo oscuro'}
+                  className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0"
+                  style={{ background: dark ? '#0ea5e9' : '#475569' }}
+                >
+                  <span
+                    className="absolute top-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-white transition-all duration-200 shadow-sm"
+                    style={{ left: dark ? '22px' : '2px' }}
+                  >
+                    {dark ? <Sun size={10} className="text-amber-500" /> : <Moon size={10} className="text-slate-600" />}
+                  </span>
+                </button>
+                <button onClick={logout} className="text-slate-500 hover:text-white transition-colors" title="Cerrar sesión">
+                  <LogOut size={14} />
+                </button>
+              </div>
             </div>
           </>
         ) : (
-          <button onClick={logout} className="text-slate-500 hover:text-white transition-colors w-full flex justify-center" title="Cerrar sesión">
-            <LogOut size={18} />
-          </button>
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              title={dark ? 'Modo claro' : 'Modo oscuro'}
+              className="text-slate-500 hover:text-white transition-colors"
+            >
+              {dark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button onClick={logout} className="text-slate-500 hover:text-white transition-colors" title="Cerrar sesión">
+              <LogOut size={18} />
+            </button>
+          </div>
         )}
       </div>
     </aside>

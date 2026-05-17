@@ -803,7 +803,7 @@ export default function PatientList() {
               <tbody>
                 {sorted.map((p, idx) => {
                   const isSelected = selectedId === p.id
-                  const stripe = idx % 2 === 1 ? 'bg-slate-50/60' : ''
+                  const stripe = idx % 2 === 1 ? 'pm-stripe' : ''
                   return (
                     <tr
                       key={p.admissionId}
