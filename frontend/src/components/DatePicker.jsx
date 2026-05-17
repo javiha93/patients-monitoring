@@ -178,10 +178,11 @@ export default function DatePicker({ value, onChange, disabled = false, placehol
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  // Close on scroll of any ancestor
+  // Close on scroll of any ancestor (but not inside the dropdown itself)
   useEffect(() => {
     if (!open) return
-    const handler = () => {
+    const handler = (e) => {
+      if (e.target.closest?.('[data-datepicker-dropdown]')) return
       setOpen(false)
       setYearSelectOpen(false)
     }
