@@ -100,16 +100,17 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
   const [side, setSide] = useState(null) // 'izq' | 'der'
   const [bodyLocation, setBodyLocation] = useState(null)
   const [currentRule, setCurrentRule] = useState(null)
-  const [vitals, setVitals] = useState({ fc: '', tas: '', tad: '', fr: '', temp: '', spo2: '' })
+  const [vitals, setVitals] = useState({ fc: '', tas: '', tad: '', fr: '', temp: '', spo2: '', eva: '' })
   const [nursingModalOpen, setNursingModalOpen] = useState(false)
   const [nursingDone, setNursingDone] = useState(false)
+  const [originalMotivo, setOriginalMotivo] = useState('')
 
   const reset = () => {
     setStep('form'); setLevel(patient?.triageLevel || null); setMotivo(patient?.matCategory || '')
     setLocation(patient?.location || ''); setSpecialty(patient?.specialty || '')
     setMatchedRules([]); setSelectedSuggestions([])
     setSide(null); setBodyLocation(null); setCurrentRule(null)
-    setVitals({ fc: '', tas: '', tad: '', fr: '', temp: '', spo2: '' })
+    setVitals({ fc: '', tas: '', tad: '', fr: '', temp: '', spo2: '', eva: '' })
     setNursingModalOpen(false)
     setNursingDone(false)
   }
@@ -121,12 +122,21 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
       setMotivo(patient.matCategory || '')
       setLocation(patient.location || '')
       setSpecialty(patient.specialty || '')
+      setOriginalMotivo(patient.matCategory || '')
     }
   }, [isOpen, patient])
 
   const handleClose = () => { reset(); onClose() }
 
+  const isRetriage = patient?.triageLevel != null
+  const motivoChanged = motivo !== originalMotivo
+
   const handleConfirmForm = () => {
+    // On re-triage with same motivo, skip suggestions (tests already ordered)
+    if (isRetriage && !motivoChanged) {
+      handleFinalConfirm([])
+      return
+    }
     const rules = findTriageRules(motivo)
     if (rules.length > 0) {
       // Check if any rule needs side/location input
@@ -183,6 +193,7 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
     if (vitals.fr) filledVitals.fr = parseFloat(vitals.fr)
     if (vitals.temp) filledVitals.temp = parseFloat(vitals.temp)
     if (vitals.spo2) filledVitals.spo2 = parseFloat(vitals.spo2)
+    if (vitals.eva) filledVitals.eva = parseFloat(vitals.eva)
 
     onConfirm({
       triageLevel: level,
@@ -286,11 +297,6 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Constantes</div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-400">FC (lpm)</label>
-                    <input type="number" value={vitals.fc} onChange={e => setVitals(v => ({ ...v, fc: e.target.value }))}
-                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
-                  </div>
-                  <div className="flex flex-col gap-1">
                     <label className="text-[11px] text-slate-400">TAS (mmHg)</label>
                     <input type="number" value={vitals.tas} onChange={e => setVitals(v => ({ ...v, tas: e.target.value }))}
                       placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
@@ -301,8 +307,8 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
                       placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-400">FR (rpm)</label>
-                    <input type="number" value={vitals.fr} onChange={e => setVitals(v => ({ ...v, fr: e.target.value }))}
+                    <label className="text-[11px] text-slate-400">FC (lpm)</label>
+                    <input type="number" value={vitals.fc} onChange={e => setVitals(v => ({ ...v, fc: e.target.value }))}
                       placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -315,6 +321,16 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
                     <input type="number" value={vitals.spo2} onChange={e => setVitals(v => ({ ...v, spo2: e.target.value }))}
                       placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
                   </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-400">FR (rpm)</label>
+                    <input type="number" value={vitals.fr} onChange={e => setVitals(v => ({ ...v, fr: e.target.value }))}
+                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <label className="text-[11px] text-slate-400">EVA — Dolor (0-10)</label>
+                  <input type="number" min="0" max="10" value={vitals.eva} onChange={e => setVitals(v => ({ ...v, eva: e.target.value }))}
+                    placeholder="—" className="w-20 ml-2 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
                 </div>
               </div>
 
