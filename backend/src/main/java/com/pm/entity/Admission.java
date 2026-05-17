@@ -51,7 +51,7 @@ public class Admission {
     private String previousDoctor;
 
     /** Marked as admitted (pending hospital bed assignment) */
-    @Column(nullable = false)
+    @Column(columnDefinition = "boolean default false")
     @Builder.Default
     private boolean admitted = false;
 
