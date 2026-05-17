@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Search, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
+import DatePicker from './DatePicker'
 
 const matCategories = [
   'Dolor torácico', 'Disnea', 'Dolor abdominal', 'Cefalea',
@@ -24,9 +25,6 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
     nhc: '', firstName: '', lastName: '', birthDate: '',
     sex: 'undefined', triageLevel: 3, matCategory: '', location: '', specialty: '',
   })
-  const [birthDay, setBirthDay] = useState('')
-  const [birthMonth, setBirthMonth] = useState('')
-  const [birthYear, setBirthYear] = useState('')
   const [searchResult, setSearchResult] = useState(null)
   const [searching, setSearching] = useState(false)
 
@@ -37,9 +35,6 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
       nhc: '', firstName: '', lastName: '', birthDate: '',
       sex: 'undefined', triageLevel: 3, matCategory: '', location: '', specialty: '',
     })
-    setBirthDay('')
-    setBirthMonth('')
-    setBirthYear('')
     setSearchResult(null)
   }
 
@@ -76,13 +71,10 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
         setSearchResult({ status: 'error', message: err.response?.data?.error || 'Error al reabrir' })
       }
     } else {
-      const composedBirthDate = (birthYear && birthMonth && birthDay)
-        ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
-        : null
       onSubmit({
         ...form,
         triageLevel: isAdmin ? null : parseInt(form.triageLevel),
-        birthDate: composedBirthDate,
+        birthDate: form.birthDate || null,
       })
       resetForm()
     }
@@ -167,40 +159,12 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
         </div>
         <div className="flex flex-col gap-1 mb-4">
           <label className="text-xs font-medium text-slate-600">Fecha de nacimiento</label>
-          <div className="flex gap-2">
-            <select
-              value={birthDay}
-              onChange={(e) => setBirthDay(e.target.value)}
+          <div className="w-1/2">
+            <DatePicker
+              value={form.birthDate}
+              onChange={(iso) => setForm(f => ({ ...f, birthDate: iso || '' }))}
               disabled={isReopen}
-              className="w-20 px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none disabled:bg-slate-50"
-            >
-              <option value="">Día</option>
-              {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-            <select
-              value={birthMonth}
-              onChange={(e) => setBirthMonth(e.target.value)}
-              disabled={isReopen}
-              className="flex-1 px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none disabled:bg-slate-50"
-            >
-              <option value="">Mes</option>
-              {['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((m, i) => (
-                <option key={i + 1} value={i + 1}>{m}</option>
-              ))}
-            </select>
-            <select
-              value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
-              disabled={isReopen}
-              className="w-24 px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none disabled:bg-slate-50"
-            >
-              <option value="">Año</option>
-              {Array.from({ length: 120 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+            />
           </div>
         </div>
 
