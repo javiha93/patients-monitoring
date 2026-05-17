@@ -99,12 +99,27 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
   const [side, setSide] = useState(null) // 'izq' | 'der'
   const [bodyLocation, setBodyLocation] = useState(null)
   const [currentRule, setCurrentRule] = useState(null)
+  const [vitals, setVitals] = useState({ fc: '', tas: '', tad: '', fr: '', temp: '', spo2: '' })
+  const [nursingNote, setNursingNote] = useState('')
 
   const reset = () => {
-    setStep('form'); setLevel(null); setMotivo(''); setLocation(patient?.location || '')
-    setSpecialty(patient?.specialty || ''); setMatchedRules([]); setSelectedSuggestions([])
+    setStep('form'); setLevel(patient?.triageLevel || null); setMotivo(patient?.matCategory || '')
+    setLocation(patient?.location || ''); setSpecialty(patient?.specialty || '')
+    setMatchedRules([]); setSelectedSuggestions([])
     setSide(null); setBodyLocation(null); setCurrentRule(null)
+    setVitals({ fc: '', tas: '', tad: '', fr: '', temp: '', spo2: '' })
+    setNursingNote('')
   }
+
+  // Re-initialize when patient changes
+  useEffect(() => {
+    if (isOpen && patient) {
+      setLevel(patient.triageLevel || null)
+      setMotivo(patient.matCategory || '')
+      setLocation(patient.location || '')
+      setSpecialty(patient.specialty || '')
+    }
+  }, [isOpen, patient])
 
   const handleClose = () => { reset(); onClose() }
 
@@ -157,12 +172,23 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
   }
 
   const handleFinalConfirm = (suggestions) => {
+    // Build vitals object only with filled values
+    const filledVitals = {}
+    if (vitals.fc) filledVitals.fc = parseFloat(vitals.fc)
+    if (vitals.tas) filledVitals.tas = parseFloat(vitals.tas)
+    if (vitals.tad) filledVitals.tad = parseFloat(vitals.tad)
+    if (vitals.fr) filledVitals.fr = parseFloat(vitals.fr)
+    if (vitals.temp) filledVitals.temp = parseFloat(vitals.temp)
+    if (vitals.spo2) filledVitals.spo2 = parseFloat(vitals.spo2)
+
     onConfirm({
       triageLevel: level,
       matCategory: motivo,
       location: location || null,
       specialty: specialty || null,
       suggestions: suggestions || [],
+      vitals: Object.keys(filledVitals).length > 0 ? filledVitals : null,
+      nursingNote: nursingNote.trim() || null,
     })
     reset()
   }
@@ -251,6 +277,55 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
                     {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
+              </div>
+
+              {/* Vitals */}
+              <div>
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Constantes</div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-400">FC (lpm)</label>
+                    <input type="number" value={vitals.fc} onChange={e => setVitals(v => ({ ...v, fc: e.target.value }))}
+                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-400">TAS (mmHg)</label>
+                    <input type="number" value={vitals.tas} onChange={e => setVitals(v => ({ ...v, tas: e.target.value }))}
+                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-400">TAD (mmHg)</label>
+                    <input type="number" value={vitals.tad} onChange={e => setVitals(v => ({ ...v, tad: e.target.value }))}
+                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-400">FR (rpm)</label>
+                    <input type="number" value={vitals.fr} onChange={e => setVitals(v => ({ ...v, fr: e.target.value }))}
+                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-400">Tª (°C)</label>
+                    <input type="number" step="0.1" value={vitals.temp} onChange={e => setVitals(v => ({ ...v, temp: e.target.value }))}
+                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-400">SpO₂ (%)</label>
+                    <input type="number" value={vitals.spo2} onChange={e => setVitals(v => ({ ...v, spo2: e.target.value }))}
+                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Nursing assessment */}
+              <div>
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Valoración de enfermería</div>
+                <textarea
+                  value={nursingNote}
+                  onChange={e => setNursingNote(e.target.value)}
+                  rows={3}
+                  placeholder="Observaciones, estado general, alergias..."
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-400 outline-none resize-none"
+                />
               </div>
             </>
           )}

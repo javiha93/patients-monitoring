@@ -6,6 +6,8 @@ import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
 import { ecgApi } from '../services/ecgApi'
 import { radiologyApi } from '../services/radiologyApi'
+import { vitalsApi } from '../services/vitalsApi'
+import { nursingApi } from '../services/nursingApi'
 import { getUsersByRole } from '../services/authApi'
 import { useAuth } from '../context/AuthContext'
 import { getSamplesNeeded, SAMPLE_ICONS, PRESETS } from '../constants/labCatalog'
@@ -396,9 +398,10 @@ export default function PatientList() {
     }
   }, [])
 
-  // Auto-refresh every 30s when toggled on
+  // Auto-refresh every 30s when toggled on — immediate fetch on activation
   useEffect(() => {
     if (autoRefresh) {
+      fetchPatients()
       refreshInterval.current = setInterval(fetchPatients, 30000)
     } else {
       clearInterval(refreshInterval.current)
@@ -500,7 +503,7 @@ export default function PatientList() {
     }
   }
 
-  const handleTriageConfirm = async ({ triageLevel, matCategory, location, specialty, suggestions }) => {
+  const handleTriageConfirm = async ({ triageLevel, matCategory, location, specialty, suggestions, vitals, nursingNote }) => {
     const p = triagePatient
     if (!p) return
     try {
@@ -512,7 +515,37 @@ export default function PatientList() {
           : pt
       ))
 
-      // 2. Create suggested tests
+      // 2. Save vitals if provided
+      if (vitals) {
+        try {
+          await vitalsApi.create({
+            admissionId: p.admissionId,
+            heartRate: vitals.fc || null,
+            systolicBp: vitals.tas || null,
+            diastolicBp: vitals.tad || null,
+            respiratoryRate: vitals.fr || null,
+            temperature: vitals.temp || null,
+            spo2: vitals.spo2 || null,
+            recordedAt: new Date().toISOString(),
+            recordedBy: user?.displayName || '',
+          })
+        } catch { /* continue */ }
+      }
+
+      // 3. Save nursing note if provided
+      if (nursingNote) {
+        try {
+          await nursingApi.create({
+            admissionId: p.admissionId,
+            assessmentType: 'entrada',
+            notes: nursingNote,
+            recordedAt: new Date().toISOString(),
+            recordedBy: user?.displayName || '',
+          })
+        } catch { /* continue */ }
+      }
+
+      // 4. Create suggested tests
       for (const s of suggestions) {
         try {
           if (s.type === 'ecg') {
@@ -789,18 +822,22 @@ export default function PatientList() {
                       onClick={() => handleSelect(p.id)}
                       className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}
                     >
-                      <td className="px-4 py-3 group/triage" onClick={(e) => { if (!p.triageLevel) { e.stopPropagation(); setTriagePatient(p) } }}>
-                        {p.triageLevel ? (
-                          <TriageBadge level={p.triageLevel} />
-                        ) : (
-                          <div className="flex items-center justify-center">
-                            <span className="text-slate-300 group-hover/triage:hidden">—</span>
-                            <button
-                              className="w-7 h-7 rounded-full border border-dashed border-slate-300 items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-500 transition-all hidden group-hover/triage:flex"
-                              title="Triar paciente"
-                            ><Plus size={14} /></button>
-                          </div>
-                        )}
+                      <td className="px-4 py-3 group/triage" onClick={(e) => { e.stopPropagation(); setTriagePatient(p) }}>
+                        <div className="flex items-center justify-center">
+                          {p.triageLevel ? (
+                            <span className="cursor-pointer" title="Editar triaje">
+                              <TriageBadge level={p.triageLevel} />
+                            </span>
+                          ) : (
+                            <>
+                              <span className="text-slate-300 group-hover/triage:hidden">—</span>
+                              <button
+                                className="w-7 h-7 rounded-full border border-dashed border-slate-300 items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-500 transition-all hidden group-hover/triage:flex"
+                                title="Triar paciente"
+                              ><Plus size={14} /></button>
+                            </>
+                          )}
+                        </div>
                       </td>
                       <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                         <InlineDropdown
@@ -963,7 +1000,9 @@ export default function PatientList() {
                   {/* Row 1: triage + name + location/specialty left, icons right */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <TriageBadge level={p.triageLevel} />
+                      <span className="cursor-pointer" onClick={(e) => { e.stopPropagation(); setTriagePatient(p) }} title={p.triageLevel ? 'Editar triaje' : 'Triar paciente'}>
+                        {p.triageLevel ? <TriageBadge level={p.triageLevel} /> : <span className="w-7 h-7 rounded-full border border-dashed border-slate-300 flex items-center justify-center text-slate-300 hover:border-blue-400 hover:text-blue-500"><Plus size={14} /></span>}
+                      </span>
                       <div className="min-w-0">
                         <div className="font-semibold text-sm truncate">{p.lastName}, {p.firstName}</div>
                         <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'}</div>

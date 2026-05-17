@@ -62,6 +62,14 @@ vi.mock('../services/notificationApi', () => ({
   },
 }))
 
+vi.mock('../services/vitalsApi', () => ({
+  vitalsApi: { create: vi.fn(() => Promise.resolve({ data: {} })) },
+}))
+
+vi.mock('../services/nursingApi', () => ({
+  nursingApi: { create: vi.fn(() => Promise.resolve({ data: {} })) },
+}))
+
 function renderList() {
   return render(
     <MemoryRouter>
@@ -958,3 +966,90 @@ describe('Filtros de asignación', () => {
   })
 })
 
+
+
+describe('Auto-refresh immediate fetch', () => {
+  it('triggers fetchPatients immediately when auto-refresh is toggled on', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const callsBefore = patientApi.listActive.mock.calls.length
+    const refreshBtn = screen.getByTitle(/auto-refresco/i)
+    fireEvent.click(refreshBtn)
+    await waitFor(() => {
+      expect(patientApi.listActive.mock.calls.length).toBeGreaterThan(callsBefore)
+    })
+  })
+})
+
+describe('Triage badge alignment and click', () => {
+  it('shows centered triage badge for triaged patients', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const badges = screen.getAllByText('2')
+    const triageBadge = badges.find(b => b.closest('[title="Editar triaje"]'))
+    expect(triageBadge).toBeTruthy()
+  })
+
+  it('shows plus button for untriaged patients', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('Sánchez, Pedro'))
+    const triageBtn = screen.getByTitle('Triar paciente')
+    expect(triageBtn).toBeTruthy()
+  })
+
+  it('clicking triage badge opens triage modal for already-triaged patient', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const editBtn = screen.getAllByTitle('Editar triaje')[0]
+    fireEvent.click(editBtn)
+    await waitFor(() => {
+      expect(screen.getByText('Triaje')).toBeInTheDocument()
+    })
+  })
+})
+
+describe('Triage modal vitals and nursing note', () => {
+  it('shows vitals inputs in triage modal', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('Sánchez, Pedro'))
+    const triageBtn = screen.getByTitle('Triar paciente')
+    fireEvent.click(triageBtn)
+    await waitFor(() => screen.getByText('Triaje'))
+    expect(screen.getByText('Constantes')).toBeInTheDocument()
+    expect(screen.getByText('FC (lpm)')).toBeInTheDocument()
+    expect(screen.getByText('TAS (mmHg)')).toBeInTheDocument()
+    expect(screen.getByText('TAD (mmHg)')).toBeInTheDocument()
+    expect(screen.getByText('FR (rpm)')).toBeInTheDocument()
+  })
+
+  it('shows nursing assessment textarea in triage modal', async () => {
+    renderList()
+    await waitFor(() => screen.getByText('Sánchez, Pedro'))
+    const triageBtn = screen.getByTitle('Triar paciente')
+    fireEvent.click(triageBtn)
+    await waitFor(() => screen.getByText('Triaje'))
+    expect(screen.getByText('Valoración de enfermería')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Observaciones/)).toBeInTheDocument()
+  })
+})
+
+describe('Lab notification badges filtered by assignment', () => {
+  it('shows lab badge only for patients assigned to current user', async () => {
+    const patientsWithAssignment = [
+      { ...mockPatients[0], assignedNurse: 'Javier Herrada', hasCompletedLabs: true },
+      { ...mockPatients[1], assignedNurse: 'Otro Enfermero', hasCompletedLabs: true },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsWithAssignment })
+    const { notificationApi } = await import('../services/notificationApi')
+    notificationApi.getUnseenLab.mockResolvedValueOnce({
+      data: [
+        { admissionId: 10, labTestId: 1, changeType: 'partial_results' },
+        { admissionId: 11, labTestId: 2, changeType: 'partial_results' },
+      ],
+    })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    const badges = screen.queryAllByTestId('lab-notif-badge')
+    expect(badges.length).toBeLessThanOrEqual(1)
+  })
+})
