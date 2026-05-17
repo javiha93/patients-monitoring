@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { deviceApi } from '../services/deviceApi'
+import Select from './Select'
 
 const TYPE_LABELS = {
   redon: 'Redon',
@@ -94,13 +95,13 @@ export default function DrainOutputsSection({ admissionId, drainOutputs, onChang
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-medium text-slate-600">Tipo</label>
-                  <select
+                  <Select
                     value={output.fluidType || 'seroso'}
                     onChange={e => updateDrain(i, 'fluidType', e.target.value)}
                     className="px-2 py-1.5 border border-slate-200 rounded-md text-sm outline-none focus:border-sky-400"
                   >
                     {FLUID_TYPES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                  </select>
+                  </Select>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-medium text-slate-600">Vacío</label>

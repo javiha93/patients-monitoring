@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import DevicesTab from '../components/DevicesTab'
+import { selectOption, getSelectByDisplayText } from './selectHelper'
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
@@ -151,8 +152,8 @@ describe('DevicesTab', () => {
     const addBtns = screen.getAllByText(/Añadir/)
     fireEvent.click(addBtns[addBtns.length - 1])
     // Default type is sonda_vesical, change to redon
-    const typeSelect = screen.getByDisplayValue('Sonda Vesical')
-    fireEvent.change(typeSelect, { target: { value: 'redon' } })
+    const typeSelect = getSelectByDisplayText('Sonda Vesical')
+    selectOption(typeSelect, 'Drenaje Redon')
     expect(screen.getByText('Región')).toBeInTheDocument()
     expect(screen.getByText('Lateralidad')).toBeInTheDocument()
   })

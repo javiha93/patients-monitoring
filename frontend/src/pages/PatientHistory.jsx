@@ -5,6 +5,7 @@ import { patientApi } from '../services/patientApi'
 import { historyApi } from '../services/historyApi'
 import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
+import Select from '../components/Select'
 
 function calcAge(bd) {
   if (!bd) return null
@@ -193,12 +194,12 @@ export default function PatientHistory() {
               {showAddAllergy && (
                 <form onSubmit={handleAddAllergy} className="grid grid-cols-4 gap-2 mb-3 p-3 bg-slate-50 rounded-lg">
                   <input required value={newAllergy.substance} onChange={e => setNewAllergy({ ...newAllergy, substance: e.target.value })} placeholder="Sustancia" className="px-2 py-1.5 border border-slate-200 rounded text-sm" />
-                  <select value={newAllergy.type} onChange={e => setNewAllergy({ ...newAllergy, type: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded text-sm">
+                  <Select value={newAllergy.type} onChange={e => setNewAllergy({ ...newAllergy, type: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded text-sm">
                     <option value="drug">Medicamentosa</option><option value="food">Alimentaria</option><option value="environmental">Ambiental</option><option value="other">Otra</option>
-                  </select>
-                  <select value={newAllergy.severity} onChange={e => setNewAllergy({ ...newAllergy, severity: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded text-sm">
+                  </Select>
+                  <Select value={newAllergy.severity} onChange={e => setNewAllergy({ ...newAllergy, severity: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded text-sm">
                     <option value="unknown">Desconocida</option><option value="mild">Leve</option><option value="moderate">Moderada</option><option value="severe">Grave</option>
-                  </select>
+                  </Select>
                   <button type="submit" className="bg-sky-500 text-white rounded text-sm font-medium hover:bg-sky-600">Guardar</button>
                 </form>
               )}

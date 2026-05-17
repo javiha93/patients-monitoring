@@ -4,6 +4,7 @@ import XRayIcon from './XRayIcon'
 import NursingAssessmentModal from './NursingAssessmentModal'
 import { handleVitalKeyDown } from './VitalInput'
 import { TRIAGE_MOTIVOS, findTriageRules } from '../constants/triageRules'
+import Select from './Select'
 
 const LEVELS = [1, 2, 3, 4, 5]
 const LEVEL_COLORS = {
@@ -271,25 +272,25 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
               <div className="flex gap-3">
                 <div className="flex-1">
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Ubicación</div>
-                  <select
+                  <Select
                     value={location}
                     onChange={e => setLocation(e.target.value)}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-400 outline-none"
                   >
                     <option value="">—</option>
                     {locations.map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
+                  </Select>
                 </div>
                 <div className="flex-1">
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Especialidad</div>
-                  <select
+                  <Select
                     value={specialty}
                     onChange={e => setSpecialty(e.target.value)}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-400 outline-none"
                   >
                     <option value="">—</option>
                     {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  </Select>
                 </div>
               </div>
 

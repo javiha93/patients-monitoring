@@ -13,6 +13,7 @@ import { getSamplesNeeded, SAMPLE_ICONS, PRESETS } from '../constants/labCatalog
 import TriageBadge from '../components/TriageBadge'
 import TriageModal from '../components/TriageModal'
 import { notificationApi } from '../services/notificationApi'
+import Select from '../components/Select'
 import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
 
@@ -707,7 +708,7 @@ export default function PatientList() {
                         ${filterNurse === user.displayName ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-teal-600 border-teal-200 hover:border-teal-400'}`}
                     >Yo</button>
                   )}
-                  <select
+                  <Select
                     value={filterNurse && filterNurse !== '__none__' && filterNurse !== user?.displayName ? filterNurse : ''}
                     onChange={(e) => setFilterNurse(e.target.value || null)}
                     className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 focus:border-blue-400 outline-none"
@@ -716,7 +717,7 @@ export default function PatientList() {
                     {allNurses.filter(n => n.displayName !== user?.displayName || user?.role !== 'Enfermería').map(n => (
                       <option key={n.id} value={n.displayName}>{n.displayName}</option>
                     ))}
-                  </select>
+                  </Select>
                   <button
                     onClick={() => setFilterNurse(prev => prev === '__none__' ? null : '__none__')}
                     className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors
@@ -734,7 +735,7 @@ export default function PatientList() {
                         ${filterDoctor === user.displayName ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-blue-600 border-blue-200 hover:border-blue-400'}`}
                     >Yo</button>
                   )}
-                  <select
+                  <Select
                     value={filterDoctor && filterDoctor !== '__none__' && filterDoctor !== user?.displayName ? filterDoctor : ''}
                     onChange={(e) => setFilterDoctor(e.target.value || null)}
                     className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 focus:border-blue-400 outline-none"
@@ -743,7 +744,7 @@ export default function PatientList() {
                     {allDoctors.filter(n => n.displayName !== user?.displayName || user?.role !== 'Medicina').map(n => (
                       <option key={n.id} value={n.displayName}>{n.displayName}</option>
                     ))}
-                  </select>
+                  </Select>
                   <button
                     onClick={() => setFilterDoctor(prev => prev === '__none__' ? null : '__none__')}
                     className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors

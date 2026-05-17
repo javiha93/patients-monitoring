@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import GlasgowModal from './GlasgowModal'
 import ConfirmModal from './ConfirmModal'
 import InsightsPanel from './InsightsPanel'
+import PortalSelect from './Select'
 
 /* ── Reusable sub-components ── */
 
@@ -21,11 +22,11 @@ function Select({ label, value, onChange, options, placeholder = 'Seleccionar...
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs font-medium text-slate-600">{label}</label>
-      <select value={value || ''} onChange={e => onChange(e.target.value || null)}
+      <PortalSelect value={value || ''} onChange={e => onChange(e.target.value || null)}
         className="px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none">
         <option value="">{placeholder}</option>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+      </PortalSelect>
     </div>
   )
 }

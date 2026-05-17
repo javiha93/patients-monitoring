@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Search, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import DatePicker from './DatePicker'
+import Select from './Select'
 
 const matCategories = [
   'Dolor torácico', 'Disnea', 'Dolor abdominal', 'Cefalea',
@@ -124,11 +125,11 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">Sexo <span className="text-red-500">*</span></label>
-            <select value={form.sex} onChange={set('sex')} disabled={isReopen} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none disabled:bg-slate-50">
+            <Select value={form.sex} onChange={set('sex')} disabled={isReopen} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none disabled:bg-slate-50">
               <option value="male">Hombre</option>
               <option value="female">Mujer</option>
               <option value="undefined">No especificado</option>
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -190,17 +191,17 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-slate-600">Motivo de consulta</label>
-                <select value={form.matCategory} onChange={set('matCategory')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none">
+                <Select value={form.matCategory} onChange={set('matCategory')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none">
                   <option value="">Seleccionar...</option>
                   {matCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                </Select>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-slate-600">Especialidad</label>
-                <select value={form.specialty} onChange={set('specialty')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none">
+                <Select value={form.specialty} onChange={set('specialty')} className="px-2.5 py-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 outline-none">
                   <option value="">Seleccionar...</option>
                   {specialties.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
             <div className="flex flex-col gap-1 mb-4">

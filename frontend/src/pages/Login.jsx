@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { login as loginApi } from '../services/authApi'
+import Select from '../components/Select'
 
 const ROLES = ['Enfermería', 'Medicina', 'Administrativo']
 
@@ -73,7 +74,7 @@ export default function Login() {
 
           <div>
             <label htmlFor="login-role" className="block text-sm font-medium text-slate-700 mb-1">Rol</label>
-            <select
+            <Select
               id="login-role"
               value={role}
               onChange={e => setRole(e.target.value)}
@@ -83,7 +84,7 @@ export default function Login() {
               {ROLES.map(r => (
                 <option key={r} value={r}>{r}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {error && (

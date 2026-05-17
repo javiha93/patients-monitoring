@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import NewVitalSignModal from '../components/NewVitalSignModal'
+import { selectOption, getSelectByDisplayText } from './selectHelper'
 
 vi.mock('../services/deviceApi', () => ({
   deviceApi: {
@@ -36,8 +37,8 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
     renderModal()
 
     // Select sonda vesical as urine source
-    const urineSelect = screen.getByDisplayValue('— Sin registro —')
-    fireEvent.change(urineSelect, { target: { value: 'sonda_vesical' } })
+    const urineSelect = getSelectByDisplayText('— Sin registro —')
+    selectOption(urineSelect, 'Sonda vesical')
 
     await waitFor(() => {
       expect(screen.getByTestId('sonda-vesical-alert')).toBeInTheDocument()
@@ -51,8 +52,8 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
 
     renderModal()
 
-    const urineSelect = screen.getByDisplayValue('— Sin registro —')
-    fireEvent.change(urineSelect, { target: { value: 'sonda_vesical' } })
+    const urineSelect = getSelectByDisplayText('— Sin registro —')
+    selectOption(urineSelect, 'Sonda vesical')
 
     await waitFor(() => {
       expect(screen.getByTestId('sonda-vesical-alert')).toBeInTheDocument()
@@ -73,8 +74,8 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
 
     renderModal()
 
-    const urineSelect = screen.getByDisplayValue('— Sin registro —')
-    fireEvent.change(urineSelect, { target: { value: 'sonda_vesical' } })
+    const urineSelect = getSelectByDisplayText('— Sin registro —')
+    selectOption(urineSelect, 'Sonda vesical')
 
     await waitFor(() => {
       expect(deviceApi.hasActiveByType).toHaveBeenCalledWith(10, 'sonda_vesical')
@@ -94,8 +95,8 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
 
     renderModal()
 
-    const urineSelect = screen.getByDisplayValue('— Sin registro —')
-    fireEvent.change(urineSelect, { target: { value: 'sonda_vesical' } })
+    const urineSelect = getSelectByDisplayText('— Sin registro —')
+    selectOption(urineSelect, 'Sonda vesical')
 
     await waitFor(() => {
       expect(screen.getByText('Añadir sonda vesical ahora')).toBeInTheDocument()
@@ -116,8 +117,8 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
 
     renderModal()
 
-    const urineSelect = screen.getByDisplayValue('— Sin registro —')
-    fireEvent.change(urineSelect, { target: { value: 'sonda_vesical' } })
+    const urineSelect = getSelectByDisplayText('— Sin registro —')
+    selectOption(urineSelect, 'Sonda vesical')
 
     await waitFor(() => {
       expect(screen.getByText('Añadir sonda vesical ahora')).toBeInTheDocument()
@@ -141,15 +142,15 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
 
     renderModal()
 
-    const urineSelect = screen.getByDisplayValue('— Sin registro —')
-
     // Test colector
-    fireEvent.change(urineSelect, { target: { value: 'colector' } })
+    const urineSelect = getSelectByDisplayText('— Sin registro —')
+    selectOption(urineSelect, 'Colector')
     expect(screen.queryByTestId('sonda-vesical-alert')).not.toBeInTheDocument()
     expect(deviceApi.hasActiveByType).not.toHaveBeenCalled()
 
-    // Test pañal
-    fireEvent.change(urineSelect, { target: { value: 'panal' } })
+    // Test pañal — need to find the select again (now shows 'Colector')
+    const urineSelect2 = getSelectByDisplayText('Colector')
+    selectOption(urineSelect2, 'Pañal')
     expect(screen.queryByTestId('sonda-vesical-alert')).not.toBeInTheDocument()
   })
 
@@ -180,8 +181,8 @@ describe('NewVitalSignModal — sonda vesical validation', () => {
 
     renderModal()
 
-    const urineSelect = screen.getByDisplayValue('— Sin registro —')
-    fireEvent.change(urineSelect, { target: { value: 'sonda_vesical' } })
+    const urineSelect = getSelectByDisplayText('— Sin registro —')
+    selectOption(urineSelect, 'Sonda vesical')
 
     await waitFor(() => {
       expect(screen.getByTestId('sonda-vesical-alert')).toBeInTheDocument()

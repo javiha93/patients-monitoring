@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import NursingAssessmentTab from '../components/NursingAssessmentTab'
+import { selectOption, getSelectByDisplayText } from './selectHelper'
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
@@ -118,16 +119,14 @@ describe('KAN-79: Valoración de enfermería', () => {
     renderTab()
     await waitFor(() => screen.getByText('Nueva valoración'))
     fireEvent.click(screen.getByText('Nueva valoración'))
-    // Fill arrivalMode (required for entrada)
-    const arrivalSelect = screen.getAllByRole('combobox').find(s =>
-      Array.from(s.options).some(o => o.value === 'ambulancia')
-    )
-    fireEvent.change(arrivalSelect, { target: { value: 'ambulancia' } })
-    // Fill consciousness
-    const consciousnessSelect = screen.getAllByRole('combobox').find(s =>
-      Array.from(s.options).some(o => o.value === 'alerta')
-    )
-    fireEvent.change(consciousnessSelect, { target: { value: 'alerta' } })
+    // Fill arrivalMode — find the combobox near "Modo de llegada *" label
+    const arrivalLabel = screen.getByText('Modo de llegada *')
+    const arrivalSelect = arrivalLabel.closest('div').querySelector('[role="combobox"]')
+    selectOption(arrivalSelect, 'Ambulancia')
+    // Fill consciousness — find the combobox near "Nivel *" label
+    const consciousnessLabel = screen.getByText('Nivel *')
+    const consciousnessSelect = consciousnessLabel.closest('div').querySelector('[role="combobox"]')
+    selectOption(consciousnessSelect, 'Alerta')
     // Fill glasgow
     const glasgowInput = screen.getByPlaceholderText('Ej: 15')
     fireEvent.change(glasgowInput, { target: { value: '15' } })
@@ -240,11 +239,10 @@ describe('KAN-79: Valoración de enfermería', () => {
     // Glasgow should be pre-filled with 15 from mockAssessments[0]
     const glasgowInput = screen.getByPlaceholderText('Ej: 15')
     expect(glasgowInput.value).toBe('15')
-    // Consciousness should be pre-filled with 'alerta'
-    const consciousnessSelect = screen.getAllByRole('combobox').find(s =>
-      Array.from(s.options).some(o => o.value === 'alerta')
-    )
-    expect(consciousnessSelect.value).toBe('alerta')
+    // Consciousness should be pre-filled with 'alerta' — the combobox near "Nivel *" should show 'Alerta'
+    const consciousnessLabel = screen.getByText('Nivel *')
+    const consciousnessSelect = consciousnessLabel.closest('div').querySelector('[role="combobox"]')
+    expect(consciousnessSelect.textContent).toContain('Alerta')
   })
 
   it('clic en editar abre el formulario con datos pre-rellenados', async () => {

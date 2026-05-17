@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Login from '../pages/Login'
+import { selectOption } from './selectHelper'
 
 const mockLoginUser = vi.fn()
 vi.mock('../context/AuthContext', () => ({
@@ -33,9 +34,13 @@ describe('Login', () => {
 
   it('role dropdown starts empty with Enfermería as option', () => {
     render(<Login />)
-    const select = screen.getByLabelText('Rol')
-    expect(select.value).toBe('')
-    expect(screen.getByText('Enfermería')).toBeInTheDocument()
+    const roleSelect = screen.getByLabelText('Rol')
+    // Custom Select shows placeholder text when value is empty
+    expect(roleSelect.textContent).toContain('Selecciona un rol')
+    // Open dropdown and check Enfermería option exists
+    fireEvent.click(roleSelect)
+    expect(screen.getByText('Enfermería', { selector: '[data-select-dropdown] button span' })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
   })
 
   it('shows validation error when fields are empty', async () => {
@@ -52,7 +57,7 @@ describe('Login', () => {
     render(<Login />)
     fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'javier.herrada' } })
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'jahe93' } })
-    fireEvent.change(screen.getByLabelText('Rol'), { target: { value: 'Enfermería' } })
+    selectOption(screen.getByLabelText('Rol'), 'Enfermería')
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
     await waitFor(() => {
@@ -67,7 +72,7 @@ describe('Login', () => {
     render(<Login />)
     fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'javier.herrada' } })
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'wrong' } })
-    fireEvent.change(screen.getByLabelText('Rol'), { target: { value: 'Enfermería' } })
+    selectOption(screen.getByLabelText('Rol'), 'Enfermería')
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
     await waitFor(() => {
@@ -81,7 +86,7 @@ describe('Login', () => {
     render(<Login />)
     fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'test' } })
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test' } })
-    fireEvent.change(screen.getByLabelText('Rol'), { target: { value: 'Enfermería' } })
+    selectOption(screen.getByLabelText('Rol'), 'Enfermería')
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
     await waitFor(() => {

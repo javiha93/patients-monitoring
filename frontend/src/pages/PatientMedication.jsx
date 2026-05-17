@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import InsightsPanel from '../components/InsightsPanel'
 import MedicationGrid from '../components/MedicationGrid'
+import Select from '../components/Select'
 import { InsulinSignModal, EditAdminModal } from '../components/SignModal'
 import { useToast, ToastContainer } from '../components/Toast'
 
@@ -246,32 +247,32 @@ export default function PatientMedication() {
                 </div>
                 <div>
                   <label className="text-[11px] text-slate-500 font-medium">Unidad</label>
-                  <select value={newRx.unit} onChange={e => setNewRx({ ...newRx, unit: e.target.value })}
+                  <Select value={newRx.unit} onChange={e => setNewRx({ ...newRx, unit: e.target.value })}
                     className="w-full border rounded px-2.5 py-1.5 text-sm">
                     <option>mg</option><option>g</option><option>ml</option><option>UI</option><option>mcg</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-[11px] text-slate-500 font-medium">Vía</label>
-                  <select value={newRx.route} onChange={e => setNewRx({ ...newRx, route: e.target.value })}
+                  <Select value={newRx.route} onChange={e => setNewRx({ ...newRx, route: e.target.value })}
                     className="w-full border rounded px-2.5 py-1.5 text-sm">
                     <option>VO</option><option>IV</option><option>SC</option><option>IM</option><option>Tópica</option><option>Inhalatoria</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-[11px] text-slate-500 font-medium">Frecuencia</label>
-                  <select value={newRx.frequency} onChange={e => setNewRx({ ...newRx, frequency: e.target.value })}
+                  <Select value={newRx.frequency} onChange={e => setNewRx({ ...newRx, frequency: e.target.value })}
                     className="w-full border rounded px-2.5 py-1.5 text-sm">
                     <option>c/4h</option><option>c/6h</option><option>c/8h</option><option>c/12h</option><option>c/24h</option><option>Si precisa</option><option>Continua</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-[11px] text-slate-500 font-medium">Categoría</label>
-                  <select value={newRx.category} onChange={e => setNewRx({ ...newRx, category: e.target.value })}
+                  <Select value={newRx.category} onChange={e => setNewRx({ ...newRx, category: e.target.value })}
                     className="w-full border rounded px-2.5 py-1.5 text-sm">
                     <option value="fixed">Fija</option><option value="conditional">Condicional</option>
                     <option value="fluids">Sueroterapia</option><option value="insulin">Insulina</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-[11px] text-slate-500 font-medium">Horas pautadas</label>

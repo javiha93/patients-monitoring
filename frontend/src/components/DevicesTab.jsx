@@ -4,6 +4,7 @@ import { deviceApi } from '../services/deviceApi'
 import { useAuth } from '../context/AuthContext'
 import ConfirmModal from './ConfirmModal'
 import InsightsPanel from './InsightsPanel'
+import Select from './Select'
 
 const deviceInsightTypes = [
   'vvp_prolonged', 'vvp_emergency_change',
@@ -168,54 +169,54 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
             {showTypeSelect && (
               <div>
                 <label className="text-[11px] font-medium text-slate-600">Tipo</label>
-                <select value={form.type || ''} onChange={e => set('type', e.target.value)}
+                <Select value={form.type || ''} onChange={e => set('type', e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
                   {cat.types.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
+                </Select>
               </div>
             )}
 
             {showGauge && (
               <div>
                 <label className="text-[11px] font-medium text-slate-600">Calibre</label>
-                <select value={form.gauge || ''} onChange={e => set('gauge', e.target.value)}
+                <Select value={form.gauge || ''} onChange={e => set('gauge', e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
                   <option value="">Seleccionar...</option>
                   {gaugeOptions.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
+                </Select>
               </div>
             )}
 
             {showLocation && (
               <div>
                 <label className="text-[11px] font-medium text-slate-600">Localización</label>
-                <select value={form.location || ''} onChange={e => set('location', e.target.value)}
+                <Select value={form.location || ''} onChange={e => set('location', e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
                   <option value="">Seleccionar...</option>
                   {VVP_LOCATIONS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                </select>
+                </Select>
               </div>
             )}
 
             {showLumens && (
               <div>
                 <label className="text-[11px] font-medium text-slate-600">Luces</label>
-                <select value={form.lumens || ''} onChange={e => set('lumens', e.target.value ? parseInt(e.target.value) : null)}
+                <Select value={form.lumens || ''} onChange={e => set('lumens', e.target.value ? parseInt(e.target.value) : null)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
                   <option value="">Seleccionar...</option>
                   {SV_LUMENS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
+                </Select>
               </div>
             )}
 
             {showMaterial && (
               <div>
                 <label className="text-[11px] font-medium text-slate-600">Material</label>
-                <select value={form.material || ''} onChange={e => set('material', e.target.value)}
+                <Select value={form.material || ''} onChange={e => set('material', e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
                   <option value="">Seleccionar...</option>
                   {materialOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
+                </Select>
               </div>
             )}
           </div>
@@ -224,31 +225,31 @@ export function DeviceFormModal({ open, form, set, category, onSubmit, onCancel,
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[11px] font-medium text-slate-600">Región</label>
-                <select value={form.region || ''} onChange={e => { set('region', e.target.value); if (e.target.value !== 'abdomen') set('subRegion', '') }}
+                <Select value={form.region || ''} onChange={e => { set('region', e.target.value); if (e.target.value !== 'abdomen') set('subRegion', '') }}
                   className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
                   <option value="">Seleccionar...</option>
                   {DRAIN_REGIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
+                </Select>
               </div>
 
               {form.region === 'abdomen' && (
                 <div>
                   <label className="text-[11px] font-medium text-slate-600">Sub-región</label>
-                  <select value={form.subRegion || ''} onChange={e => set('subRegion', e.target.value)}
+                  <Select value={form.subRegion || ''} onChange={e => set('subRegion', e.target.value)}
                     className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
                     <option value="">Seleccionar...</option>
                     {ABDOMEN_SUBREGIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
+                  </Select>
                 </div>
               )}
 
               <div>
                 <label className="text-[11px] font-medium text-slate-600">Lateralidad</label>
-                <select value={form.laterality || ''} onChange={e => set('laterality', e.target.value)}
+                <Select value={form.laterality || ''} onChange={e => set('laterality', e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-0.5">
                   <option value="">Seleccionar...</option>
                   {LATERALITIES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
           )}
