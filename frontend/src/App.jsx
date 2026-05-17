@@ -16,9 +16,9 @@ function AppContent() {
   if (!user) return <Login />
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-900">
       <Sidebar />
-      <main className="flex-1 overflow-hidden bg-slate-100">
+      <main className="flex-1 overflow-hidden bg-slate-100 dark:bg-slate-900">
         <Routes>
           <Route path="/" element={<PatientList />} />
           <Route path="/patient/:id" element={<PatientRecord />} />

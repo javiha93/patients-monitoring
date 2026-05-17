@@ -6,6 +6,192 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
 }
 
+/* ── Dark mode ── */
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+/* Smooth theme transition */
+* {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* 
+ * Global dark overrides — avoids adding dark: to every component.
+ * Targets the most common Tailwind utility patterns used in the app.
+ */
+html.dark body {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+/* Backgrounds */
+html.dark .bg-white { background: #1e293b; }
+html.dark .bg-slate-50 { background: #1e293b; }
+html.dark .bg-slate-100 { background: #0f172a; }
+html.dark .bg-slate-50\/60 { background: rgba(30,41,59,0.6); }
+
+/* Text */
+html.dark .text-slate-900 { color: #f1f5f9; }
+html.dark .text-slate-800 { color: #e2e8f0; }
+html.dark .text-slate-700 { color: #cbd5e1; }
+html.dark .text-slate-600 { color: #94a3b8; }
+html.dark .text-slate-500 { color: #64748b; }
+html.dark .text-slate-400 { color: #64748b; }
+html.dark .text-slate-300 { color: #475569; }
+
+/* Borders */
+html.dark .border-slate-200 { border-color: #334155; }
+html.dark .border-slate-100 { border-color: #1e293b; }
+html.dark .border-slate-300 { border-color: #475569; }
+
+/* Inputs & form elements */
+html.dark input,
+html.dark textarea {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #475569;
+}
+html.dark input:focus,
+html.dark textarea:focus {
+  border-color: #3b82f6;
+}
+html.dark input.bg-transparent,
+html.dark textarea.bg-transparent {
+  background: transparent;
+}
+
+/* Hover states */
+html.dark .hover\:bg-slate-50:hover { background: #334155; }
+html.dark .hover\:bg-slate-100:hover { background: #334155; }
+html.dark .hover\:bg-slate-100\/80:hover { background: rgba(51,65,85,0.8); }
+
+/* Selected / active states */
+html.dark .bg-blue-50 { background: rgba(30,58,138,0.3); }
+html.dark .bg-blue-50\/50 { background: rgba(30,58,138,0.2); }
+html.dark .hover\:bg-blue-50:hover { background: rgba(30,58,138,0.4); }
+
+/* Shadows */
+html.dark .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+html.dark .shadow-lg { box-shadow: 0 10px 15px rgba(0,0,0,0.4); }
+html.dark .shadow-2xl { box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+html.dark .shadow-md { box-shadow: 0 4px 6px rgba(0,0,0,0.35); }
+
+/* Rounded cards & panels */
+html.dark .rounded-xl.shadow-sm,
+html.dark .rounded-2xl.shadow-2xl {
+  background: #1e293b;
+}
+
+/* Alert / status backgrounds */
+html.dark .bg-red-50 { background: rgba(127,29,29,0.3); }
+html.dark .bg-green-50 { background: rgba(20,83,45,0.3); }
+html.dark .bg-amber-50 { background: rgba(120,53,15,0.3); }
+html.dark .bg-sky-50 { background: rgba(7,89,133,0.2); }
+html.dark .bg-orange-50 { background: rgba(124,45,18,0.2); }
+html.dark .bg-yellow-50 { background: rgba(113,63,18,0.2); }
+html.dark .bg-violet-50 { background: rgba(76,29,149,0.2); }
+html.dark .bg-teal-50 { background: rgba(19,78,74,0.2); }
+
+/* Alert text */
+html.dark .text-red-700 { color: #fca5a5; }
+html.dark .text-red-600 { color: #f87171; }
+html.dark .text-green-700 { color: #86efac; }
+html.dark .text-amber-700 { color: #fcd34d; }
+html.dark .text-amber-600 { color: #fbbf24; }
+html.dark .text-sky-700 { color: #7dd3fc; }
+
+/* Filter pills — inactive */
+html.dark button.bg-white.text-slate-600.border-slate-200 {
+  background: #334155;
+  color: #94a3b8;
+  border-color: #475569;
+}
+html.dark button.bg-white.text-slate-600.border-slate-200:hover {
+  border-color: #64748b;
+}
+html.dark button.bg-white.text-slate-500.border-slate-200 {
+  background: #334155;
+  color: #94a3b8;
+  border-color: #475569;
+}
+html.dark button.bg-white.text-teal-600.border-teal-200 {
+  background: #334155;
+  color: #5eead4;
+  border-color: #475569;
+}
+html.dark button.bg-white.text-blue-600.border-blue-200 {
+  background: #334155;
+  color: #93c5fd;
+  border-color: #475569;
+}
+
+/* Scrollbar */
+html.dark .med-grid-scroll::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+html.dark .med-grid-scroll::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+html.dark .med-grid-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Select dropdown portal */
+html.dark [data-select-dropdown] {
+  background: #1e293b;
+  border-color: #475569;
+}
+html.dark [data-select-dropdown] button {
+  color: #cbd5e1;
+}
+html.dark [data-select-dropdown] button:hover {
+  background: rgba(30,58,138,0.3);
+}
+html.dark [data-select-dropdown] button[data-selected="true"] {
+  background: rgba(30,58,138,0.4);
+  color: #93c5fd;
+}
+
+/* DatePicker portal */
+html.dark [data-datepicker-dropdown] {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+/* Modals */
+html.dark .bg-black\/40 { background: rgba(0,0,0,0.6); }
+html.dark .bg-black\/50 { background: rgba(0,0,0,0.7); }
+
+/* Sidebar — already dark, no changes needed */
+
+/* Assignment badges */
+html.dark .bg-teal-100 { background: rgba(19,78,74,0.4); }
+html.dark .text-teal-700 { color: #5eead4; }
+html.dark .bg-blue-100 { background: rgba(30,58,138,0.4); }
+html.dark .text-blue-700 { color: #93c5fd; }
+
+/* Nursing sections */
+html.dark .bg-slate-50.rounded-lg,
+html.dark .p-3.bg-slate-50 {
+  background: #0f172a;
+}
+
+/* Table header */
+html.dark thead .bg-slate-50 {
+  background: #0f172a;
+}
+html.dark thead tr {
+  border-color: #334155;
+}
+
 
 
 /* Always show scrollbar on medication grid */

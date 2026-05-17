@@ -801,13 +801,14 @@ export default function PatientList() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(p => {
+                {sorted.map((p, idx) => {
                   const isSelected = selectedId === p.id
+                  const stripe = idx % 2 === 1 ? 'bg-slate-50/60' : ''
                   return (
                     <tr
                       key={p.admissionId}
                       onClick={() => handleSelect(p.id)}
-                      className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}
+                      className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : `${stripe} hover:bg-slate-100/80`}`}
                     >
                       <td className="px-4 py-3 group/triage" onClick={(e) => { e.stopPropagation(); setTriagePatient(p) }}>
                         <div className="flex items-center justify-center">

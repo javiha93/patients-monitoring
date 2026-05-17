@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Users, Search, LogOut, FileText, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Users, Search, LogOut, FileText, PanelLeftClose, PanelLeftOpen, Moon, Sun } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Sidebar() {
   const location = useLocation()
   const { user, logout } = useAuth()
+  const { dark, toggle: toggleTheme } = useTheme()
   const [collapsed, setCollapsed] = useState(false)
 
   const links = [
@@ -58,6 +60,16 @@ export default function Sidebar() {
           <FileText size={18} />
           {!collapsed && 'Reportes'}
         </Link>
+      </div>
+      <div className={`border-t border-slate-800`}>
+        <button
+          onClick={toggleTheme}
+          title={dark ? 'Modo claro' : 'Modo oscuro'}
+          className={`flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-5'} py-3 text-sm transition-colors text-slate-400 hover:text-white hover:bg-slate-800 w-full`}
+        >
+          {dark ? <Sun size={18} /> : <Moon size={18} />}
+          {!collapsed && (dark ? 'Modo claro' : 'Modo oscuro')}
+        </button>
       </div>
       <div className={`${collapsed ? 'px-2' : 'px-5'} py-4 border-t border-slate-800 text-sm text-slate-400`}>
         {!collapsed ? (
