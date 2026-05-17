@@ -71,10 +71,11 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
         setSearchResult({ status: 'error', message: err.response?.data?.error || 'Error al reabrir' })
       }
     } else {
+      if (!form.birthDate) return
       onSubmit({
         ...form,
         triageLevel: isAdmin ? null : parseInt(form.triageLevel),
-        birthDate: form.birthDate || null,
+        birthDate: form.birthDate,
       })
       resetForm()
     }
@@ -158,7 +159,7 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
           </div>
         </div>
         <div className="flex flex-col gap-1 mb-4">
-          <label className="text-xs font-medium text-slate-600">Fecha de nacimiento</label>
+          <label className="text-xs font-medium text-slate-600">Fecha de nacimiento <span className="text-red-500">*</span></label>
           <div className="w-1/2">
             <DatePicker
               value={form.birthDate}
@@ -213,7 +214,7 @@ export default function NewPatientModal({ open, onClose, onSubmit, isAdmin = fal
           <button type="button" onClick={handleClose} className="px-5 py-2.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Cancelar</button>
           <button
             type="submit"
-            disabled={isActive || searching}
+            disabled={isActive || searching || (!isReopen && !form.birthDate)}
             className="px-5 py-2.5 rounded-lg text-sm font-medium bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isReopen ? 'Reabrir ingreso' : 'Abrir ficha'}

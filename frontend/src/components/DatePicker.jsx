@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const MONTHS = [
@@ -63,6 +63,7 @@ export default function DatePicker({ value, onChange, disabled = false, placehol
     return d ? d.getMonth() : 0
   })
   const [yearSelectOpen, setYearSelectOpen] = useState(false)
+  const [dropUp, setDropUp] = useState(false)
   const containerRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -142,7 +143,14 @@ export default function DatePicker({ value, onChange, disabled = false, placehol
         <button
           type="button"
           disabled={disabled}
-          onClick={() => { setOpen(o => !o); setYearSelectOpen(false) }}
+          onClick={() => {
+            if (!open && containerRef.current) {
+              const rect = containerRef.current.getBoundingClientRect()
+              setDropUp(window.innerHeight - rect.bottom < 320)
+            }
+            setOpen(o => !o)
+            setYearSelectOpen(false)
+          }}
           className="px-2.5 py-2 border border-l-0 border-slate-200 rounded-r-md bg-slate-50 hover:bg-slate-100 text-slate-500 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Calendar size={16} />
@@ -150,7 +158,7 @@ export default function DatePicker({ value, onChange, disabled = false, placehol
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-1 bg-white rounded-xl shadow-lg border border-slate-200 p-3 w-72">
+        <div className={`absolute z-50 bg-white rounded-xl shadow-lg border border-slate-200 p-3 w-72 ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
           {/* Header: month/year navigation */}
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={prevMonth} className="p-1 hover:bg-slate-100 rounded">
