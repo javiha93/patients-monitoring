@@ -24,8 +24,18 @@ export function validateVitals(form) {
   return errors
 }
 
-export default function VitalInput({ label, field, form, set, error, placeholder, step }) {
-  const r = ranges[field]
+function handleVitalKeyDown(e) {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const container = e.target.closest('[data-vital-group]')
+  if (!container) return
+  const inputs = Array.from(container.querySelectorAll('input[type="number"]'))
+  const idx = inputs.indexOf(e.target)
+  if (idx < 0) return
+  const next = e.key === 'ArrowRight' ? inputs[idx + 1] : inputs[idx - 1]
+  if (next) { e.preventDefault(); next.focus() }
+}
+
+export default function VitalInput({ label, field, form, set, error, step }) {
   const hasError = !!error
 
   return (
@@ -36,7 +46,8 @@ export default function VitalInput({ label, field, form, set, error, placeholder
         step={step}
         value={form[field]}
         onChange={set(field)}
-        placeholder={placeholder}
+        onKeyDown={handleVitalKeyDown}
+        placeholder="—"
         className={`px-2.5 py-2 border rounded-md text-sm outline-none transition-colors
           ${hasError ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
       />
@@ -46,3 +57,5 @@ export default function VitalInput({ label, field, form, set, error, placeholder
     </div>
   )
 }
+
+export { handleVitalKeyDown }

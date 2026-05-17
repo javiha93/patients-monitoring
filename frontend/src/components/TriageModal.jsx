@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { X, AlertTriangle, Check, Syringe, Activity, ChevronRight, Search, ClipboardList } from 'lucide-react'
 import XRayIcon from './XRayIcon'
 import NursingAssessmentModal from './NursingAssessmentModal'
+import { handleVitalKeyDown } from './VitalInput'
 import { TRIAGE_MOTIVOS, findTriageRules } from '../constants/triageRules'
 
 const LEVELS = [1, 2, 3, 4, 5]
@@ -295,42 +296,44 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
               {/* Vitals */}
               <div>
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Constantes</div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-400">TAS (mmHg)</label>
-                    <input type="number" value={vitals.tas} onChange={e => setVitals(v => ({ ...v, tas: e.target.value }))}
-                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                <div data-vital-group>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400">TAS (mmHg)</label>
+                      <input type="number" value={vitals.tas} onChange={e => setVitals(v => ({ ...v, tas: e.target.value }))}
+                        onKeyDown={handleVitalKeyDown} placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400">TAD (mmHg)</label>
+                      <input type="number" value={vitals.tad} onChange={e => setVitals(v => ({ ...v, tad: e.target.value }))}
+                        onKeyDown={handleVitalKeyDown} placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400">FC (lpm)</label>
+                      <input type="number" value={vitals.fc} onChange={e => setVitals(v => ({ ...v, fc: e.target.value }))}
+                        onKeyDown={handleVitalKeyDown} placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400">Tª (°C)</label>
+                      <input type="number" step="0.1" value={vitals.temp} onChange={e => setVitals(v => ({ ...v, temp: e.target.value }))}
+                        onKeyDown={handleVitalKeyDown} placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400">SpO₂ (%)</label>
+                      <input type="number" value={vitals.spo2} onChange={e => setVitals(v => ({ ...v, spo2: e.target.value }))}
+                        onKeyDown={handleVitalKeyDown} placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400">FR (rpm)</label>
+                      <input type="number" value={vitals.fr} onChange={e => setVitals(v => ({ ...v, fr: e.target.value }))}
+                        onKeyDown={handleVitalKeyDown} placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400">EVA (0-10)</label>
+                      <input type="number" min="0" max="10" value={vitals.eva} onChange={e => setVitals(v => ({ ...v, eva: e.target.value }))}
+                        onKeyDown={handleVitalKeyDown} placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-400">TAD (mmHg)</label>
-                    <input type="number" value={vitals.tad} onChange={e => setVitals(v => ({ ...v, tad: e.target.value }))}
-                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-400">FC (lpm)</label>
-                    <input type="number" value={vitals.fc} onChange={e => setVitals(v => ({ ...v, fc: e.target.value }))}
-                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-400">Tª (°C)</label>
-                    <input type="number" step="0.1" value={vitals.temp} onChange={e => setVitals(v => ({ ...v, temp: e.target.value }))}
-                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-400">SpO₂ (%)</label>
-                    <input type="number" value={vitals.spo2} onChange={e => setVitals(v => ({ ...v, spo2: e.target.value }))}
-                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-400">FR (rpm)</label>
-                    <input type="number" value={vitals.fr} onChange={e => setVitals(v => ({ ...v, fr: e.target.value }))}
-                      placeholder="—" className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <label className="text-[11px] text-slate-400">EVA — Dolor (0-10)</label>
-                  <input type="number" min="0" max="10" value={vitals.eva} onChange={e => setVitals(v => ({ ...v, eva: e.target.value }))}
-                    placeholder="—" className="w-20 ml-2 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:border-blue-400 outline-none" />
                 </div>
               </div>
 

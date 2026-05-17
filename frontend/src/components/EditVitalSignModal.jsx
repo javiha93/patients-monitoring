@@ -173,23 +173,25 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
         </div>
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Constantes vitales</div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <VitalInput label="TAS (mmHg)" field="systolicBp" form={form} set={set} error={errors.systolicBp} placeholder="120" />
-          <VitalInput label="TAD (mmHg)" field="diastolicBp" form={form} set={set} error={errors.diastolicBp} placeholder="80" />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-          <VitalInput label="FC (bpm)" field="heartRate" form={form} set={set} error={errors.heartRate} placeholder="80" />
-          <VitalInput label="SpO2 (%)" field="spo2" form={form} set={set} error={errors.spo2} placeholder="98" />
-          <VitalInput label="FR (rpm)" field="respiratoryRate" form={form} set={set} error={errors.respiratoryRate} placeholder="16" />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-          <VitalInput label="Tª (°C)" field="temperature" form={form} set={set} error={errors.temperature} placeholder="36.5" step="0.1" />
-          <VitalInput label="Dolor (0-10)" field="painLevel" form={form} set={set} error={errors.painLevel} placeholder="0" />
+        <div data-vital-group>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <VitalInput label="TAS (mmHg)" field="systolicBp" form={form} set={set} error={errors.systolicBp} />
+            <VitalInput label="TAD (mmHg)" field="diastolicBp" form={form} set={set} error={errors.diastolicBp} />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+            <VitalInput label="FC (bpm)" field="heartRate" form={form} set={set} error={errors.heartRate} />
+            <VitalInput label="SpO2 (%)" field="spo2" form={form} set={set} error={errors.spo2} />
+            <VitalInput label="FR (rpm)" field="respiratoryRate" form={form} set={set} error={errors.respiratoryRate} />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+            <VitalInput label="Tª (°C)" field="temperature" form={form} set={set} error={errors.temperature} step="0.1" />
+            <VitalInput label="Dolor (0-10)" field="painLevel" form={form} set={set} error={errors.painLevel} />
+          </div>
         </div>
 
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pt-3 border-t border-slate-100">Otros registros</div>
         <div className="grid grid-cols-2 gap-3 mb-3">
-          <VitalInput label="Glucemia capilar (mg/dL)" field="bloodGlucose" form={form} set={set} error={errors.bloodGlucose} placeholder="120" />
+          <VitalInput label="Glucemia capilar (mg/dL)" field="bloodGlucose" form={form} set={set} error={errors.bloodGlucose} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
           <div className="flex flex-col gap-1">
@@ -203,7 +205,7 @@ export default function EditVitalSignModal({ open, onClose, onSubmit, vitalSign,
             </select>
           </div>
           {form.urineSource && form.urineSource !== 'panal' && (
-            <VitalInput label="Diuresis (mL)" field="diuresis" form={form} set={set} error={errors.diuresis} placeholder="200" />
+            <VitalInput label="Diuresis (mL)" field="diuresis" form={form} set={set} error={errors.diuresis} />
           )}
           {form.urineSource === 'panal' && (
             <div className="flex flex-col gap-1">
