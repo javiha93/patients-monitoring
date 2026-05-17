@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Radiation, Magnet, RefreshCw, BedDouble } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Radiation, Magnet, RefreshCw, BedDouble, Phone } from 'lucide-react'
 import XRayIcon from '../components/XRayIcon'
 import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
@@ -17,6 +17,8 @@ import Select from '../components/Select'
 import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
 import { locationApi } from '../services/locationApi'
+import { transferApi } from '../services/transferApi'
+import TransferModal from '../components/TransferModal'
 
 const SPECIALTIES = [
   'Medicina', 'Traumatología', 'Cirugía', 'Ginecología', 'Pediatría', 'Oftalmología',
@@ -365,6 +367,8 @@ export default function PatientList() {
   const [search, setSearch] = useState(saved.current?.search ?? '')
   const [modalOpen, setModalOpen] = useState(false)
   const [triagePatient, setTriagePatient] = useState(null)
+  const [transferPatient, setTransferPatient] = useState(null)
+  const [transfers, setTransfers] = useState({}) // { admissionId: { id, queuePosition } }
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
   const [sortKey, setSortKey] = useState(saved.current?.sortKey ?? null)
@@ -441,6 +445,15 @@ export default function PatientList() {
     } catch { /* ignore */ }
   }
 
+  const fetchTransfers = async () => {
+    try {
+      const { data } = await transferApi.list()
+      const map = {}
+      data.forEach(t => { map[t.admissionId] = t })
+      setTransfers(map)
+    } catch { /* ignore */ }
+  }
+
   const fetchLocationStatus = async () => {
     try {
       const { data } = await locationApi.getAllStatus()
@@ -454,6 +467,7 @@ export default function PatientList() {
     fetchPatients()
     fetchNotifications()
     fetchLocationStatus()
+    fetchTransfers()
     getUsersByRole('Enfermería').then(setAllNurses).catch(() => {})
     getUsersByRole('Medicina').then(setAllDoctors).catch(() => {})
 
@@ -655,6 +669,27 @@ export default function PatientList() {
       toast.error('Error al actualizar triaje')
     }
     setTriagePatient(null)
+  }
+
+  const handleTransferConfirm = async (data) => {
+    try {
+      const resp = await transferApi.create({
+        ...data,
+        requestedBy: user?.displayName || '',
+      })
+      setTransfers(prev => ({
+        ...prev,
+        [data.admissionId]: resp.data,
+      }))
+      toast.success(`Traslado solicitado — posición #${resp.data.queuePosition}`)
+    } catch (e) {
+      if (e.response?.status === 409) {
+        toast.error('Ya existe una solicitud de traslado para este paciente')
+      } else {
+        toast.error('Error al solicitar traslado')
+      }
+    }
+    setTransferPatient(null)
   }
 
   const actions = [
@@ -979,7 +1014,25 @@ export default function PatientList() {
                               className="w-16 text-center bg-transparent text-sm text-blue-600 font-semibold border-0 border-b border-transparent hover:border-blue-300 focus:border-blue-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
                             />
                           ) : p.bedNumber ? (
-                            <span className="text-blue-600 font-semibold" data-testid="bed-number">{p.bedNumber}</span>
+                            <span className="group/bed inline-flex items-center gap-1 relative">
+                              <span className="text-blue-600 font-semibold" data-testid="bed-number">{p.bedNumber}</span>
+                              {transfers[p.admissionId] ? (
+                                <span
+                                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold"
+                                  title={`Orden de traslado #${transfers[p.admissionId].queuePosition}`}
+                                  data-testid="transfer-badge"
+                                >{transfers[p.admissionId].queuePosition}</span>
+                              ) : (
+                                <button
+                                  onClick={() => setTransferPatient(p)}
+                                  className="hidden group-hover/bed:inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                                  title="Solicitar traslado"
+                                  data-testid="transfer-call-btn"
+                                >
+                                  <Phone size={12} />
+                                </button>
+                              )}
+                            </span>
                           ) : (
                             <BedDouble size={16} className="text-purple-400 mx-auto" title="Pendiente de cama" data-testid="bed-pending" />
                           )
@@ -1276,7 +1329,25 @@ export default function PatientList() {
                             className="w-14 text-center bg-transparent text-xs text-blue-600 font-semibold border-0 border-b border-blue-200 hover:border-blue-300 focus:border-blue-400 focus:outline-none px-0 py-0 placeholder:text-blue-300"
                           />
                         ) : p.admitted && p.bedNumber ? (
-                          <span className="text-blue-600 font-semibold" data-testid="bed-number">{p.bedNumber}</span>
+                          <span className="group/bed inline-flex items-center gap-1">
+                            <span className="text-blue-600 font-semibold" data-testid="bed-number">{p.bedNumber}</span>
+                            {transfers[p.admissionId] ? (
+                              <span
+                                className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-[9px] font-bold"
+                                title={`Orden de traslado #${transfers[p.admissionId].queuePosition}`}
+                                data-testid="transfer-badge"
+                              >{transfers[p.admissionId].queuePosition}</span>
+                            ) : !isAdmin && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setTransferPatient(p) }}
+                                className="hidden group-hover/bed:inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-600 hover:bg-green-200"
+                                title="Solicitar traslado"
+                                data-testid="transfer-call-btn"
+                              >
+                                <Phone size={10} />
+                              </button>
+                            )}
+                          </span>
                         ) : p.admitted ? (
                           <BedDouble size={14} className="text-purple-400" title="Pendiente de cama" data-testid="bed-pending" />
                         ) : null}
@@ -1420,6 +1491,12 @@ export default function PatientList() {
         locations={LOCATIONS}
         onClose={() => setTriagePatient(null)}
         onConfirm={handleTriageConfirm}
+      />
+      <TransferModal
+        open={!!transferPatient}
+        patient={transferPatient}
+        onClose={() => setTransferPatient(null)}
+        onConfirm={handleTransferConfirm}
       />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
