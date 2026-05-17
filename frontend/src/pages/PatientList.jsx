@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Radiation, Magnet, RefreshCw } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, HeartPulse, Bandage, Pill, Syringe, Activity, ChevronDown, Check, Filter, X, UserX, Radiation, Magnet, RefreshCw, BedDouble } from 'lucide-react'
 import XRayIcon from '../components/XRayIcon'
 import { patientApi } from '../services/patientApi'
 import { labTestApi } from '../services/labTestApi'
@@ -854,6 +854,7 @@ export default function PatientList() {
                   <th className="px-2 py-3 w-14 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Esp.{sortIndicator('especialidad')}</th>
                   <th className="px-4 py-3">Paciente</th>
                   <th className="px-3 py-3">Motivo</th>
+                  <th className="px-2 py-3 w-20">Cama</th>
                   <th className="px-3 py-3">Observaciones</th>
                   <th className="px-2 py-3 w-20 text-center">Asignado</th>
                   <th className="px-2 py-3 w-8 text-right"></th>
@@ -868,7 +869,7 @@ export default function PatientList() {
                     <tr
                       key={p.admissionId}
                       onClick={() => handleSelect(p.id)}
-                      className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : `${stripe} hover:bg-slate-100/80`}`}
+                      className={`border-t border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : p.admitted ? 'pm-admitted hover:brightness-95' : `${stripe} hover:bg-slate-100/80`}`}
                     >
                       <td className="px-4 py-3 group/triage" onClick={(e) => { e.stopPropagation(); setTriagePatient(p) }}>
                         <div className="flex items-center justify-center">
@@ -927,6 +928,35 @@ export default function PatientList() {
                         <span className="text-slate-400 font-normal text-sm ml-1.5">{calcAge(p.birthDate) ?? ''}</span>
                       </td>
                       <td className="px-3 py-3 text-sm">{p.matCategory || '—'}</td>
+                      <td className="px-2 py-3 text-sm text-center" data-testid="bed-cell" onClick={(e) => e.stopPropagation()}>
+                        {p.admitted ? (
+                          isAdmin ? (
+                            <input
+                              type="text"
+                              defaultValue={p.bedNumber || ''}
+                              placeholder="—"
+                              data-testid="bed-input"
+                              onBlur={async (e) => {
+                                const val = e.target.value.trim()
+                                if (val !== (p.bedNumber || '')) {
+                                  try {
+                                    await patientApi.assignBed(p.admissionId, val)
+                                    setPatients(prev => prev.map(pt =>
+                                      pt.admissionId === p.admissionId ? { ...pt, bedNumber: val } : pt
+                                    ))
+                                  } catch { toast.error('Error al asignar cama') }
+                                }
+                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+                              className="w-16 text-center bg-transparent text-sm text-blue-600 font-semibold border-0 border-b border-transparent hover:border-blue-300 focus:border-blue-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
+                            />
+                          ) : p.bedNumber ? (
+                            <span className="text-blue-600 font-semibold" data-testid="bed-number">{p.bedNumber}</span>
+                          ) : (
+                            <BedDouble size={16} className="text-purple-400 mx-auto" title="Pendiente de cama" data-testid="bed-pending" />
+                          )
+                        ) : null}
+                      </td>
                       <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="text"
@@ -1049,7 +1079,7 @@ export default function PatientList() {
                 <div
                   key={p.admissionId}
                   onClick={() => handleSelect(p.id)}
-                  className={`bg-white rounded-xl shadow-sm p-3 cursor-pointer transition-shadow ${isSelected ? 'ring-2 ring-blue-400 shadow-md' : 'hover:shadow-md'}`}
+                  className={`rounded-xl shadow-sm p-3 cursor-pointer transition-shadow ${p.admitted ? 'pm-admitted' : 'bg-white'} ${isSelected ? 'ring-2 ring-blue-400 shadow-md' : 'hover:shadow-md'}`}
                 >
                   {/* Row 1: triage + name + location/specialty left, icons right */}
                   <div className="flex items-start justify-between gap-2">
@@ -1124,7 +1154,35 @@ export default function PatientList() {
                   {/* Row 2: motivo + location/specialty left, observations right */}
                   <div className="flex items-start gap-3 mt-2">
                     <div className="flex-shrink-0">
-                      <div className="text-xs text-slate-500 mb-1">{p.matCategory || 'Sin motivo'}</div>
+                      <div className="text-xs text-slate-500 mb-1 flex items-center gap-1.5">
+                        {p.matCategory || 'Sin motivo'}
+                        {p.admitted && isAdmin ? (
+                          <input
+                            type="text"
+                            defaultValue={p.bedNumber || ''}
+                            placeholder="Cama"
+                            data-testid="bed-input"
+                            onClick={(e) => e.stopPropagation()}
+                            onBlur={async (e) => {
+                              const val = e.target.value.trim()
+                              if (val !== (p.bedNumber || '')) {
+                                try {
+                                  await patientApi.assignBed(p.admissionId, val)
+                                  setPatients(prev => prev.map(pt =>
+                                    pt.admissionId === p.admissionId ? { ...pt, bedNumber: val } : pt
+                                  ))
+                                } catch { toast.error('Error al asignar cama') }
+                              }
+                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+                            className="w-14 text-center bg-transparent text-xs text-blue-600 font-semibold border-0 border-b border-blue-200 hover:border-blue-300 focus:border-blue-400 focus:outline-none px-0 py-0 placeholder:text-blue-300"
+                          />
+                        ) : p.admitted && p.bedNumber ? (
+                          <span className="text-blue-600 font-semibold" data-testid="bed-number">{p.bedNumber}</span>
+                        ) : p.admitted ? (
+                          <BedDouble size={14} className="text-purple-400" title="Pendiente de cama" data-testid="bed-pending" />
+                        ) : null}
+                      </div>
                       <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                         <InlineDropdown
                           value={p.location || ''}
@@ -1223,6 +1281,25 @@ export default function PatientList() {
             </button>
           )
         })}
+        {user?.role === 'Medicina' && selectedPatient && (
+          <button
+            data-testid="admit-toggle"
+            onClick={async () => {
+              const newVal = !selectedPatient.admitted
+              try {
+                await patientApi.markAdmitted(selectedPatient.admissionId, newVal)
+                setPatients(prev => prev.map(pt =>
+                  pt.admissionId === selectedPatient.admissionId ? { ...pt, admitted: newVal, bedNumber: newVal ? pt.bedNumber : '' } : pt
+                ))
+              } catch { toast.error('Error al cambiar ingreso') }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${selectedPatient.admitted ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            title={selectedPatient.admitted ? 'Quitar ingreso' : 'Marcar como ingresado'}
+          >
+            <BedDouble size={18} />
+            {selectedPatient.admitted ? 'Ingresado' : 'Ingresar'}
+          </button>
+        )}
         <div className="text-base text-slate-500">
           {selectedPatient ? (
             <><strong className="text-slate-900">{selectedPatient.lastName}, {selectedPatient.firstName}</strong> <span className="text-slate-400">{calcAge(selectedPatient.birthDate) ?? ''}</span> · <span className="font-mono text-sm">{selectedPatient.nhc}</span></>

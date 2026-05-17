@@ -31,6 +31,8 @@ html.dark body {
 /* Zebra striping for table rows */
 .pm-stripe { background: #f1f5f9; }
 html.dark .pm-stripe { background: #0f172a; }
+.pm-admitted { background: #ede9fe; }
+html.dark .pm-admitted { background: #2e1065; }
 
 /* Backgrounds */
 html.dark .bg-white { background: #1e293b; }

@@ -60,6 +60,9 @@ public class PatientListDTO {
     /** True if the patient has any active prescriptions */
     private boolean hasPrescriptions;
 
+    private boolean admitted;
+    private String bedNumber;
+
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class RecentEcgInfo {
         private LocalDateTime completedAt;

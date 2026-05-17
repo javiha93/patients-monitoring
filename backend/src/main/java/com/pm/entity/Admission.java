@@ -50,6 +50,14 @@ public class Admission {
     @Column(name = "previous_doctor")
     private String previousDoctor;
 
+    /** Marked as admitted (pending hospital bed assignment) */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean admitted = false;
+
+    @Column(name = "bed_number")
+    private String bedNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;

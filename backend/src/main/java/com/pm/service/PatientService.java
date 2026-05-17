@@ -148,6 +148,8 @@ public class PatientService {
             dto.setHasCompletedMri(!pendingTypes.contains("mri") && !ipTypes.contains("mri") && completedTypes.contains("mri"));
 
             dto.setHasPrescriptions(admissionsWithPrescriptions.contains(a.getId()));
+            dto.setAdmitted(a.isAdmitted());
+            dto.setBedNumber(a.getBedNumber());
 
             // Recent ECGs for tooltip
             List<com.pm.entity.Ecg> recent = recentEcgsByAdmission.get(a.getId());
@@ -304,6 +306,21 @@ public class PatientService {
         Admission admission = admissionRepository.findById(admissionId)
                 .orElseThrow(() -> new RuntimeException("Admission not found"));
         admission.setLocation(location);
+        admissionRepository.save(admission);
+    }
+
+    public void markAdmitted(Long admissionId, boolean admitted) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        admission.setAdmitted(admitted);
+        if (!admitted) admission.setBedNumber(null);
+        admissionRepository.save(admission);
+    }
+
+    public void assignBed(Long admissionId, String bedNumber) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        admission.setBedNumber(bedNumber);
         admissionRepository.save(admission);
     }
 

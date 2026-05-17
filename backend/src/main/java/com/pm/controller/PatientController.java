@@ -84,6 +84,16 @@ public class PatientController {
         patientService.unassignDoctor(admissionId);
     }
 
+    @PatchMapping("/admission/{admissionId}/mark-admitted")
+    public void markAdmitted(@PathVariable Long admissionId, @RequestParam boolean admitted) {
+        patientService.markAdmitted(admissionId, admitted);
+    }
+
+    @PatchMapping("/admission/{admissionId}/bed")
+    public void assignBed(@PathVariable Long admissionId, @RequestBody Map<String, String> body) {
+        patientService.assignBed(admissionId, body.get("bedNumber"));
+    }
+
     @PatchMapping("/admission/{admissionId}/triage")
     public void updateTriage(@PathVariable Long admissionId, @RequestBody Map<String, Object> body) {
         Integer level = body.get("triageLevel") != null ? ((Number) body.get("triageLevel")).intValue() : null;

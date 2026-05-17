@@ -26,4 +26,8 @@ export const patientApi = {
     api.patch(`/patients/admission/${admissionId}/unassign-doctor`),
   updateTriage: (admissionId, data) =>
     api.patch(`/patients/admission/${admissionId}/triage`, data),
+  markAdmitted: (admissionId, admitted) =>
+    api.patch(`/patients/admission/${admissionId}/mark-admitted`, null, { params: { admitted } }),
+  assignBed: (admissionId, bedNumber) =>
+    api.patch(`/patients/admission/${admissionId}/bed`, { bedNumber }),
 }
