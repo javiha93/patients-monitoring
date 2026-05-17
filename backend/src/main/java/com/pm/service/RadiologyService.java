@@ -55,6 +55,14 @@ public class RadiologyService {
     }
 
     @Transactional
+    public RadiologyOrderDTO markInProgress(Long id) {
+        RadiologyOrder order = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Radiology order not found"));
+        order.setStatus("in_progress");
+        return RadiologyOrderDTO.fromEntitySummary(repo.save(order));
+    }
+
+    @Transactional
     public RadiologyOrderDTO complete(Long id, String completedBy, String imageData, String imageType, String notes) {
         RadiologyOrder order = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Radiology order not found"));

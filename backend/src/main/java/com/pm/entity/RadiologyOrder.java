@@ -36,7 +36,7 @@ public class RadiologyOrder {
     @Column(nullable = false)
     private String priority;
 
-    /** "pending" or "completed" */
+    /** "pending", "in_progress", or "completed" */
     @Column(nullable = false)
     private String status;
 

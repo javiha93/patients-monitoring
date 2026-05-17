@@ -37,6 +37,11 @@ public class RadiologyController {
         return service.create(dto);
     }
 
+    @PatchMapping("/{id}/in-progress")
+    public RadiologyOrderDTO markInProgress(@PathVariable Long id) {
+        return service.markInProgress(id);
+    }
+
     @PatchMapping("/{id}/complete")
     public RadiologyOrderDTO complete(@PathVariable Long id, @RequestBody Map<String, String> body) {
         return service.complete(

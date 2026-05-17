@@ -357,6 +357,11 @@ export default function PatientList() {
   const [labNotifications, setLabNotifications] = useState(new Set()) // admissionIds with unseen lab updates
   const [labNotifByTest, setLabNotifByTest] = useState(new Set()) // labTestIds with unseen updates
 
+  // Only show lab notification badges for patients assigned to the current user
+  const showLabBadge = (patient) =>
+    labNotifications.has(patient.admissionId) &&
+    (patient.assignedNurse === user?.displayName || patient.assignedDoctor === user?.displayName)
+
   const fetchPatients = async () => {
     try {
       const { data } = await patientApi.listActive()
@@ -871,18 +876,18 @@ export default function PatientList() {
                           {p.pendingLabs && p.pendingLabs.length > 0 ? (
                             <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon" className="relative">
                               <Syringe size={16} className="text-orange-500" />
-                              {labNotifications.has(p.admissionId) && (
+                              {showLabBadge(p) && (
                                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" data-testid="lab-notif-badge" />
                               )}
                             </span>
                           ) : p.hasCompletedLabs ? (
                             <span title="Analíticas realizadas" data-testid="completed-lab-icon" className="relative">
                               <Syringe size={16} className="text-slate-300" />
-                              {labNotifications.has(p.admissionId) && (
+                              {showLabBadge(p) && (
                                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" data-testid="lab-notif-badge" />
                               )}
                             </span>
-                          ) : labNotifications.has(p.admissionId) && (
+                          ) : showLabBadge(p) && (
                             <span className="relative" data-testid="completed-lab-icon">
                               <Syringe size={16} className="text-slate-300" />
                               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" data-testid="lab-notif-badge" />
@@ -901,6 +906,10 @@ export default function PatientList() {
                             <span title="Radiografía pendiente" data-testid="pending-xray-icon">
                               <XRayIcon size={16} className="text-blue-500" />
                             </span>
+                          ) : p.hasInProgressXray ? (
+                            <span title="Radiografía en curso" data-testid="in-progress-xray-icon" className="animate-pulse">
+                              <XRayIcon size={16} className="text-blue-500" />
+                            </span>
                           ) : p.hasCompletedXray && (
                             <span title="Radiografía realizada" data-testid="completed-xray-icon">
                               <XRayIcon size={16} className="text-slate-300" />
@@ -910,6 +919,10 @@ export default function PatientList() {
                             <span title="TAC pendiente" data-testid="pending-ct-icon">
                               <Radiation size={16} className="text-amber-500" />
                             </span>
+                          ) : p.hasInProgressCt ? (
+                            <span title="TAC en curso" data-testid="in-progress-ct-icon" className="animate-pulse">
+                              <Radiation size={16} className="text-amber-500" />
+                            </span>
                           ) : p.hasCompletedCt && (
                             <span title="TAC realizado" data-testid="completed-ct-icon">
                               <Radiation size={16} className="text-slate-300" />
@@ -917,6 +930,10 @@ export default function PatientList() {
                           )}
                           {p.hasPendingMri ? (
                             <span title="Resonancia pendiente" data-testid="pending-mri-icon">
+                              <Magnet size={16} className="text-red-500" />
+                            </span>
+                          ) : p.hasInProgressMri ? (
+                            <span title="Resonancia en curso" data-testid="in-progress-mri-icon" className="animate-pulse">
                               <Magnet size={16} className="text-red-500" />
                             </span>
                           ) : p.hasCompletedMri && (
@@ -956,18 +973,18 @@ export default function PatientList() {
                       {p.pendingLabs && p.pendingLabs.length > 0 ? (
                         <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon" className="relative">
                           <Syringe size={18} className="text-orange-500" />
-                          {labNotifications.has(p.admissionId) && (
+                          {showLabBadge(p) && (
                             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
                           )}
                         </span>
                       ) : p.hasCompletedLabs ? (
                         <span title="Analíticas realizadas" data-testid="completed-lab-icon" className="relative">
                           <Syringe size={18} className="text-slate-300" />
-                          {labNotifications.has(p.admissionId) && (
+                          {showLabBadge(p) && (
                             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
                           )}
                         </span>
-                      ) : labNotifications.has(p.admissionId) && (
+                      ) : showLabBadge(p) && (
                         <span className="relative" data-testid="completed-lab-icon">
                           <Syringe size={18} className="text-slate-300" />
                           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
@@ -984,16 +1001,22 @@ export default function PatientList() {
                       )}
                       {p.hasPendingXray ? (
                         <span title="Radiografía pendiente"><XRayIcon size={18} className="text-blue-500" /></span>
+                      ) : p.hasInProgressXray ? (
+                        <span title="Radiografía en curso" className="animate-pulse"><XRayIcon size={18} className="text-blue-500" /></span>
                       ) : p.hasCompletedXray && (
                         <span title="Radiografía realizada"><XRayIcon size={18} className="text-slate-300" /></span>
                       )}
                       {p.hasPendingCt ? (
                         <span title="TAC pendiente"><Radiation size={18} className="text-amber-500" /></span>
+                      ) : p.hasInProgressCt ? (
+                        <span title="TAC en curso" className="animate-pulse"><Radiation size={18} className="text-amber-500" /></span>
                       ) : p.hasCompletedCt && (
                         <span title="TAC realizado"><Radiation size={18} className="text-slate-300" /></span>
                       )}
                       {p.hasPendingMri ? (
                         <span title="Resonancia pendiente"><Magnet size={18} className="text-red-500" /></span>
+                      ) : p.hasInProgressMri ? (
+                        <span title="Resonancia en curso" className="animate-pulse"><Magnet size={18} className="text-red-500" /></span>
                       ) : p.hasCompletedMri && (
                         <span title="Resonancia realizada"><Magnet size={18} className="text-slate-300" /></span>
                       )}

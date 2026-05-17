@@ -48,10 +48,13 @@ public class PatientListDTO {
     private List<RecentEcgInfo> recentEcgs;
 
     private boolean hasPendingXray;
+    private boolean hasInProgressXray;
     private boolean hasCompletedXray;
     private boolean hasPendingCt;
+    private boolean hasInProgressCt;
     private boolean hasCompletedCt;
     private boolean hasPendingMri;
+    private boolean hasInProgressMri;
     private boolean hasCompletedMri;
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

@@ -259,6 +259,12 @@ export default function PatientTests() {
     }
   }
 
+  const handleRadiologyMarkInProgress = async (e, orderId) => {
+    e.stopPropagation()
+    await radiologyApi.markInProgress(orderId)
+    fetchData()
+  }
+
   const handleDeleteRadiology = async () => {
     await radiologyApi.delete(radiologyDeleteConfirm.id)
     setRadiologyDeleteConfirm({ open: false, id: null })
@@ -620,10 +626,17 @@ export default function PatientTests() {
               <div className="space-y-2">
                 {radiologyOrders.map(order => {
                   const isCompleted = order.status === 'completed'
+                  const isInProgress = order.status === 'in_progress'
+                  const isPending = order.status === 'pending'
                   const typeLabel = TYPE_LABELS[order.type] || order.type
                   const regionLabel = getRegionLabel(order.type, order.bodyRegion)
                   const colorMap = { xray: 'blue', ct: 'purple', mri: 'indigo' }
                   const color = colorMap[order.type] || 'slate'
+                  const statusConfig = isCompleted
+                    ? { badge: 'bg-green-100 text-green-800', icon: <CheckCircle2 size={12} />, label: 'Realizado' }
+                    : isInProgress
+                    ? { badge: 'bg-indigo-100 text-indigo-800', icon: <Loader2 size={12} className="animate-spin" />, label: 'En curso' }
+                    : { badge: 'bg-amber-100 text-amber-800', icon: <Clock size={12} />, label: 'Pendiente' }
                   return (
                     <div key={order.id}
                       onClick={() => isCompleted && handleRadiologyClick(order)}
@@ -646,11 +659,15 @@ export default function PatientTests() {
                           {order.notes && <span className="text-slate-300">· {order.notes}</span>}
                         </div>
                       </div>
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-                        isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {isCompleted ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                        {isCompleted ? 'Realizado' : 'Pendiente'}
+                      {isPending && (
+                        <button onClick={(e) => handleRadiologyMarkInProgress(e, order.id)}
+                          className="text-xs text-indigo-500 hover:text-indigo-700 font-medium whitespace-nowrap">
+                          Marcar en curso
+                        </button>
+                      )}
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${statusConfig.badge}`}>
+                        {statusConfig.icon}
+                        {statusConfig.label}
                       </span>
                       <button onClick={(e) => { e.stopPropagation(); setRadiologyDeleteConfirm({ open: true, id: order.id }) }}
                         className="text-slate-300 hover:text-red-500 flex-shrink-0"><Trash2 size={16} /></button>
@@ -676,8 +693,14 @@ export default function PatientTests() {
               <div className="space-y-2 opacity-60">
                 {historicalRadiology.map(order => {
                   const isCompleted = order.status === 'completed'
+                  const isInProgress = order.status === 'in_progress'
                   const typeLabel = TYPE_LABELS[order.type] || order.type
                   const regionLabel = getRegionLabel(order.type, order.bodyRegion)
+                  const statusCfg = isCompleted
+                    ? { badge: 'bg-green-100 text-green-800', icon: <CheckCircle2 size={12} />, label: 'Realizado' }
+                    : isInProgress
+                    ? { badge: 'bg-indigo-100 text-indigo-800', icon: <Loader2 size={12} className="animate-spin" />, label: 'En curso' }
+                    : { badge: 'bg-amber-100 text-amber-800', icon: <Clock size={12} />, label: 'Pendiente' }
                   return (
                     <div key={order.id}
                       onClick={() => isCompleted && handleRadiologyClick(order)}
@@ -693,11 +716,9 @@ export default function PatientTests() {
                           {order.completedBy && <span className="text-emerald-500">· {order.completedBy}</span>}
                         </div>
                       </div>
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-                        isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {isCompleted ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                        {isCompleted ? 'Realizado' : 'Pendiente'}
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${statusCfg.badge}`}>
+                        {statusCfg.icon}
+                        {statusCfg.label}
                       </span>
                     </div>
                   )

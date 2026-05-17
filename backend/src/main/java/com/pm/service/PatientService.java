@@ -45,6 +45,7 @@ public class PatientService {
         Set<Long> admissionsWithCompletedLabs = new HashSet<>();
         Set<Long> admissionsWithCompletedEcg = new HashSet<>();
         Map<Long, Set<String>> pendingRadiologyTypes = new HashMap<>();
+        Map<Long, Set<String>> inProgressRadiologyTypes = new HashMap<>();
         Map<Long, Set<String>> completedRadiologyTypes = new HashMap<>();
         Map<Long, List<com.pm.entity.Ecg>> recentEcgsByAdmission = new HashMap<>();
         if (!admissionIds.isEmpty()) {
@@ -73,6 +74,10 @@ public class PatientService {
             // Radiology indicators by type
             radiologyRepository.findByAdmissionIdInAndStatus(admissionIds, "pending")
                     .forEach(r -> pendingRadiologyTypes
+                            .computeIfAbsent(r.getAdmission().getId(), k -> new HashSet<>())
+                            .add(r.getType()));
+            radiologyRepository.findByAdmissionIdInAndStatus(admissionIds, "in_progress")
+                    .forEach(r -> inProgressRadiologyTypes
                             .computeIfAbsent(r.getAdmission().getId(), k -> new HashSet<>())
                             .add(r.getType()));
             radiologyRepository.findByAdmissionIdInAndStatus(admissionIds, "completed")
@@ -122,15 +127,19 @@ public class PatientService {
             dto.setHasCompletedLabs(!hasPending && admissionsWithCompletedLabs.contains(a.getId()));
             dto.setHasCompletedEcg(!admissionsWithPendingEcg.contains(a.getId()) && admissionsWithCompletedEcg.contains(a.getId()));
 
-            // Radiology indicators by type
+            // Radiology indicators by type (priority: pending > in_progress > completed)
             Set<String> pendingTypes = pendingRadiologyTypes.getOrDefault(a.getId(), Collections.emptySet());
+            Set<String> ipTypes = inProgressRadiologyTypes.getOrDefault(a.getId(), Collections.emptySet());
             Set<String> completedTypes = completedRadiologyTypes.getOrDefault(a.getId(), Collections.emptySet());
             dto.setHasPendingXray(pendingTypes.contains("xray"));
-            dto.setHasCompletedXray(!pendingTypes.contains("xray") && completedTypes.contains("xray"));
+            dto.setHasInProgressXray(!pendingTypes.contains("xray") && ipTypes.contains("xray"));
+            dto.setHasCompletedXray(!pendingTypes.contains("xray") && !ipTypes.contains("xray") && completedTypes.contains("xray"));
             dto.setHasPendingCt(pendingTypes.contains("ct"));
-            dto.setHasCompletedCt(!pendingTypes.contains("ct") && completedTypes.contains("ct"));
+            dto.setHasInProgressCt(!pendingTypes.contains("ct") && ipTypes.contains("ct"));
+            dto.setHasCompletedCt(!pendingTypes.contains("ct") && !ipTypes.contains("ct") && completedTypes.contains("ct"));
             dto.setHasPendingMri(pendingTypes.contains("mri"));
-            dto.setHasCompletedMri(!pendingTypes.contains("mri") && completedTypes.contains("mri"));
+            dto.setHasInProgressMri(!pendingTypes.contains("mri") && ipTypes.contains("mri"));
+            dto.setHasCompletedMri(!pendingTypes.contains("mri") && !ipTypes.contains("mri") && completedTypes.contains("mri"));
 
             // Recent ECGs for tooltip
             List<com.pm.entity.Ecg> recent = recentEcgsByAdmission.get(a.getId());
