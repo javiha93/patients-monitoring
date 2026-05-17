@@ -353,7 +353,8 @@ export default function NursingAssessmentTab({ admissionId, patientId, toast }) 
 }
 
 /* ── The form itself, split out for readability ── */
-function AssessmentForm({ form, set, onSubmit, onCancel, saving, editing }) {
+export { EMPTY_FORM as NURSING_EMPTY_FORM }
+export function AssessmentForm({ form, set, onSubmit, onCancel, saving, editing }) {
   const [glasgowOpen, setGlasgowOpen] = useState(false)
 
   const missingRequired = !form.consciousness || form.glasgowScore == null || form.glasgowScore === ''

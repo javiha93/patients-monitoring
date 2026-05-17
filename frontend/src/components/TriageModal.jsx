@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, AlertTriangle, Check, Syringe, Activity, ChevronRight, Search } from 'lucide-react'
+import { X, AlertTriangle, Check, Syringe, Activity, ChevronRight, Search, ClipboardList } from 'lucide-react'
 import XRayIcon from './XRayIcon'
+import NursingAssessmentModal from './NursingAssessmentModal'
 import { TRIAGE_MOTIVOS, findTriageRules } from '../constants/triageRules'
 
 const LEVELS = [1, 2, 3, 4, 5]
@@ -100,7 +101,8 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
   const [bodyLocation, setBodyLocation] = useState(null)
   const [currentRule, setCurrentRule] = useState(null)
   const [vitals, setVitals] = useState({ fc: '', tas: '', tad: '', fr: '', temp: '', spo2: '' })
-  const [nursingNote, setNursingNote] = useState('')
+  const [nursingModalOpen, setNursingModalOpen] = useState(false)
+  const [nursingDone, setNursingDone] = useState(false)
 
   const reset = () => {
     setStep('form'); setLevel(patient?.triageLevel || null); setMotivo(patient?.matCategory || '')
@@ -108,7 +110,8 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
     setMatchedRules([]); setSelectedSuggestions([])
     setSide(null); setBodyLocation(null); setCurrentRule(null)
     setVitals({ fc: '', tas: '', tad: '', fr: '', temp: '', spo2: '' })
-    setNursingNote('')
+    setNursingModalOpen(false)
+    setNursingDone(false)
   }
 
   // Re-initialize when patient changes
@@ -188,7 +191,6 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
       specialty: specialty || null,
       suggestions: suggestions || [],
       vitals: Object.keys(filledVitals).length > 0 ? filledVitals : null,
-      nursingNote: nursingNote.trim() || null,
     })
     reset()
   }
@@ -319,14 +321,29 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
               {/* Nursing assessment */}
               <div>
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Valoración de enfermería</div>
-                <textarea
-                  value={nursingNote}
-                  onChange={e => setNursingNote(e.target.value)}
-                  rows={3}
-                  placeholder="Observaciones, estado general, alergias..."
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-400 outline-none resize-none"
-                />
+                <button
+                  type="button"
+                  onClick={() => setNursingModalOpen(true)}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    nursingDone
+                      ? 'bg-green-50 border-green-300 text-green-700'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600'
+                  }`}
+                >
+                  <ClipboardList size={16} />
+                  {nursingDone ? 'Valoración registrada' : 'Registrar valoración de enfermería'}
+                  {nursingDone && <Check size={14} />}
+                </button>
               </div>
+
+              <NursingAssessmentModal
+                isOpen={nursingModalOpen}
+                onClose={(saved) => {
+                  setNursingModalOpen(false)
+                  if (saved) setNursingDone(true)
+                }}
+                admissionId={patient?.admissionId}
+              />
             </>
           )}
 

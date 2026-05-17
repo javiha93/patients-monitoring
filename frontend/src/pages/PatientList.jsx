@@ -7,7 +7,6 @@ import { labTestApi } from '../services/labTestApi'
 import { ecgApi } from '../services/ecgApi'
 import { radiologyApi } from '../services/radiologyApi'
 import { vitalsApi } from '../services/vitalsApi'
-import { nursingApi } from '../services/nursingApi'
 import { getUsersByRole } from '../services/authApi'
 import { useAuth } from '../context/AuthContext'
 import { getSamplesNeeded, SAMPLE_ICONS, PRESETS } from '../constants/labCatalog'
@@ -503,7 +502,7 @@ export default function PatientList() {
     }
   }
 
-  const handleTriageConfirm = async ({ triageLevel, matCategory, location, specialty, suggestions, vitals, nursingNote }) => {
+  const handleTriageConfirm = async ({ triageLevel, matCategory, location, specialty, suggestions, vitals }) => {
     const p = triagePatient
     if (!p) return
     try {
@@ -532,20 +531,7 @@ export default function PatientList() {
         } catch { /* continue */ }
       }
 
-      // 3. Save nursing note if provided
-      if (nursingNote) {
-        try {
-          await nursingApi.create({
-            admissionId: p.admissionId,
-            assessmentType: 'entrada',
-            notes: nursingNote,
-            recordedAt: new Date().toISOString(),
-            recordedBy: user?.displayName || '',
-          })
-        } catch { /* continue */ }
-      }
-
-      // 4. Create suggested tests
+      // 3. Create suggested tests
       for (const s of suggestions) {
         try {
           if (s.type === 'ecg') {

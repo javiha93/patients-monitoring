@@ -1022,14 +1022,14 @@ describe('Triage modal vitals and nursing note', () => {
     expect(screen.getByText('FR (rpm)')).toBeInTheDocument()
   })
 
-  it('shows nursing assessment textarea in triage modal', async () => {
+  it('shows nursing assessment button in triage modal', async () => {
     renderList()
     await waitFor(() => screen.getByText('Sánchez, Pedro'))
     const triageBtn = screen.getByTitle('Triar paciente')
     fireEvent.click(triageBtn)
     await waitFor(() => screen.getByText('Triaje'))
     expect(screen.getByText('Valoración de enfermería')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/Observaciones/)).toBeInTheDocument()
+    expect(screen.getByText('Registrar valoración de enfermería')).toBeInTheDocument()
   })
 })
 
