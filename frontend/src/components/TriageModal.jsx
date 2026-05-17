@@ -276,6 +276,7 @@ export default function TriageModal({ open: isOpen, patient, locations, onClose,
                     value={location}
                     onChange={e => setLocation(e.target.value)}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-400 outline-none"
+                    searchable
                   >
                     <option value="">—</option>
                     {locations.map(l => <option key={l} value={l}>{l}</option>)}

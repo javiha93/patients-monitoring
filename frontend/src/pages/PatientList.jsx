@@ -21,11 +21,31 @@ const SPECIALTIES = [
   'Medicina', 'Traumatología', 'Cirugía', 'Ginecología', 'Pediatría', 'Oftalmología',
 ]
 
-const LOCATIONS = [
-  ...Array.from({ length: 25 }, (_, i) => `A${i + 1}`),
-  ...Array.from({ length: 25 }, (_, i) => `B${i + 1}`),
-  ...Array.from({ length: 25 }, (_, i) => `C${i + 1}`),
-]
+const LOCATION_ZONES = {
+  Tratamiento: [
+    ...Array.from({ length: 13 }, (_, i) => `T${String(i + 3).padStart(2, '0')}`),   // T03–T15
+    ...Array.from({ length: 6 }, (_, i) => `T${String(i + 21).padStart(2, '0')}`),    // T21–T26
+    ...Array.from({ length: 4 }, (_, i) => `T${String(i + 40).padStart(2, '0')}`),    // T40–T43
+  ],
+  Rápida: Array.from({ length: 10 }, (_, i) => `R${String(i + 60).padStart(2, '0')}`), // R60–R69
+  Observación: Array.from({ length: 10 }, (_, i) => `O${String(i + 30).padStart(2, '0')}`), // O30–O39
+  Pasillo: [
+    ...Array.from({ length: 13 }, (_, i) => `L${String(i + 1).padStart(2, '0')}`),    // L01–L13
+    ...Array.from({ length: 13 }, (_, i) => `C${String(i + 1).padStart(2, '0')}`),    // C01–C13
+  ],
+  Espera: ['E'],
+}
+
+const LOCATIONS = Object.values(LOCATION_ZONES).flat()
+
+// Map location prefix to zone name for filtering
+const ZONE_KEYS = ['T', 'R', 'O', 'P', 'E'] // P = Pasillo (L+C)
+function getZone(location) {
+  if (!location) return ''
+  const ch = location.charAt(0).toUpperCase()
+  if (ch === 'L' || ch === 'C') return 'P'
+  return ch
+}
 
 const DATE_FILTERS = [
   { key: 'hoy', label: 'Hoy', days: 0 },
@@ -79,9 +99,11 @@ export function naturalCompare(a, b) {
 }
 
 /* ── Custom dropdown component ── */
-function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28', displayValue, tooltip }) {
+function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28', displayValue, tooltip, searchable = false }) {
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const ref = useRef(null)
+  const searchInputRef = useRef(null)
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -89,7 +111,15 @@ function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28',
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  useEffect(() => {
+    if (open && searchable) setTimeout(() => searchInputRef.current?.focus(), 0)
+    if (!open) setSearch('')
+  }, [open])
+
   const shown = displayValue !== undefined ? displayValue : value
+  const filtered = search
+    ? options.filter(o => o.toLowerCase().includes(search.toLowerCase()))
+    : options
 
   return (
     <div ref={ref} className={`relative ${width}`}>
@@ -106,11 +136,26 @@ function InlineDropdown({ value, options, placeholder, onChange, width = 'w-28',
       </button>
       {open && (
         <div className="absolute z-50 mt-1 min-w-[8rem] bg-white border border-slate-200 rounded-lg shadow-lg py-1 max-h-52 overflow-y-auto">
+          {searchable && (
+            <div className="px-2 py-1.5 sticky top-0 bg-white border-b border-slate-100">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full px-2 py-1 text-sm border border-slate-200 rounded focus:border-blue-400 outline-none bg-transparent"
+              />
+            </div>
+          )}
           <button
             onClick={() => { onChange(''); setOpen(false) }}
             className="w-full text-left px-3 py-1.5 text-sm text-slate-400 hover:bg-slate-50"
           >—</button>
-          {options.map(opt => (
+          {filtered.length === 0 && search && (
+            <div className="px-3 py-2 text-sm text-slate-400">Sin resultados</div>
+          )}
+          {filtered.map(opt => (
             <button
               key={opt}
               onClick={() => { onChange(opt); setOpen(false) }}
@@ -439,7 +484,7 @@ export default function PatientList() {
     }
     // Zone filter
     if (filterZones.length > 0) {
-      const zone = p.location ? p.location.charAt(0).toUpperCase() : ''
+      const zone = getZone(p.location)
       if (!filterZones.includes(zone)) return false
     }
     // Nurse filter: '__none__' = sin enfermero, name = specific nurse
@@ -691,15 +736,21 @@ export default function PatientList() {
               <div>
                 <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1.5">Zona</div>
                 <div className="flex gap-1">
-                  {['A', 'B', 'C'].map(z => {
-                    const active = filterZones.includes(z)
+                  {[
+                    { key: 'T', label: 'Trat.' },
+                    { key: 'R', label: 'Ráp.' },
+                    { key: 'O', label: 'Obs.' },
+                    { key: 'P', label: 'Pas.' },
+                    { key: 'E', label: 'Esp.' },
+                  ].map(z => {
+                    const active = filterZones.includes(z.key)
                     return (
                       <button
-                        key={z}
-                        onClick={() => toggleFilter(filterZones, setFilterZones, z)}
+                        key={z.key}
+                        onClick={() => toggleFilter(filterZones, setFilterZones, z.key)}
                         className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors
                           ${active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                      >{z}</button>
+                      >{z.label}</button>
                     )
                   })}
                 </div>
@@ -841,6 +892,7 @@ export default function PatientList() {
                           value={p.location || ''}
                           options={LOCATIONS}
                           placeholder="—"
+                          searchable
                           onChange={async (v) => {
                             try {
                               await patientApi.updateLocation(p.admissionId, v)
@@ -1078,6 +1130,7 @@ export default function PatientList() {
                           value={p.location || ''}
                           options={LOCATIONS}
                           placeholder="Ubic."
+                          searchable
                           onChange={async (v) => {
                             try {
                               await patientApi.updateLocation(p.admissionId, v)

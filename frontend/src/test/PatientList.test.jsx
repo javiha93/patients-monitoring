@@ -22,9 +22,9 @@ vi.mock('react-router-dom', async () => {
 
 // Mock API
 const mockPatients = [
-  { id: 1, admissionId: 10, nhc: 'NHC-001', firstName: 'Ana', lastName: 'García', birthDate: '1985-03-15', sex: 'female', triageLevel: 2, matCategory: 'Dolor torácico', admissionDate: '2024-01-10T08:30:00', location: 'B1', specialty: 'Medicina', status: 'active' },
-  { id: 2, admissionId: 11, nhc: 'NHC-002', firstName: 'Carlos', lastName: 'López', birthDate: '1970-07-22', sex: 'male', triageLevel: 4, matCategory: 'Fiebre', admissionDate: '2024-01-11T14:00:00', location: 'B10', specialty: 'Cirugía', status: 'active' },
-  { id: 3, admissionId: 12, nhc: 'NHC-003', firstName: 'María', lastName: 'Ruiz', birthDate: '1990-01-01', sex: 'female', triageLevel: 1, matCategory: 'Politraumatismo', admissionDate: '2024-01-09T06:00:00', location: 'B2', specialty: 'Traumatología', status: 'active' },
+  { id: 1, admissionId: 10, nhc: 'NHC-001', firstName: 'Ana', lastName: 'García', birthDate: '1985-03-15', sex: 'female', triageLevel: 2, matCategory: 'Dolor torácico', admissionDate: '2024-01-10T08:30:00', location: 'T03', specialty: 'Medicina', status: 'active' },
+  { id: 2, admissionId: 11, nhc: 'NHC-002', firstName: 'Carlos', lastName: 'López', birthDate: '1970-07-22', sex: 'male', triageLevel: 4, matCategory: 'Fiebre', admissionDate: '2024-01-11T14:00:00', location: 'T10', specialty: 'Cirugía', status: 'active' },
+  { id: 3, admissionId: 12, nhc: 'NHC-003', firstName: 'María', lastName: 'Ruiz', birthDate: '1990-01-01', sex: 'female', triageLevel: 1, matCategory: 'Politraumatismo', admissionDate: '2024-01-09T06:00:00', location: 'R60', specialty: 'Traumatología', status: 'active' },
   { id: 4, admissionId: 13, nhc: 'NHC-004', firstName: 'Pedro', lastName: 'Sánchez', birthDate: '1988-05-10', sex: 'male', triageLevel: null, matCategory: null, admissionDate: '2024-01-12T10:00:00', location: '', specialty: '', status: 'active' },
 ]
 
@@ -223,7 +223,7 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     expect(names[3]).toContain('Sánchez, Pedro')
   })
 
-  it('[KAN-5] ordena por ubicación ascendente (natural sort: B2 antes de B10)', async () => {
+  it('[KAN-5] ordena por ubicación ascendente (natural sort: R60 antes de T03)', async () => {
     const { container } = renderList()
     await waitFor(() => screen.getByText('García, Ana'))
 
@@ -231,10 +231,10 @@ describe('KAN-5: Ordenación en modo tabla', () => {
     fireEvent.click(ubicacionHeader)
 
     const names = getRowNames(container)
-    // natural sort: Sánchez='', García=B1, Ruiz=B2, López=B10
+    // natural sort: Sánchez='', Ruiz=R60, García=T03, López=T10
     expect(names[0]).toContain('Sánchez, Pedro')
-    expect(names[1]).toContain('García, Ana')
-    expect(names[2]).toContain('Ruiz, María')
+    expect(names[1]).toContain('Ruiz, María')
+    expect(names[2]).toContain('García, Ana')
     expect(names[3]).toContain('López, Carlos')
   })
 
@@ -289,21 +289,21 @@ describe('KAN-5: Cambiar ubicación desde la lista', () => {
   it('[KAN-5] muestra el dropdown de ubicación con el valor actual', async () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
-    // García has location B1 — shown as button text
-    const buttons = screen.getAllByRole('button').filter(b => b.textContent.includes('B1'))
+    // García has location T03 — shown as button text
+    const buttons = screen.getAllByRole('button').filter(b => b.textContent.includes('T03'))
     expect(buttons.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('[KAN-5] abrir dropdown muestra opciones B1-B25', async () => {
+  it('[KAN-5] abrir dropdown muestra opciones de ubicación', async () => {
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
-    // Click the B1 dropdown button to open it
-    const locBtn = screen.getAllByRole('button').find(b => b.textContent.trim() === 'B1')
+    // Click the T03 dropdown button to open it
+    const locBtn = screen.getAllByRole('button').find(b => b.textContent.trim() === 'T03')
     fireEvent.mouseDown(locBtn)
     fireEvent.click(locBtn)
-    // Should show B25 as last option
+    // Should show T15 as an option
     await waitFor(() => {
-      expect(screen.getByText('B25')).toBeInTheDocument()
+      expect(screen.getByText('T15')).toBeInTheDocument()
     })
   })
 
@@ -312,11 +312,11 @@ describe('KAN-5: Cambiar ubicación desde la lista', () => {
     await waitFor(() => screen.getByText('García, Ana'))
     mockNavigate.mockClear()
     // Click the location dropdown
-    const locBtn = screen.getAllByRole('button').find(b => b.textContent.trim() === 'B1')
+    const locBtn = screen.getAllByRole('button').find(b => b.textContent.trim() === 'T03')
     fireEvent.click(locBtn)
-    // Select B5
-    await waitFor(() => screen.getByText('B5'))
-    fireEvent.click(screen.getByText('B5'))
+    // Select T05
+    await waitFor(() => screen.getByText('T05'))
+    fireEvent.click(screen.getByText('T05'))
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 })
@@ -359,16 +359,16 @@ describe('KAN-5: Columna Especialidad', () => {
 })
 
 describe('naturalCompare', () => {
-  it('sorts B2 before B10', () => {
-    expect(naturalCompare('B2', 'B10')).toBeLessThan(0)
+  it('sorts T03 before T10', () => {
+    expect(naturalCompare('T03', 'T10')).toBeLessThan(0)
   })
 
-  it('sorts B1 before B2', () => {
-    expect(naturalCompare('B1', 'B2')).toBeLessThan(0)
+  it('sorts R60 before R61', () => {
+    expect(naturalCompare('R60', 'R61')).toBeLessThan(0)
   })
 
-  it('sorts A1 before B1', () => {
-    expect(naturalCompare('A1', 'B1')).toBeLessThan(0)
+  it('sorts O30 before T03', () => {
+    expect(naturalCompare('O30', 'T03')).toBeLessThan(0)
   })
 
   it('treats equal values as 0', () => {
@@ -591,15 +591,15 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
 
   it('filtro por zona muestra solo pacientes de esa zona', async () => {
     const patients = [
-      { ...mockPatients[0], location: 'A5' },
-      { ...mockPatients[1], location: 'B10' },
-      { ...mockPatients[2], location: 'C3' },
+      { ...mockPatients[0], location: 'T05' },
+      { ...mockPatients[1], location: 'R60' },
+      { ...mockPatients[2], location: 'O30' },
     ]
     patientApi.listActive.mockResolvedValueOnce({ data: patients })
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('B'))
+    fireEvent.click(getFilterButton('Ráp.'))
     await waitFor(() => {
       expect(screen.getByText('López, Carlos')).toBeInTheDocument()
       expect(screen.queryByText('García, Ana')).not.toBeInTheDocument()
@@ -609,16 +609,16 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
 
   it('filtro multi-zona muestra pacientes de varias zonas', async () => {
     const patients = [
-      { ...mockPatients[0], location: 'A5' },
-      { ...mockPatients[1], location: 'B10' },
-      { ...mockPatients[2], location: 'C3' },
+      { ...mockPatients[0], location: 'T05' },
+      { ...mockPatients[1], location: 'R60' },
+      { ...mockPatients[2], location: 'O30' },
     ]
     patientApi.listActive.mockResolvedValueOnce({ data: patients })
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('A'))
-    fireEvent.click(getFilterButton('C'))
+    fireEvent.click(getFilterButton('Trat.'))
+    fireEvent.click(getFilterButton('Obs.'))
     await waitFor(() => {
       expect(screen.getByText('García, Ana')).toBeInTheDocument()
       expect(screen.getByText('Ruiz, María')).toBeInTheDocument()
@@ -631,21 +631,23 @@ describe('Filtro "Sin nivel" y filtro por zona', () => {
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
     expect(screen.getByText('Zona')).toBeInTheDocument()
-    expect(getFilterButton('A')).toBeTruthy()
-    expect(getFilterButton('B')).toBeTruthy()
-    expect(getFilterButton('C')).toBeTruthy()
+    expect(getFilterButton('Trat.')).toBeTruthy()
+    expect(getFilterButton('Ráp.')).toBeTruthy()
+    expect(getFilterButton('Obs.')).toBeTruthy()
+    expect(getFilterButton('Pas.')).toBeTruthy()
+    expect(getFilterButton('Esp.')).toBeTruthy()
   })
 
   it('limpiar filtros limpia zona y sin nivel', async () => {
     const patients = [
-      { ...mockPatients[0], location: 'A5', triageLevel: null },
-      { ...mockPatients[1], location: 'B10' },
+      { ...mockPatients[0], location: 'T05', triageLevel: null },
+      { ...mockPatients[1], location: 'R60' },
     ]
     patientApi.listActive.mockResolvedValueOnce({ data: patients })
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    fireEvent.click(getFilterButton('A'))
+    fireEvent.click(getFilterButton('Trat.'))
     const sinNivelBtn = screen.getAllByRole('button').find(b => b.textContent === '∅'); fireEvent.click(sinNivelBtn)
     await waitFor(() => expect(screen.queryByText('López, Carlos')).not.toBeInTheDocument())
     fireEvent.click(screen.getByText('Limpiar'))

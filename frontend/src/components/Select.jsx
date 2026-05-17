@@ -6,7 +6,7 @@ import { ChevronDown, Check } from 'lucide-react'
  * Custom select that replaces native <select> with a styled dropdown.
  * API-compatible: accepts value, onChange (synthetic-like event), disabled, className, children (<option>).
  */
-export default function Select({ value, onChange, disabled = false, className = '', children, id }) {
+export default function Select({ value, onChange, disabled = false, className = '', children, id, searchable = false }) {
   const [open, setOpen] = useState(false)
   const [rect, setRect] = useState(null)
   const btnRef = useRef(null)
@@ -92,16 +92,18 @@ export default function Select({ value, onChange, disabled = false, className = 
       </button>
 
       {open && rect && createPortal(
-        <Dropdown rect={rect} options={options} value={value} onSelect={handleSelect} />,
+        <Dropdown rect={rect} options={options} value={value} onSelect={handleSelect} searchable={searchable} />,
         document.body
       )}
     </>
   )
 }
 
-function Dropdown({ rect, options, value, onSelect }) {
+function Dropdown({ rect, options, value, onSelect, searchable = false }) {
   const dropRef = useRef(null)
+  const searchRef = useRef(null)
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0, openUp: false })
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const dropH = dropRef.current?.offsetHeight || 200
@@ -116,11 +118,19 @@ function Dropdown({ rect, options, value, onSelect }) {
     })
   }, [rect])
 
-  // Scroll selected into view
+  // Scroll selected into view (only when not searching)
   useEffect(() => {
+    if (searchable) {
+      searchRef.current?.focus()
+      return
+    }
     const el = dropRef.current?.querySelector('[data-selected="true"]')
     if (el?.scrollIntoView) el.scrollIntoView({ block: 'nearest' })
   }, [])
+
+  const filtered = search
+    ? options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
+    : options
 
   const style = {
     position: 'fixed',
@@ -137,7 +147,22 @@ function Dropdown({ rect, options, value, onSelect }) {
       data-select-dropdown
       className="bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto py-1"
     >
-      {options.map((opt, i) => {
+      {searchable && (
+        <div className="px-2 py-1.5 sticky top-0 bg-white border-b border-slate-100">
+          <input
+            ref={searchRef}
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full px-2 py-1 text-sm border border-slate-200 rounded focus:border-blue-400 outline-none bg-transparent"
+          />
+        </div>
+      )}
+      {filtered.length === 0 && (
+        <div className="px-3 py-2 text-sm text-slate-400">Sin resultados</div>
+      )}
+      {filtered.map((opt, i) => {
         const isSelected = String(opt.value) === String(value)
         return (
           <button
