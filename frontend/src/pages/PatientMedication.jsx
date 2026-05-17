@@ -58,6 +58,7 @@ export default function PatientMedication() {
   })
   const [insulinModal, setInsulinModal] = useState({ open: false, prescription: null, slot: null })
   const [editModal, setEditModal] = useState({ open: false, admin: null, prescription: null })
+  const [newRxIds, setNewRxIds] = useState(new Set())
 
   const fetchData = async () => {
     try {
@@ -78,19 +79,20 @@ export default function PatientMedication() {
     }
   }
 
-  useEffect(() => {
-    fetchData()
-    // Mark med notifications as seen for this patient's admission
-    if (user?.username && patient?.activeAdmission?.id) {
-      notificationApi.markMedSeenForAdmission(patient.activeAdmission.id, user.username).catch(() => {})
-    }
-  }, [id])
+  useEffect(() => { fetchData() }, [id])
 
-  // Also mark seen once patient data loads (admission ID available)
+  // Fetch unseen med notifications to highlight new prescriptions, then mark seen
   useEffect(() => {
-    if (user?.username && patient?.activeAdmission?.id) {
-      notificationApi.markMedSeenForAdmission(patient.activeAdmission.id, user.username).catch(() => {})
-    }
+    if (!user?.username || !patient?.activeAdmission?.id) return
+    const admissionId = patient.activeAdmission.id
+    notificationApi.getUnseenMed(user.username).then(({ data }) => {
+      const ids = new Set(
+        data.filter(n => n.admissionId === admissionId).map(n => n.prescriptionId)
+      )
+      setNewRxIds(ids)
+      // Mark as seen after capturing the IDs
+      notificationApi.markMedSeenForAdmission(admissionId, user.username).catch(() => {})
+    }).catch(() => {})
   }, [patient?.activeAdmission?.id])
 
   // Direct sign (non-insulin): immediate, no modal
@@ -202,6 +204,7 @@ export default function PatientMedication() {
             onOpenEditModal={handleOpenEditModal}
             currentUser={currentUser}
             canSign={user?.role !== 'Medicina'}
+            newPrescriptionIds={newRxIds}
           />
         ) : (
           <p className="text-slate-400 text-center mt-12">Sin ingreso activo</p>

@@ -976,11 +976,8 @@ export default function PatientList() {
                             </span>
                           )}
                           {p.hasPrescriptions && (
-                            <span title="Medicación pautada" data-testid={showMedBadge(p) ? 'med-notif-icon' : 'med-icon'} className="relative">
+                            <span title="Medicación pautada" data-testid={showMedBadge(p) ? 'med-notif-icon' : 'med-icon'}>
                               <Pill size={16} className={showMedBadge(p) ? 'text-blue-500' : 'text-slate-300'} />
-                              {showMedBadge(p) && (
-                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white" data-testid="med-notif-badge" />
-                              )}
                             </span>
                           )}
                         </div>
@@ -1065,11 +1062,8 @@ export default function PatientList() {
                         <span title="Resonancia realizada"><Magnet size={18} className="text-slate-300" /></span>
                       )}
                       {p.hasPrescriptions && (
-                        <span title="Medicación pautada" className="relative">
+                        <span title="Medicación pautada">
                           <Pill size={18} className={showMedBadge(p) ? 'text-blue-500' : 'text-slate-300'} />
-                          {showMedBadge(p) && (
-                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white" />
-                          )}
                         </span>
                       )}
                     </div>

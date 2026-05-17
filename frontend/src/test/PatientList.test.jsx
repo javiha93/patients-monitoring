@@ -1071,7 +1071,6 @@ describe('Lab notification badges filtered by assignment', () => {
     renderList()
     await waitFor(() => {
       expect(screen.getByTestId('med-notif-icon')).toBeInTheDocument()
-      expect(screen.getByTestId('med-notif-badge')).toBeInTheDocument()
     })
   })
 
@@ -1097,7 +1096,7 @@ describe('Lab notification badges filtered by assignment', () => {
     expect(screen.queryByTestId('med-notif-icon')).not.toBeInTheDocument()
   })
 
-  it('shows med badge only for patients assigned to current user', async () => {
+  it('shows blue med icon only for patients assigned to current user', async () => {
     const patientsWithRx = [
       { ...mockPatients[0], hasPrescriptions: true, assignedNurse: 'Javier Herrada' },
       { ...mockPatients[1], hasPrescriptions: true, assignedNurse: 'Otro Enfermero' },
@@ -1112,8 +1111,9 @@ describe('Lab notification badges filtered by assignment', () => {
     patientApi.listActive.mockResolvedValueOnce({ data: patientsWithRx })
     renderList()
     await waitFor(() => {
-      const badges = screen.queryAllByTestId('med-notif-badge')
-      expect(badges.length).toBeLessThanOrEqual(1)
+      // Only the assigned patient should have the blue icon
+      const blueIcons = screen.queryAllByTestId('med-notif-icon')
+      expect(blueIcons.length).toBeLessThanOrEqual(1)
     })
   })
 })

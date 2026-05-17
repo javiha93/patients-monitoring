@@ -164,7 +164,7 @@ const insulinScaleLabels = [
 // ── Component ──
 
 const MedicationGrid = forwardRef(function MedicationGrid(
-  { prescriptions, admissionDate, onDirectSign, onDirectUnsign, onOpenInsulinModal, onOpenEditModal, currentUser, canSign = true },
+  { prescriptions, admissionDate, onDirectSign, onDirectUnsign, onOpenInsulinModal, onOpenEditModal, currentUser, canSign = true, newPrescriptionIds },
   ref
 ) {
   const scrollRef = useRef(null)
@@ -362,17 +362,24 @@ const MedicationGrid = forwardRef(function MedicationGrid(
                     slots, scheduledHours, p.administrations, frequencyHours
                   )
 
+                  const isNew = newPrescriptionIds?.has(p.id)
+
                   return (
                     <tr key={p.id}>
                       <th
                         className="sticky left-0 z-10 text-left align-top"
                         style={{
-                          width: LABEL_W, minWidth: LABEL_W, background: '#fff',
+                          width: LABEL_W, minWidth: LABEL_W,
+                          background: isNew ? '#eff6ff' : '#fff',
                           padding: '10px 12px', borderBottom: '1px solid #e2e8f0',
                           borderRight: '1px solid #e2e8f0',
+                          borderLeft: isNew ? '3px solid #3b82f6' : 'none',
                         }}
                       >
-                        <div className="text-[13px] font-semibold text-slate-800">{p.name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[13px] font-semibold ${isNew ? 'text-blue-700' : 'text-slate-800'}`}>{p.name}</span>
+                          {isNew && <span className="text-[10px] font-medium text-blue-500 bg-blue-100 rounded px-1 py-px">Nuevo</span>}
+                        </div>
                         <div className="text-[11px] text-slate-500 font-normal">{p.amount}{p.unit} {p.route} {p.frequency}</div>
                         {p.conditionText && (
                           <div className="text-[11px] text-amber-600 font-normal">{p.conditionText}</div>
