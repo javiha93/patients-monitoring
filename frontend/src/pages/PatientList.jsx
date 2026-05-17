@@ -16,6 +16,7 @@ import { notificationApi } from '../services/notificationApi'
 import Select from '../components/Select'
 import { useToast, ToastContainer } from '../components/Toast'
 import NewPatientModal from '../components/NewPatientModal'
+import { locationApi } from '../services/locationApi'
 
 const SPECIALTIES = [
   'Medicina', 'Traumatología', 'Cirugía', 'Ginecología', 'Pediatría', 'Oftalmología',
@@ -375,6 +376,8 @@ export default function PatientList() {
   const [filterNurse, setFilterNurse] = useState(saved.current?.filterNurse ?? null)
   const [filterDoctor, setFilterDoctor] = useState(saved.current?.filterDoctor ?? null)
   const [filterDate, setFilterDate] = useState(saved.current?.filterDate ?? null)
+  const [showEmptyLocations, setShowEmptyLocations] = useState(false)
+  const [locationStatus, setLocationStatus] = useState({}) // { location: { clean, priority } }
   const navigate = useNavigate()
 
   // Persist filter state to sessionStorage
@@ -438,9 +441,19 @@ export default function PatientList() {
     } catch { /* ignore */ }
   }
 
+  const fetchLocationStatus = async () => {
+    try {
+      const { data } = await locationApi.getAllStatus()
+      const map = {}
+      data.forEach(ls => { map[ls.location] = { clean: ls.clean, priority: ls.priority } })
+      setLocationStatus(map)
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => {
     fetchPatients()
     fetchNotifications()
+    fetchLocationStatus()
     getUsersByRole('Enfermería').then(setAllNurses).catch(() => {})
     getUsersByRole('Medicina').then(setAllDoctors).catch(() => {})
 
@@ -528,6 +541,15 @@ export default function PatientList() {
     }
     return 0
   })
+
+  // Compute empty locations when the checkbox is active
+  const emptyLocations = showEmptyLocations
+    ? LOCATIONS.filter(loc => !patients.some(p => p.location === loc)).map(loc => ({
+        _empty: true,
+        location: loc,
+        _status: locationStatus[loc] || { clean: true, priority: null },
+      }))
+    : []
 
   const sortIndicator = (key) => {
     if (sortKey !== key) return ' ↕'
@@ -646,14 +668,7 @@ export default function PatientList() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 flex-shrink-0">
-        <h2 className="text-lg font-bold flex-1">
-          Pacientes activos
-          <span className="ml-2 text-sm font-normal text-slate-400">
-            {filtered.length !== patients.length
-              ? `${filtered.length} de ${patients.length}`
-              : patients.length}
-          </span>
-        </h2>
+        <div className="flex-1" />
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -756,6 +771,19 @@ export default function PatientList() {
                 </div>
               </div>
             </div>
+            {/* Empty locations toggle */}
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showEmptyLocations}
+                  onChange={(e) => setShowEmptyLocations(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-500 focus:ring-blue-400"
+                  data-testid="show-empty-locations"
+                />
+                Ver ubicaciones vacías
+              </label>
+            </div>
             {/* Row 2: Enfermero/a | Médico | Ingreso | Clear */}
             <div className="flex flex-wrap items-end gap-6">
               <div>
@@ -842,8 +870,8 @@ export default function PatientList() {
       <div className="flex-1 overflow-auto p-6 pb-24">
         {loading ? (
           <p className="text-slate-400 text-center mt-12">Cargando...</p>
-        ) : filtered.length === 0 ? (
-          <p className="text-slate-400 text-center mt-12">No hay pacientes activos</p>
+        ) : filtered.length === 0 && !showEmptyLocations ? (
+          <p className="text-slate-400 text-center mt-12">No hay pacientes</p>
         ) : view === 'table' ? (
           <div className="bg-white rounded-xl shadow-sm overflow-visible">
             <table className="w-full">
@@ -1068,6 +1096,76 @@ export default function PatientList() {
                     </tr>
                   )
                 })}
+              {emptyLocations
+                .filter(el => {
+                  if (filterZones.length > 0 && !filterZones.includes(getZone(el.location))) return false
+                  return true
+                })
+                .map(el => (
+                <tr key={`empty-${el.location}`} className="border-t border-slate-100 bg-slate-50/40" data-testid="empty-location-row">
+                  <td className="px-4 py-3" />
+                  <td className="px-2 py-3 text-sm text-slate-400 font-medium">{el.location}</td>
+                  <td className="px-2 py-3" />
+                  <td className="px-4 py-3" />
+                  <td className="px-3 py-3" />
+                  <td className="px-2 py-3" />
+                  <td className="px-3 py-3" />
+                  <td className="px-2 py-3" />
+                  <td className="px-2 py-3">
+                    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                      <InlineDropdown
+                        value={el._status.clean ? 'Limpia' : 'Sucia'}
+                        options={['Limpia', 'Sucia']}
+                        placeholder="—"
+                        displayValue={
+                          <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${el._status.clean ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {el._status.clean ? 'Limpia' : 'Sucia'}
+                          </span>
+                        }
+                        onChange={async (v) => {
+                          const clean = v === 'Limpia' || v === ''
+                          try {
+                            await locationApi.updateStatus(el.location, { clean, priority: clean ? null : (el._status.priority || 1) })
+                            setLocationStatus(prev => ({
+                              ...prev,
+                              [el.location]: { clean, priority: clean ? null : (prev[el.location]?.priority || 1) },
+                            }))
+                          } catch { /* ignore */ }
+                        }}
+                        width="w-16"
+                      />
+                      {!el._status.clean && (
+                        <InlineDropdown
+                          value={el._status.priority ? String(el._status.priority) : '1'}
+                          options={['1', '2', '3']}
+                          placeholder="—"
+                          displayValue={
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                              el._status.priority === 1 ? 'bg-red-100 text-red-700'
+                              : el._status.priority === 2 ? 'bg-amber-100 text-amber-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              P{el._status.priority || 1}
+                            </span>
+                          }
+                          onChange={async (v) => {
+                            const priority = v ? parseInt(v) : null
+                            try {
+                              await locationApi.updateStatus(el.location, { priority })
+                              setLocationStatus(prev => ({
+                                ...prev,
+                                [el.location]: { ...prev[el.location], priority },
+                              }))
+                            } catch { /* ignore */ }
+                          }}
+                          width="w-10"
+                        />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3" />
+                </tr>
+              ))}
               </tbody>
             </table>
           </div>
@@ -1306,6 +1404,12 @@ export default function PatientList() {
           ) : (
             <span className="text-slate-400">Selecciona un paciente</span>
           )}
+        </div>
+        <div className="ml-auto text-sm text-slate-400 tabular-nums" data-testid="patient-count">
+          {filtered.length !== patients.length
+            ? `${filtered.length} de ${patients.length}`
+            : patients.length}{' '}
+          pacientes
         </div>
       </div>
 

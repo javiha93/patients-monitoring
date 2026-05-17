@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, Search, LogOut, FileText, PanelLeftClose, PanelLeftOpen, Moon, Sun } from 'lucide-react'
+import { Users, LogOut, FileText, PanelLeftClose, PanelLeftOpen, Moon, Sun } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -11,8 +11,7 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
 
   const links = [
-    { to: '/', icon: Users, label: 'Pacientes' },
-    { to: '/discharged', icon: Search, label: 'Dados de alta' },
+    { to: '/', icon: Users, label: 'Urgencias' },
   ]
 
   return (
