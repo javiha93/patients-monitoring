@@ -175,7 +175,7 @@ html.dark .bg-black\/50 { background: rgba(0,0,0,0.7); }
 
 /* Sidebar — lighten in dark mode to contrast with bg */
 html.dark .bg-sidebar {
-  background: #1e293b;
+  background: #283548;
 }
 
 /* Assignment badges */

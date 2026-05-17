@@ -6,6 +6,7 @@ import com.pm.entity.Device;
 import com.pm.entity.LabTest;
 import com.pm.entity.Patient;
 import com.pm.repository.AdmissionRepository;
+import com.pm.repository.AdmissionPrescriptionRepository;
 import com.pm.repository.EcgRepository;
 import com.pm.repository.LabTestRepository;
 import com.pm.repository.PatientRepository;
@@ -26,6 +27,7 @@ public class PatientService {
 
     private final PatientRepository patientRepository;
     private final AdmissionRepository admissionRepository;
+    private final AdmissionPrescriptionRepository prescriptionRepository;
     private final LabTestRepository labTestRepository;
     private final EcgRepository ecgRepository;
     private final RadiologyOrderRepository radiologyRepository;
@@ -48,6 +50,7 @@ public class PatientService {
         Map<Long, Set<String>> inProgressRadiologyTypes = new HashMap<>();
         Map<Long, Set<String>> completedRadiologyTypes = new HashMap<>();
         Map<Long, List<com.pm.entity.Ecg>> recentEcgsByAdmission = new HashMap<>();
+        Set<Long> admissionsWithPrescriptions = new HashSet<>();
         if (!admissionIds.isEmpty()) {
             List<LabTest> pendingTests = labTestRepository.findByAdmissionIdInAndStatusAndParentIsNull(
                     admissionIds, "pending_validation");
@@ -84,6 +87,9 @@ public class PatientService {
                     .forEach(r -> completedRadiologyTypes
                             .computeIfAbsent(r.getAdmission().getId(), k -> new HashSet<>())
                             .add(r.getType()));
+
+            admissionsWithPrescriptions.addAll(
+                    prescriptionRepository.findAdmissionIdsWithActivePrescriptions(admissionIds));
         }
 
         return activeAdmissions.stream().map(a -> {
@@ -140,6 +146,8 @@ public class PatientService {
             dto.setHasPendingMri(pendingTypes.contains("mri"));
             dto.setHasInProgressMri(!pendingTypes.contains("mri") && ipTypes.contains("mri"));
             dto.setHasCompletedMri(!pendingTypes.contains("mri") && !ipTypes.contains("mri") && completedTypes.contains("mri"));
+
+            dto.setHasPrescriptions(admissionsWithPrescriptions.contains(a.getId()));
 
             // Recent ECGs for tooltip
             List<com.pm.entity.Ecg> recent = recentEcgsByAdmission.get(a.getId());

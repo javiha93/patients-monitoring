@@ -358,10 +358,15 @@ export default function PatientList() {
   const refreshInterval = useRef(null)
   const [labNotifications, setLabNotifications] = useState(new Set()) // admissionIds with unseen lab updates
   const [labNotifByTest, setLabNotifByTest] = useState(new Set()) // labTestIds with unseen updates
+  const [medNotifications, setMedNotifications] = useState(new Set()) // admissionIds with unseen med updates
 
   // Only show lab notification badges for patients assigned to the current user
   const showLabBadge = (patient) =>
     labNotifications.has(patient.admissionId) &&
+    (patient.assignedNurse === user?.displayName || patient.assignedDoctor === user?.displayName)
+
+  const showMedBadge = (patient) =>
+    medNotifications.has(patient.admissionId) &&
     (patient.assignedNurse === user?.displayName || patient.assignedDoctor === user?.displayName)
 
   const fetchPatients = async () => {
@@ -381,6 +386,10 @@ export default function PatientList() {
       const { data } = await notificationApi.getUnseenLab(user.username)
       setLabNotifications(new Set(data.map(n => n.admissionId)))
       setLabNotifByTest(new Set(data.map(n => n.labTestId)))
+    } catch { /* ignore */ }
+    try {
+      const { data } = await notificationApi.getUnseenMed(user.username)
+      setMedNotifications(new Set(data.map(n => n.admissionId)))
     } catch { /* ignore */ }
   }
 
@@ -966,6 +975,14 @@ export default function PatientList() {
                               <Magnet size={16} className="text-slate-300" />
                             </span>
                           )}
+                          {p.hasPrescriptions && (
+                            <span title="Medicación pautada" data-testid={showMedBadge(p) ? 'med-notif-icon' : 'med-icon'} className="relative">
+                              <Pill size={16} className={showMedBadge(p) ? 'text-blue-500' : 'text-slate-300'} />
+                              {showMedBadge(p) && (
+                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white" data-testid="med-notif-badge" />
+                              )}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-500 text-right">{formatDate(p.admissionDate)}</td>
@@ -1046,6 +1063,14 @@ export default function PatientList() {
                         <span title="Resonancia en curso" className="animate-pulse"><Magnet size={18} className="text-red-500" /></span>
                       ) : p.hasCompletedMri && (
                         <span title="Resonancia realizada"><Magnet size={18} className="text-slate-300" /></span>
+                      )}
+                      {p.hasPrescriptions && (
+                        <span title="Medicación pautada" className="relative">
+                          <Pill size={18} className={showMedBadge(p) ? 'text-blue-500' : 'text-slate-300'} />
+                          {showMedBadge(p) && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white" />
+                          )}
+                        </span>
                       )}
                     </div>
                   </div>

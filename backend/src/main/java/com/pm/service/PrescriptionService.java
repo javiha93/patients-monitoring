@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +20,22 @@ public class PrescriptionService {
     private final InsulinScaleRepository insulinScaleRepo;
     private final AdmissionRepository admissionRepo;
     private final PrescriptionDoseHistoryRepository doseHistoryRepo;
+    private final MedNotificationRepository medNotificationRepo;
+    private final AppUserRepository appUserRepo;
+
+    private void createMedNotifications(Long prescriptionId, Long admissionId) {
+        List<AppUser> users = appUserRepo.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (AppUser u : users) {
+            medNotificationRepo.save(MedNotification.builder()
+                    .prescriptionId(prescriptionId)
+                    .admissionId(admissionId)
+                    .username(u.getUsername())
+                    .createdAt(now)
+                    .seen(false)
+                    .build());
+        }
+    }
 
     @Transactional(readOnly = true)
     public List<PrescriptionDTO> getByAdmission(Long admissionId) {
@@ -68,7 +85,9 @@ public class PrescriptionService {
             }
         }
 
-        return PrescriptionDTO.fromEntity(prescriptionRepo.findById(p.getId()).orElseThrow());
+        AdmissionPrescription saved = prescriptionRepo.findById(p.getId()).orElseThrow();
+        createMedNotifications(saved.getId(), admission.getId());
+        return PrescriptionDTO.fromEntity(saved);
     }
 
     @Transactional

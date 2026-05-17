@@ -1,7 +1,9 @@
 package com.pm.controller;
 
 import com.pm.entity.LabNotification;
+import com.pm.entity.MedNotification;
 import com.pm.repository.LabNotificationRepository;
+import com.pm.repository.MedNotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,9 @@ import java.util.stream.Collectors;
 public class NotificationController {
 
     private final LabNotificationRepository repo;
+    private final MedNotificationRepository medRepo;
+
+    // ── Lab notifications ──
 
     /** Get unseen lab notifications for a user. Returns list of {labTestId, admissionId, changeType}. */
     @GetMapping("/lab/unseen")
@@ -42,5 +47,30 @@ public class NotificationController {
     @Transactional
     public void markSeenForAdmission(@PathVariable Long admissionId, @RequestParam String username) {
         repo.markSeenForUserAndAdmission(username, admissionId);
+    }
+
+    // ── Medication notifications ──
+
+    @GetMapping("/med/unseen")
+    public List<Map<String, Object>> getUnseenMed(@RequestParam String username) {
+        return medRepo.findByUsernameAndSeenFalse(username).stream()
+                .map(n -> Map.<String, Object>of(
+                        "id", n.getId(),
+                        "prescriptionId", n.getPrescriptionId(),
+                        "admissionId", n.getAdmissionId()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @PostMapping("/med/mark-seen")
+    @Transactional
+    public void markAllMedSeen(@RequestParam String username) {
+        medRepo.markAllSeenForUser(username);
+    }
+
+    @PostMapping("/med/mark-seen/{admissionId}")
+    @Transactional
+    public void markMedSeenForAdmission(@PathVariable Long admissionId, @RequestParam String username) {
+        medRepo.markSeenForUserAndAdmission(username, admissionId);
     }
 }

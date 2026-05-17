@@ -57,6 +57,9 @@ public class PatientListDTO {
     private boolean hasInProgressMri;
     private boolean hasCompletedMri;
 
+    /** True if the patient has any active prescriptions */
+    private boolean hasPrescriptions;
+
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class RecentEcgInfo {
         private LocalDateTime completedAt;

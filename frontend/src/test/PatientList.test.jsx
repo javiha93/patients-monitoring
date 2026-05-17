@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import PatientList, { naturalCompare, matchesDateFilter } from '../pages/PatientList'
 
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ user: { displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
+  useAuth: () => ({ user: { username: 'javier.herrada', displayName: 'Javier Herrada', role: 'Enfermería' }, loginUser: vi.fn(), logout: vi.fn() }),
 }))
 
 vi.mock('../services/authApi', () => ({
@@ -59,6 +59,9 @@ vi.mock('../services/notificationApi', () => ({
     getUnseenLab: vi.fn(() => Promise.resolve({ data: [] })),
     markAllSeen: vi.fn(() => Promise.resolve()),
     markSeenForAdmission: vi.fn(() => Promise.resolve()),
+    getUnseenMed: vi.fn(() => Promise.resolve({ data: [] })),
+    markAllMedSeen: vi.fn(() => Promise.resolve()),
+    markMedSeenForAdmission: vi.fn(() => Promise.resolve()),
   },
 }))
 
@@ -1051,5 +1054,66 @@ describe('Lab notification badges filtered by assignment', () => {
     await waitFor(() => screen.getByText('García, Ana'))
     const badges = screen.queryAllByTestId('lab-notif-badge')
     expect(badges.length).toBeLessThanOrEqual(1)
+  })
+
+  // ── Medication badge tests ──
+
+  it('shows blue Pill icon when patient has prescriptions and unseen med notification', async () => {
+    const patientsWithRx = [
+      { ...mockPatients[0], hasPrescriptions: true, assignedNurse: 'Javier Herrada' },
+      { ...mockPatients[1], hasPrescriptions: false },
+    ]
+    const { notificationApi } = await import('../services/notificationApi')
+    notificationApi.getUnseenMed.mockResolvedValueOnce({
+      data: [{ admissionId: 10, prescriptionId: 1 }],
+    })
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsWithRx })
+    renderList()
+    await waitFor(() => {
+      expect(screen.getByTestId('med-notif-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('med-notif-badge')).toBeInTheDocument()
+    })
+  })
+
+  it('shows grey Pill icon when patient has prescriptions but no unseen notification', async () => {
+    const patientsWithRx = [
+      { ...mockPatients[0], hasPrescriptions: true, assignedNurse: 'Javier Herrada' },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsWithRx })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.getByTestId('med-icon')).toBeInTheDocument()
+    expect(screen.queryByTestId('med-notif-badge')).not.toBeInTheDocument()
+  })
+
+  it('does not show Pill icon when patient has no prescriptions', async () => {
+    const patientsNoRx = [
+      { ...mockPatients[0], hasPrescriptions: false },
+    ]
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsNoRx })
+    renderList()
+    await waitFor(() => screen.getByText('García, Ana'))
+    expect(screen.queryByTestId('med-icon')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('med-notif-icon')).not.toBeInTheDocument()
+  })
+
+  it('shows med badge only for patients assigned to current user', async () => {
+    const patientsWithRx = [
+      { ...mockPatients[0], hasPrescriptions: true, assignedNurse: 'Javier Herrada' },
+      { ...mockPatients[1], hasPrescriptions: true, assignedNurse: 'Otro Enfermero' },
+    ]
+    const { notificationApi } = await import('../services/notificationApi')
+    notificationApi.getUnseenMed.mockResolvedValueOnce({
+      data: [
+        { admissionId: 10, prescriptionId: 1 },
+        { admissionId: 11, prescriptionId: 2 },
+      ],
+    })
+    patientApi.listActive.mockResolvedValueOnce({ data: patientsWithRx })
+    renderList()
+    await waitFor(() => {
+      const badges = screen.queryAllByTestId('med-notif-badge')
+      expect(badges.length).toBeLessThanOrEqual(1)
+    })
   })
 })

@@ -4,6 +4,7 @@ import { ChevronLeft, Plus, Clock } from 'lucide-react'
 import { patientApi } from '../services/patientApi'
 import { prescriptionApi } from '../services/prescriptionApi'
 import { vitalsApi } from '../services/vitalsApi'
+import { notificationApi } from '../services/notificationApi'
 import { useAuth } from '../context/AuthContext'
 import ActionBar from '../components/ActionBar'
 import InsightsPanel from '../components/InsightsPanel'
@@ -77,7 +78,20 @@ export default function PatientMedication() {
     }
   }
 
-  useEffect(() => { fetchData() }, [id])
+  useEffect(() => {
+    fetchData()
+    // Mark med notifications as seen for this patient's admission
+    if (user?.username && patient?.activeAdmission?.id) {
+      notificationApi.markMedSeenForAdmission(patient.activeAdmission.id, user.username).catch(() => {})
+    }
+  }, [id])
+
+  // Also mark seen once patient data loads (admission ID available)
+  useEffect(() => {
+    if (user?.username && patient?.activeAdmission?.id) {
+      notificationApi.markMedSeenForAdmission(patient.activeAdmission.id, user.username).catch(() => {})
+    }
+  }, [patient?.activeAdmission?.id])
 
   // Direct sign (non-insulin): immediate, no modal
   const handleDirectSign = async (data) => {
