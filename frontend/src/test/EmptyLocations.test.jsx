@@ -131,12 +131,12 @@ describe('Header and count', () => {
 // ── Empty locations ──
 
 describe('Empty locations feature', () => {
-  it('shows "Ver ubicaciones vacías" checkbox in filters', async () => {
+  it('shows "Ubicaciones vacías" checkbox in filters', async () => {
     patientApi.listActive.mockResolvedValueOnce({ data: [basePatient] })
     renderList()
     await waitFor(() => screen.getByText('García, Ana'))
     fireEvent.click(screen.getByText('Filtros'))
-    expect(screen.getByText('Ver ubicaciones vacías')).toBeInTheDocument()
+    expect(screen.getByText('Ubicaciones vacías')).toBeInTheDocument()
   })
 
   it('does not show empty location rows when checkbox is unchecked', async () => {

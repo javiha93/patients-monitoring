@@ -381,6 +381,8 @@ export default function PatientList() {
   const [filterDoctor, setFilterDoctor] = useState(saved.current?.filterDoctor ?? null)
   const [filterDate, setFilterDate] = useState(saved.current?.filterDate ?? null)
   const [showEmptyLocations, setShowEmptyLocations] = useState(false)
+  const [filterAdmOpen, setFilterAdmOpen] = useState(true)   // show non-admitted
+  const [filterAdmClosed, setFilterAdmClosed] = useState(true) // show admitted (ingresado)
   const [locationStatus, setLocationStatus] = useState({}) // { location: { clean, priority } }
   const navigate = useNavigate()
 
@@ -526,6 +528,9 @@ export default function PatientList() {
     }
     // Date filter
     if (filterDate && !matchesDateFilter(p.admissionDate, filterDate)) return false
+    // Admission status filter
+    if (!filterAdmOpen && !p.admitted) return false
+    if (!filterAdmClosed && p.admitted) return false
     return true
   })
 
@@ -806,19 +811,6 @@ export default function PatientList() {
                 </div>
               </div>
             </div>
-            {/* Empty locations toggle */}
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showEmptyLocations}
-                  onChange={(e) => setShowEmptyLocations(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-500 focus:ring-blue-400"
-                  data-testid="show-empty-locations"
-                />
-                Ver ubicaciones vacías
-              </label>
-            </div>
             {/* Row 2: Enfermero/a | Médico | Ingreso | Clear */}
             <div className="flex flex-wrap items-end gap-6">
               <div>
@@ -896,6 +888,41 @@ export default function PatientList() {
                   <X size={12} /> Limpiar
                 </button>
               )}
+              <div className="ml-auto flex items-center gap-5 pb-0.5">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Estado</span>
+                  <label className="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={filterAdmOpen}
+                      onChange={(e) => setFilterAdmOpen(e.target.checked)}
+                      className="rounded border-slate-300 text-blue-500 focus:ring-blue-400"
+                      data-testid="filter-adm-open"
+                    />
+                    Abierto
+                  </label>
+                  <label className="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={filterAdmClosed}
+                      onChange={(e) => setFilterAdmClosed(e.target.checked)}
+                      className="rounded border-slate-300 text-purple-500 focus:ring-purple-400"
+                      data-testid="filter-adm-closed"
+                    />
+                    Ingresado
+                  </label>
+                </div>
+                <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showEmptyLocations}
+                    onChange={(e) => setShowEmptyLocations(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-500 focus:ring-blue-400"
+                    data-testid="show-empty-locations"
+                  />
+                  Ubicaciones vacías
+                </label>
+              </div>
             </div>
           </div>
         )}
@@ -911,7 +938,7 @@ export default function PatientList() {
           <div className="bg-white rounded-xl shadow-sm overflow-visible">
             <table className="w-full">
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                <tr className="bg-slate-100 border-b-2 border-slate-200 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   <th className="px-4 py-3 w-20 cursor-pointer select-none hover:text-slate-700 whitespace-nowrap" onClick={() => handleSort('nivel')}>Nivel{sortIndicator('nivel')}</th>
                   <th className="px-2 py-3 w-16 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('ubicacion')}>Ubic.{sortIndicator('ubicacion')}</th>
                   <th className="px-2 py-3 w-14 cursor-pointer select-none hover:text-slate-700" onClick={() => handleSort('especialidad')}>Esp.{sortIndicator('especialidad')}</th>
@@ -1243,60 +1270,60 @@ export default function PatientList() {
                         <div className="text-xs text-slate-500">{p.nhc} · {calcAge(p.birthDate) ?? '—'}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {p.pendingLabs && p.pendingLabs.length > 0 ? (
                         <span title={buildPendingLabTooltip(p.pendingLabs)} data-testid="pending-lab-icon" className="relative">
-                          <Syringe size={18} className="text-orange-500" />
+                          <Syringe size={22} className="text-orange-500" />
                           {showLabBadge(p) && (
                             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
                           )}
                         </span>
                       ) : p.hasCompletedLabs ? (
                         <span title="Analíticas realizadas" data-testid="completed-lab-icon" className="relative">
-                          <Syringe size={18} className="text-slate-300" />
+                          <Syringe size={22} className="text-slate-300" />
                           {showLabBadge(p) && (
                             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
                           )}
                         </span>
                       ) : showLabBadge(p) && (
                         <span className="relative" data-testid="completed-lab-icon">
-                          <Syringe size={18} className="text-slate-300" />
+                          <Syringe size={22} className="text-slate-300" />
                           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
                         </span>
                       )}
                       {p.hasPendingEcg ? (
                         <span title="ECG pendiente" data-testid="pending-ecg-icon">
-                          <Activity size={18} className="text-red-500" />
+                          <Activity size={22} className="text-red-500" />
                         </span>
                       ) : p.hasCompletedEcg && (
                         <span title={buildRecentEcgTooltip(p.recentEcgs)} data-testid="completed-ecg-icon">
-                          <Activity size={18} className="text-slate-300" />
+                          <Activity size={22} className="text-slate-300" />
                         </span>
                       )}
                       {p.hasPendingXray ? (
-                        <span title="Radiografía pendiente"><XRayIcon size={18} className="text-blue-500" /></span>
+                        <span title="Radiografía pendiente"><XRayIcon size={22} className="text-blue-500" /></span>
                       ) : p.hasInProgressXray ? (
-                        <span title="Radiografía en curso" className="animate-pulse"><XRayIcon size={18} className="text-blue-500" /></span>
+                        <span title="Radiografía en curso" className="animate-pulse"><XRayIcon size={22} className="text-blue-500" /></span>
                       ) : p.hasCompletedXray && (
-                        <span title="Radiografía realizada"><XRayIcon size={18} className="text-slate-300" /></span>
+                        <span title="Radiografía realizada"><XRayIcon size={22} className="text-slate-300" /></span>
                       )}
                       {p.hasPendingCt ? (
-                        <span title="TAC pendiente"><Radiation size={18} className="text-amber-500" /></span>
+                        <span title="TAC pendiente"><Radiation size={22} className="text-amber-500" /></span>
                       ) : p.hasInProgressCt ? (
-                        <span title="TAC en curso" className="animate-pulse"><Radiation size={18} className="text-amber-500" /></span>
+                        <span title="TAC en curso" className="animate-pulse"><Radiation size={22} className="text-amber-500" /></span>
                       ) : p.hasCompletedCt && (
-                        <span title="TAC realizado"><Radiation size={18} className="text-slate-300" /></span>
+                        <span title="TAC realizado"><Radiation size={22} className="text-slate-300" /></span>
                       )}
                       {p.hasPendingMri ? (
-                        <span title="Resonancia pendiente"><Magnet size={18} className="text-red-500" /></span>
+                        <span title="Resonancia pendiente"><Magnet size={22} className="text-red-500" /></span>
                       ) : p.hasInProgressMri ? (
-                        <span title="Resonancia en curso" className="animate-pulse"><Magnet size={18} className="text-red-500" /></span>
+                        <span title="Resonancia en curso" className="animate-pulse"><Magnet size={22} className="text-red-500" /></span>
                       ) : p.hasCompletedMri && (
-                        <span title="Resonancia realizada"><Magnet size={18} className="text-slate-300" /></span>
+                        <span title="Resonancia realizada"><Magnet size={22} className="text-slate-300" /></span>
                       )}
                       {p.hasPrescriptions && (
                         <span title="Medicación pautada">
-                          <Pill size={18} className={showMedBadge(p) ? 'text-blue-500' : 'text-slate-300'} />
+                          <Pill size={22} className={showMedBadge(p) ? 'text-blue-500' : 'text-slate-300'} />
                         </span>
                       )}
                     </div>
@@ -1305,7 +1332,7 @@ export default function PatientList() {
                   {/* Row 2: motivo + location/specialty left, observations right */}
                   <div className="flex items-start gap-3 mt-2">
                     <div className="flex-shrink-0">
-                      <div className="text-xs text-slate-500 mb-1 flex items-center gap-1.5">
+                      <div className="text-sm text-slate-600 mb-1 flex items-center gap-1.5">
                         {p.matCategory || 'Sin motivo'}
                         {p.admitted && isAdmin ? (
                           <input
@@ -1386,26 +1413,27 @@ export default function PatientList() {
                         />
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="text"
-                        defaultValue={p.observations || ''}
-                        placeholder="Observaciones..."
-                        onBlur={async (e) => {
-                          const val = e.target.value.trim()
-                          if (val !== (p.observations || '')) {
-                            try {
-                              await patientApi.updateObservations(p.admissionId, val)
-                              setPatients(prev => prev.map(pt =>
-                                pt.admissionId === p.admissionId ? { ...pt, observations: val } : pt
-                              ))
-                            } catch { /* ignore */ }
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
-                        className="w-full bg-transparent text-xs text-slate-600 border-0 border-b border-slate-200 hover:border-slate-300 focus:border-violet-400 focus:outline-none px-0 py-0.5 placeholder:text-slate-300"
-                      />
-                    </div>
+                    {p.observations && (
+                      <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          defaultValue={p.observations}
+                          onBlur={async (e) => {
+                            const val = e.target.value.trim()
+                            if (val !== (p.observations || '')) {
+                              try {
+                                await patientApi.updateObservations(p.admissionId, val)
+                                setPatients(prev => prev.map(pt =>
+                                  pt.admissionId === p.admissionId ? { ...pt, observations: val } : pt
+                                ))
+                              } catch { /* ignore */ }
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+                          className="w-full bg-transparent text-xs text-slate-500 italic border-0 border-b border-transparent hover:border-slate-300 focus:border-violet-400 focus:outline-none px-0 py-0.5"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Row 3: assigned left, date right */}
